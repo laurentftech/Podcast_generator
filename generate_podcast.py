@@ -37,7 +37,7 @@ def save_binary_file(file_name: str, data: bytes, status_callback=print):
 
 def generate(script_text: str, output_basename: str = "podcast_segment", status_callback=print, output_dir: str = "."):
     """Génère l'audio à partir d'un script en utilisant Gemini, avec un fallback de modèle."""
-
+    status_callback("DEBUG: Début de generate()")
     status_callback("Démarrage de la génération du podcast...")
     load_dotenv()
 
@@ -128,13 +128,14 @@ def generate(script_text: str, output_basename: str = "podcast_segment", status_
             status_callback(f"Audio généré avec succès via {model_name}.")
             generated_successfully = True
             break  # Exit the model-selection loop on success
-        except Exception as e:
-            status_callback(f"Erreur avec le modèle '{model_name}': {e}")
+        except Exception:
+            status_callback(f"Erreur avec le modèle '{model_name}'")
             status_callback("Tentative avec le modèle suivant...")
 
     if not generated_successfully:
         status_callback("\nÉchec de la génération audio avec tous les modèles disponibles.")
         return False
+    status_callback("DEBUG: Fin de generate()")
     return True
 
 def convert_to_wav(audio_data: bytes, mime_type: str) -> bytes:
