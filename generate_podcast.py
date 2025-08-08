@@ -7,32 +7,12 @@ import os
 import re
 import struct
 from dotenv import load_dotenv
-#from google.api_core import exceptions
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 
 
-def save_binary_file(file_name, data):
-    f = open(file_name, "wb")
-    f.write(data)
-    f.close()
-    print(f"File saved to to: {file_name}")
-
-
-def generate():
-    load_dotenv()
-
-    client = genai.Client(
-        api_key=os.environ.get("GEMINI_API_KEY"),
-    )
-
-    # List of models to try, from most to least preferred.
-    models_to_try = ["gemini-2.5-pro-preview-tts", "gemini-2.5-flash-preview-tts"]
-    contents = [
-        types.Content(
-            role="user",
-            parts=[
-                types.Part.from_text(text="""Read aloud in a warm, welcoming tone
+# Le script du podcast est maintenant une constante pour être utilisé par le mode console.
+PODCAST_SCRIPT = """Read aloud in a warm, welcoming tone
 John: Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs – my dogs' names are corgis! Who am I?
 Samantha: [amused] Queen Elizabeth II!
 
@@ -46,7 +26,35 @@ John: Who am I? I am short and serious. I have got black hair in a bun and a sad
 Samantha: [amused] Queen Victoria!
 
 John: Who am I? I am a man with a short beard and brown hair. I have got a dark blue uniform. I am the new king – my mother's name was Elizabeth. I have got a golden scepter and a crown. My throne's color is red and gold. Who am I?
-Samantha: [amused] King Charles III!"""),
+Samantha: [amused] King Charles III!"""
+
+def save_binary_file(file_name: str, data: bytes, status_callback=print):
+    """Sauvegarde les données binaires dans un fichier de manière sécurisée."""
+    try:
+        with open(file_name, "wb") as f:
+            f.write(data)
+        status_callback(f"Fichier sauvegardé : {file_name}")
+    except IOError as e:
+        status_callback(f"Erreur lors de la sauvegarde du fichier {file_name}: {e}")
+
+def generate(script_text: str, output_basename: str = "podcast_segment", status_callback=print):
+    """Génère l'audio à partir d'un script en utilisant Gemini, avec un fallback de modèle."""
+    load_dotenv()
+
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        status_callback("Erreur : Clé API 'GEMINI_API_KEY' non trouvée. Veuillez créer un fichier .env.")
+        return False
+
+    client = genai.Client(api_key=api_key)
+
+    # List of models to try, from most to least preferred.
+    models_to_try = ["gemini-2.5-pro-preview-tts", "gemini-2.5-flash-preview-tts"]
+    contents = [
+        types.Content(
+            role="user",
+            parts=[
+                types.Part.from_text(text=script_text),
             ],
         ),
     ]
@@ -81,7 +89,7 @@ Samantha: [amused] King Charles III!"""),
 
     generated_successfully = False
     for model_name in models_to_try:
-        print(f"\nAttempting to generate audio with model: {model_name}...")
+        status_callback(f"\nTentative de génération avec le modèle : {model_name}...")
         try:
             file_index = 0
             for chunk in client.models.generate_content_stream(
@@ -99,7 +107,7 @@ Samantha: [amused] King Charles III!"""),
                     chunk.candidates[0].content.parts[0].inline_data
                     and chunk.candidates[0].content.parts[0].inline_data.data
                 ):
-                    file_name = f"ENTER_FILE_NAME_{file_index}"
+                    file_name = f"{output_basename}_{file_index}"
                     file_index += 1
                     inline_data = chunk.candidates[0].content.parts[0].inline_data
                     data_buffer = inline_data.data
@@ -109,18 +117,24 @@ Samantha: [amused] King Charles III!"""),
                         data_buffer = convert_to_wav(
                             inline_data.data, inline_data.mime_type
                         )
-                    save_binary_file(f"{file_name}{file_extension}", data_buffer)
+                    save_binary_file(f"{file_name}{file_extension}", data_buffer, status_callback)
                 else:
-                    print(chunk.text)
+                    status_callback(chunk.text)
 
-            print(f"Successfully generated audio with {model_name}.")
+            status_callback(f"Audio généré avec succès via {model_name}.")
             generated_successfully = True
             break  # Exit the model-selection loop on success
-        except:
-            print("Attempting fallback to the next model...")
+        except errors.GoogleAPICallError as e:
+            status_callback(f"Impossible d'utiliser le modèle '{model_name}': {e.message}")
+            status_callback("Tentative avec le modèle suivant...")
+        except Exception as e:
+            status_callback(f"Une erreur inattendue est survenue avec {model_name}: {e}")
+            status_callback("Tentative avec le modèle suivant...")
 
     if not generated_successfully:
-        print("\nFailed to generate audio with all available models. Please check your API key and permissions.")
+        status_callback("\nÉchec de la génération audio avec tous les modèles disponibles.")
+        return False
+    return True
 
 def convert_to_wav(audio_data: bytes, mime_type: str) -> bytes:
     """Generates a WAV file header for the given audio data and parameters.
@@ -198,4 +212,4 @@ def parse_audio_mime_type(mime_type: str) -> dict[str, int | None]:
 
 
 if __name__ == "__main__":
-    generate()
+    generate(PODCAST_SCRIPT, "royal_family_quiz")
