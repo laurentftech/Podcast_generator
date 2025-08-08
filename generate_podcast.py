@@ -1,10 +1,8 @@
 # To run this code you need to install the following dependencies:
 # pip install google-genai python-dotenv
 
-import base64
 import mimetypes
 import os
-import re
 import struct
 from dotenv import load_dotenv
 from google import genai
@@ -37,14 +35,19 @@ def save_binary_file(file_name: str, data: bytes, status_callback=print):
     except IOError as e:
         status_callback(f"Erreur lors de la sauvegarde du fichier {file_name}: {e}")
 
-def generate(script_text: str, output_basename: str = "podcast_segment", status_callback=print):
+def generate(script_text: str, output_basename: str = "podcast_segment", status_callback=print, output_dir: str = "."):
     """Génère l'audio à partir d'un script en utilisant Gemini, avec un fallback de modèle."""
+
+    status_callback("Démarrage de la génération du podcast...")
     load_dotenv()
 
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         status_callback("Erreur : Clé API 'GEMINI_API_KEY' non trouvée. Veuillez créer un fichier .env.")
         return False
+
+    # S'assurer que le dossier de sortie existe
+    os.makedirs(output_dir, exist_ok=True)
 
     client = genai.Client(api_key=api_key)
 
@@ -107,8 +110,6 @@ def generate(script_text: str, output_basename: str = "podcast_segment", status_
                     chunk.candidates[0].content.parts[0].inline_data
                     and chunk.candidates[0].content.parts[0].inline_data.data
                 ):
-                    file_name = f"{output_basename}_{file_index}"
-                    file_index += 1
                     inline_data = chunk.candidates[0].content.parts[0].inline_data
                     data_buffer = inline_data.data
                     file_extension = mimetypes.guess_extension(inline_data.mime_type)
@@ -117,18 +118,18 @@ def generate(script_text: str, output_basename: str = "podcast_segment", status_
                         data_buffer = convert_to_wav(
                             inline_data.data, inline_data.mime_type
                         )
-                    save_binary_file(f"{file_name}{file_extension}", data_buffer, status_callback)
+                    
+                    output_path = os.path.join(output_dir, f"{output_basename}_{file_index}{file_extension}")
+                    save_binary_file(output_path, data_buffer, status_callback)
+                    file_index += 1
                 else:
                     status_callback(chunk.text)
 
             status_callback(f"Audio généré avec succès via {model_name}.")
             generated_successfully = True
             break  # Exit the model-selection loop on success
-        except errors.GoogleAPICallError as e:
-            status_callback(f"Impossible d'utiliser le modèle '{model_name}': {e.message}")
-            status_callback("Tentative avec le modèle suivant...")
         except Exception as e:
-            status_callback(f"Une erreur inattendue est survenue avec {model_name}: {e}")
+            status_callback(f"Erreur avec le modèle '{model_name}': {e}")
             status_callback("Tentative avec le modèle suivant...")
 
     if not generated_successfully:
@@ -188,25 +189,30 @@ def parse_audio_mime_type(mime_type: str) -> dict[str, int | None]:
         A dictionary with "bits_per_sample" and "rate" keys. Values will be
         integers if found, otherwise None.
     """
+    # Valeurs par défaut
     bits_per_sample = 16
     rate = 24000
 
-    # Extract rate from parameters
-    parts = mime_type.split(";")
-    for param in parts: # Skip the main type part
-        param = param.strip()
+    # Sépare le type principal (ex: "audio/L16") des paramètres (ex: "rate=24000")
+    parts = [p.strip() for p in mime_type.split(';')]
+    main_type = parts[0]
+    params = parts[1:]
+
+    # Extrait les bits par sample depuis le type principal
+    if main_type.lower().startswith("audio/l"):
+        try:
+            bits_per_sample = int(main_type.split('L', 1)[1])
+        except (ValueError, IndexError):
+            pass  # Garde la valeur par défaut si l'analyse échoue
+
+    # Extrait la fréquence (rate) depuis les paramètres
+    for param in params:
         if param.lower().startswith("rate="):
             try:
-                rate_str = param.split("=", 1)[1]
-                rate = int(rate_str)
+                rate = int(param.split('=', 1)[1])
             except (ValueError, IndexError):
-                # Handle cases like "rate=" with no value or non-integer value
-                pass # Keep rate as default
-        elif param.startswith("audio/L"):
-            try:
-                bits_per_sample = int(param.split("L", 1)[1])
-            except (ValueError, IndexError):
-                pass # Keep bits_per_sample as default if conversion fails
+                pass # Garde la valeur par défaut si l'analyse échoue
+            break # Fréquence trouvée, pas besoin de continuer
 
     return {"bits_per_sample": bits_per_sample, "rate": rate}
 
