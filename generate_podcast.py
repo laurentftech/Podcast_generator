@@ -25,7 +25,7 @@ def save_binary_file(file_name: str, data: bytes, status_callback=print):
     except IOError as e:
         status_callback(f"Erreur lors de la sauvegarde du fichier {file_name}: {e}")
 
-def generate(script_text: str, output_basename: str = "podcast_segment", status_callback=print, output_dir: str = "."):
+def generate(script_text: str, output_basename: str = "podcast_segment", status_callback=print, output_dir: str = ".") -> str | None:
     """Génère l'audio à partir d'un script en utilisant Gemini, avec un fallback de modèle."""
     status_callback("Démarrage de la génération du podcast...")
     load_dotenv()
@@ -33,7 +33,7 @@ def generate(script_text: str, output_basename: str = "podcast_segment", status_
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         status_callback("Erreur : Clé API 'GEMINI_API_KEY' non trouvée. Veuillez créer un fichier .env.")
-        return False
+        return None
 
     # S'assurer que le dossier de sortie existe
     os.makedirs(output_dir, exist_ok=True)
@@ -80,6 +80,7 @@ def generate(script_text: str, output_basename: str = "podcast_segment", status_
     )
 
     generated_successfully = False
+    output_path = None
     for model_name in models_to_try:
         status_callback(f"\nTentative de génération avec le modèle : {model_name}...")
         try:
@@ -134,7 +135,8 @@ def generate(script_text: str, output_basename: str = "podcast_segment", status_
 
     if not generated_successfully:
         status_callback("\nÉchec de la génération audio avec tous les modèles disponibles.")
-    return generated_successfully
+        return None
+    return output_path
 
 def convert_to_wav(audio_data: bytes, mime_type: str) -> bytes:
     """Generates a WAV file header for the given audio data and parameters.
