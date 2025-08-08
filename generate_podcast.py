@@ -25,7 +25,7 @@ def save_binary_file(file_name: str, data: bytes, status_callback=print):
     except IOError as e:
         status_callback(f"Erreur lors de la sauvegarde du fichier {file_name}: {e}")
 
-def generate(script_text: str, output_basename: str = "podcast_segment", status_callback=print, output_dir: str = ".") -> str | None:
+def generate(script_text: str, speaker_mapping: dict, output_basename: str = "podcast_segment", status_callback=print, output_dir: str = ".") -> str | None:
     """Génère l'audio à partir d'un script en utilisant Gemini, avec un fallback de modèle."""
     status_callback("Démarrage de la génération du podcast...")
     load_dotenv()
@@ -59,21 +59,12 @@ def generate(script_text: str, output_basename: str = "podcast_segment", status_
             multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
                 speaker_voice_configs=[
                     types.SpeakerVoiceConfig(
-                        speaker="John",
+                        speaker=speaker_name,
                         voice_config=types.VoiceConfig(
-                            prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                                voice_name="Schedar"
-                            )
+                            prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice_name)
                         ),
-                    ),
-                    types.SpeakerVoiceConfig(
-                        speaker="Samantha",
-                        voice_config=types.VoiceConfig(
-                            prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                                voice_name="Zephyr"
-                            )
-                        ),
-                    ),
+                    )
+                    for speaker_name, voice_name in speaker_mapping.items()
                 ]
             ),
         ),

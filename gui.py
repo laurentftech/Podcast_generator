@@ -4,13 +4,51 @@ import threading
 import os
 import sys
 import queue
+import json
 
 try:
     from playsound import playsound
 except ImportError:
     playsound = None # Gère l'absence de la bibliothèque
 
+AVAILABLE_VOICES = {
+    "Zephyr": "Bright",
+    "Puck": "Upbeat",
+    "Charon": "Informative",
+    "Kore": "Firm",
+    "Fenrir": "Excitable",
+    "Leda": "Youthful",
+    "Orus": "Firm",
+    "Aoede": "Breezy",
+    "Callirrhoe": "Easy-going",
+    "Autonoe": "Bright",
+    "Enceladus": "Breathy",
+    "Iapetus": "Clear",
+    "Umbriel": "Easy-going",
+    "Algieba": "Smooth",
+    "Despina": "Smooth",
+    "Erinome": "Clear",
+    "Algenib": "Gravelly",
+    "Rasalgethi": "Informative",
+    "Laomedeia": "Upbeat",
+    "Achernar": "Soft",
+    "Alnilam": "Firm",
+    "Schedar": "Even",
+    "Gacrux": "Mature",
+    "Pulcherrima": "Forward",
+    "Achird": "Friendly",
+    "Zubenelgenubi": "Casual",
+    "Vindemiatrix": "Gentle",
+    "Sadachbia": "Lively",
+    "Sadaltager": "Knowledgeable",
+    "Sulafat": "Warm"
+}
+
+
 class PodcastGeneratorApp:
+    SETTINGS_FILE = "settings.json"
+    DEFAULT_SPEAKER_SETTINGS = {"John": "Schedar", "Samantha": "Zephyr"}
+
     def __init__(self, root: tk.Tk, generate_func, default_script: str = ""):
         self.root = root
         self.root.title("Générateur de Podcast")
@@ -19,6 +57,19 @@ class PodcastGeneratorApp:
         self.log_queue = queue.Queue()
         self.GENERATION_COMPLETE = object()  # Sentinel pour marquer la fin
         self.last_generated_filepath = None
+        
+        self.speaker_settings = self.load_settings()
+
+        # --- Barre de menu ---
+        self.menubar = tk.Menu(self.root)
+        self.root.config(menu=self.menubar)
+
+        options_menu = tk.Menu(self.menubar, tearoff=0)
+        self.menubar.add_cascade(label="Options", menu=options_menu)
+        options_menu.add_command(label="Paramètres des voix...", command=self.open_settings_window)
+        options_menu.add_separator()
+        options_menu.add_command(label="Quitter", command=self.root.quit)
+
         self.poll_log_queue()
 
         # --- Cadre principal ---
@@ -48,7 +99,7 @@ class PodcastGeneratorApp:
         self.button_frame.pack(fill=tk.X, pady=(10, 0))
 
         # Définir une largeur commune pour l'uniformité visuelle
-        common_button_width = 23
+        common_button_width = 26
 
         self.load_button = tk.Button(self.button_frame, text="Charger un script (.txt)", command=self.load_script_from_file, width=common_button_width)
         self.load_button.pack(side=tk.LEFT, padx=(0, 10))
@@ -58,6 +109,33 @@ class PodcastGeneratorApp:
 
         self.play_button = tk.Button(self.button_frame, text="▶️ Lire", command=self.play_last_generated_file, state='disabled', width=common_button_width)
         self.play_button.pack(side=tk.LEFT, padx=(10, 0))
+
+    def load_settings(self):
+        """Charge les paramètres depuis le fichier JSON."""
+        try:
+            with open(self.SETTINGS_FILE, 'r') as f:
+                settings = json.load(f)
+                # On vérifie que la clé existe, sinon on retourne les défauts
+                return settings.get("speaker_voices", self.DEFAULT_SPEAKER_SETTINGS.copy())
+        except (FileNotFoundError, json.JSONDecodeError):
+            # Retourne une copie des valeurs par défaut si le fichier n'existe pas ou est corrompu
+            return self.DEFAULT_SPEAKER_SETTINGS.copy()
+
+    def save_settings(self, settings_to_save):
+        """Sauvegarde les paramètres dans le fichier JSON."""
+        self.speaker_settings = settings_to_save
+        try:
+            with open(self.SETTINGS_FILE, 'w') as f:
+                json.dump({"speaker_voices": settings_to_save}, f, indent=4)
+            self.log_status("Paramètres des voix sauvegardés.")
+        except IOError as e:
+            messagebox.showerror("Erreur de sauvegarde", f"Impossible de sauvegarder les paramètres:\n{e}")
+
+    def open_settings_window(self):
+        """Ouvre la fenêtre de gestion des paramètres."""
+        # On désactive le bouton pendant que la fenêtre est ouverte pour éviter les doublons
+        self.menubar.entryconfig("Options", state="disabled")
+        SettingsWindow(self.root, self.speaker_settings, self.save_settings, self.on_settings_window_close, self.DEFAULT_SPEAKER_SETTINGS)
 
     def log_status(self, message: str):
         self.log_queue.put(message)
@@ -130,6 +208,7 @@ class PodcastGeneratorApp:
         self.generate_button.config(state='disabled')
         self.load_button.config(state='disabled')
         self.play_button.config(state='disabled')
+        self.menubar.entryconfig("Options", state="disabled")
 
         # Afficher et démarrer la barre de progression
         self.clear_log()
@@ -139,17 +218,18 @@ class PodcastGeneratorApp:
         self.progress_bar.pack(fill=tk.X, pady=(10, 0), before=self.button_frame)
         self.progress_bar.start()
 
-        thread = threading.Thread(target=self.run_generation, args=(script_content, output_basename, output_dir))
+        thread = threading.Thread(target=self.run_generation, args=(script_content, output_basename, output_dir, self.speaker_settings))
         thread.daemon = True
         thread.start()
 
-    def run_generation(self, script_content, output_basename, output_dir):
+    def run_generation(self, script_content, output_basename, output_dir, speaker_mapping):
         """La fonction exécutée par le thread."""
         generated_filepath = None
         try:
             self.log_status(f"Lancement de la génération vers '{os.path.basename(output_dir)}'...")
             generated_filepath = self.generate_func(
                 script_text=script_content,
+                speaker_mapping=speaker_mapping,
                 output_basename=output_basename,
                 output_dir=output_dir,
                 status_callback=self.log_status
@@ -177,6 +257,7 @@ class PodcastGeneratorApp:
         self.progress_bar.stop()
         self.generate_button.config(state='normal')
         self.load_button.config(state='normal')
+        self.menubar.entryconfig("Options", state="normal")
         if self.progress_bar.winfo_ismapped():
             self.progress_bar.pack_forget()
         self.log_text.config(state='disabled') # On désactive la zone de log à la toute fin
@@ -207,6 +288,111 @@ class PodcastGeneratorApp:
                     self.play_button.config(state='normal')
 
         threading.Thread(target=_play_in_thread, daemon=True).start()
+
+    def on_settings_window_close(self):
+        """Callback pour réactiver le menu lorsque la fenêtre des paramètres est fermée."""
+        self.menubar.entryconfig("Options", state="normal")
+
+class SettingsWindow(tk.Toplevel):
+    def __init__(self, parent, current_settings, save_callback, close_callback, default_settings):
+        super().__init__(parent)
+        self.title("Paramètres des voix")
+        self.transient(parent)
+        self.grab_set()
+
+        self.default_settings = default_settings
+        self.current_settings = dict(current_settings) # Crée une copie
+        self.save_callback = save_callback
+        self.close_callback = close_callback
+        self.protocol("WM_DELETE_WINDOW", self.cancel_and_close) # Gère la fermeture avec la croix
+        self.voice_display_list = [f"{name} - {desc}" for name, desc in AVAILABLE_VOICES.items()]
+        self.entries = []
+
+        main_frame = tk.Frame(self, padx=10, pady=10)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        header_frame = tk.Frame(main_frame)
+        header_frame.pack(fill=tk.X, pady=(0, 5))
+        tk.Label(header_frame, text="Nom du Speaker (dans le script)", font=('Helvetica', 10, 'bold')).pack(side=tk.LEFT, expand=True)
+        tk.Label(header_frame, text="Nom de la Voix (Gemini)", font=('Helvetica', 10, 'bold')).pack(side=tk.RIGHT, expand=True)
+
+        self.speaker_frame = tk.Frame(main_frame)
+        self.speaker_frame.pack(fill=tk.BOTH, expand=True)
+
+        self.populate_fields()
+
+        button_frame = tk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(10, 0))
+
+        tk.Button(button_frame, text="+", command=self.add_row).pack(side=tk.LEFT)
+        tk.Button(button_frame, text="Sauvegarder", command=self.save_and_close).pack(side=tk.RIGHT)
+        tk.Button(button_frame, text="Annuler", command=self.cancel_and_close).pack(side=tk.RIGHT, padx=(0, 5))
+        tk.Button(button_frame, text="Restaurer les défauts", command=self.restore_defaults).pack(side=tk.LEFT, padx=(10, 0))
+
+    def populate_fields(self):
+        for speaker, voice in self.current_settings.items():
+            self.add_row(speaker, voice)
+
+    def add_row(self, speaker_text="", voice_text=""):
+        """Ajoute une ligne complète pour un speaker avec une liste déroulante pour la voix."""
+        row_container = tk.Frame(self.speaker_frame)
+        row_container.pack(fill=tk.X, pady=2)
+
+        speaker_entry = tk.Entry(row_container)
+        speaker_entry.insert(0, speaker_text)
+
+        voice_combo = ttk.Combobox(row_container, values=self.voice_display_list)
+        # Retrouve la chaîne complète à afficher, ou utilise la valeur brute si c'est une voix personnalisée
+        initial_display_value = voice_text
+        if voice_text in AVAILABLE_VOICES:
+            initial_display_value = f"{voice_text} - {AVAILABLE_VOICES[voice_text]}"
+        voice_combo.insert(0, initial_display_value)
+        
+        entry_tuple = (speaker_entry, voice_combo)
+        delete_button = tk.Button(row_container, text="-", width=2, command=lambda: self.delete_row(row_container, entry_tuple))
+
+        # Layout avec grid pour un meilleur alignement
+        row_container.columnconfigure(0, weight=1)
+        row_container.columnconfigure(1, weight=1)
+        row_container.columnconfigure(2, weight=0)
+
+        speaker_entry.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+        voice_combo.grid(row=0, column=1, sticky="ew")
+        delete_button.grid(row=0, column=2, sticky="w", padx=(5, 0))
+
+        self.entries.append(entry_tuple)
+
+    def delete_row(self, row_container, entry_tuple):
+        """Supprime une ligne de speaker de l'interface et de la liste."""
+        row_container.destroy()
+        self.entries.remove(entry_tuple)
+
+    def restore_defaults(self):
+        """Efface les champs actuels et les remplit avec les paramètres par défaut."""
+        # Vide l'interface et la liste interne
+        for widget in self.speaker_frame.winfo_children():
+            widget.destroy()
+        self.entries.clear()
+        # Remplit avec les valeurs par défaut
+        self.populate_fields()
+
+    def save_and_close(self):
+        new_settings = {}
+        for speaker_entry, voice_combo in self.entries:
+            speaker = speaker_entry.get().strip()
+            full_voice_string = voice_combo.get().strip()
+            if speaker and full_voice_string:
+                # Extrait seulement le nom de la voix (avant le " - ")
+                voice_name = full_voice_string.split(' - ')[0]
+                new_settings[speaker] = voice_name
+
+        self.save_callback(new_settings)
+        self.close_callback()
+        self.destroy()
+
+    def cancel_and_close(self):
+        self.close_callback()
+        self.destroy()
 
 def main():
     """Initialise l'application et lance la boucle principale de Tkinter."""
