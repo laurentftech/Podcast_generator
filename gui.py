@@ -5,6 +5,11 @@ import os
 import sys
 import queue
 
+try:
+    from playsound import playsound
+except ImportError:
+    playsound = None # Gère l'absence de la bibliothèque
+
 class PodcastGeneratorApp:
     def __init__(self, root: tk.Tk, generate_func, default_script: str = ""):
         self.root = root
@@ -13,6 +18,7 @@ class PodcastGeneratorApp:
         self.generate_func = generate_func
         self.log_queue = queue.Queue()
         self.GENERATION_COMPLETE = object()  # Sentinel pour marquer la fin
+        self.last_generated_filepath = None
         self.poll_log_queue()
 
         # --- Cadre principal ---
@@ -41,11 +47,17 @@ class PodcastGeneratorApp:
         self.button_frame = tk.Frame(main_frame)
         self.button_frame.pack(fill=tk.X, pady=(10, 0))
 
-        self.load_button = tk.Button(self.button_frame, text="Charger un script (.txt)", command=self.load_script_from_file)
+        # Définir une largeur commune pour l'uniformité visuelle
+        common_button_width = 23
+
+        self.load_button = tk.Button(self.button_frame, text="Charger un script (.txt)", command=self.load_script_from_file, width=common_button_width)
         self.load_button.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.generate_button = tk.Button(self.button_frame, text="Lancer la génération", command=self.start_generation_thread)
+        self.generate_button = tk.Button(self.button_frame, text="Lancer la génération", command=self.start_generation_thread, width=common_button_width)
         self.generate_button.pack(side=tk.LEFT)
+
+        self.play_button = tk.Button(self.button_frame, text="▶️ Lire", command=self.play_last_generated_file, state='disabled', width=common_button_width)
+        self.play_button.pack(side=tk.LEFT, padx=(10, 0))
 
     def log_status(self, message: str):
         self.log_queue.put(message)
@@ -56,8 +68,9 @@ class PodcastGeneratorApp:
         # (comme on_generation_complete) entre deux affichages de log.
         try:
             message = self.log_queue.get_nowait()
-            if message is self.GENERATION_COMPLETE:
-                self.on_generation_complete()
+            if isinstance(message, tuple) and message[0] is self.GENERATION_COMPLETE:
+                was_successful = message[1]
+                self.on_generation_complete(success=was_successful)
             else:
                 self._update_log(message)
         except queue.Empty:
@@ -116,6 +129,7 @@ class PodcastGeneratorApp:
         # Désactiver les boutons pendant la génération
         self.generate_button.config(state='disabled')
         self.load_button.config(state='disabled')
+        self.play_button.config(state='disabled')
 
         # Afficher et démarrer la barre de progression
         self.clear_log()
@@ -131,32 +145,68 @@ class PodcastGeneratorApp:
 
     def run_generation(self, script_content, output_basename, output_dir):
         """La fonction exécutée par le thread."""
+        generated_filepath = None
         try:
             self.log_status(f"Lancement de la génération vers '{os.path.basename(output_dir)}'...")
-            success = self.generate_func(
+            generated_filepath = self.generate_func(
                 script_text=script_content,
                 output_basename=output_basename,
                 output_dir=output_dir,
                 status_callback=self.log_status
             )
-            if success:
-                self.log_status("\n--- Génération terminée avec succès ! ---")
+            if generated_filepath:
+                self.last_generated_filepath = generated_filepath
+                self.log_status(f"\n--- Génération terminée avec succès ! Fichier : {os.path.basename(generated_filepath)} ---")
             else:
                 self.log_status("\n--- La génération a échoué. Veuillez vérifier les logs. ---")
         except Exception as e:
             self.log_status(f"Une erreur critique est survenue : {e}")
+            generated_filepath = None # S'assurer que le statut est bien 'échec'
         finally:
             # On utilise la queue, notre canal de communication fiable,
-            # pour signaler la fin de la génération.
-            self.log_queue.put(self.GENERATION_COMPLETE)
+            # pour signaler la fin de la génération et son statut (succès/échec).
+            success = bool(generated_filepath)
+            self.log_queue.put((self.GENERATION_COMPLETE, success))
 
-    def on_generation_complete(self):
+    def on_generation_complete(self, success: bool):
+        if success:
+            self.root.bell()
+            if playsound:
+                self.play_button.config(state='normal')
+
         self.progress_bar.stop()
         self.generate_button.config(state='normal')
         self.load_button.config(state='normal')
         if self.progress_bar.winfo_ismapped():
             self.progress_bar.pack_forget()
         self.log_text.config(state='disabled') # On désactive la zone de log à la toute fin
+
+    def play_last_generated_file(self):
+        """Joue le dernier fichier audio généré dans un thread séparé."""
+        if not playsound:
+            messagebox.showerror(
+                "Dépendance manquante",
+                "La bibliothèque 'playsound' est requise pour lire l'audio.\n\n"
+                "Veuillez l'installer avec : pip install playsound"
+            )
+            return
+
+        if not self.last_generated_filepath or not os.path.exists(self.last_generated_filepath):
+            messagebox.showerror("Fichier introuvable", "Le fichier audio généré n'a pas été trouvé ou n'est plus accessible.")
+            return
+
+        def _play_in_thread():
+            try:
+                self.play_button.config(state='disabled')
+                playsound(self.last_generated_filepath)
+            except Exception as e:
+                self.log_status(f"Erreur de lecture audio : {e}")
+                messagebox.showerror("Erreur de lecture", f"Impossible de lire le fichier audio.\n{e}")
+            finally:
+                if self.root.winfo_exists():
+                    self.play_button.config(state='normal')
+
+        threading.Thread(target=_play_in_thread, daemon=True).start()
 
 def main():
     """Initialise l'application et lance la boucle principale de Tkinter."""
