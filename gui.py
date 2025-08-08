@@ -1,15 +1,15 @@
 import tkinter as tk
-from tkinter import filedialog, scrolledtext, messagebox
+from tkinter import filedialog, scrolledtext, messagebox, ttk
 import threading
 import os
 import sys
-import generate_podcast
 
 class PodcastGeneratorApp:
-    def __init__(self, root, default_script=""):
+    def __init__(self, root: tk.Tk, generate_func, default_script: str = ""):
         self.root = root
         self.root.title("Générateur de Podcast")
         self.root.geometry("800x600")
+        self.generate_func = generate_func
 
         # --- Cadre principal ---
         main_frame = tk.Frame(root, padx=10, pady=10)
@@ -30,25 +30,35 @@ class PodcastGeneratorApp:
         self.log_text = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, height=10, state='disabled')
         self.log_text.pack(fill=tk.BOTH, expand=True)
 
-        # --- Cadre pour les boutons ---
-        button_frame = tk.Frame(main_frame)
-        button_frame.pack(fill=tk.X, pady=(10, 0))
+        # --- Barre de progression (initialement cachée) ---
+        self.progress_bar = ttk.Progressbar(main_frame, mode='indeterminate')
 
-        self.load_button = tk.Button(button_frame, text="Charger un script (.txt)", command=self.load_script_from_file)
+        # --- Cadre pour les boutons ---
+        self.button_frame = tk.Frame(main_frame)
+        self.button_frame.pack(fill=tk.X, pady=(10, 0))
+
+        self.load_button = tk.Button(self.button_frame, text="Charger un script (.txt)", command=self.load_script_from_file)
         self.load_button.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.generate_button = tk.Button(button_frame, text="Lancer la génération", command=self.start_generation_thread)
+        self.generate_button = tk.Button(self.button_frame, text="Lancer la génération", command=self.start_generation_thread)
         self.generate_button.pack(side=tk.LEFT)
 
-    def log_status(self, message):
-        """Affiche un message dans la zone de log de manière thread-safe."""
+    def log_status(self, message: str):
+        print(message)  # Affiche le message dans la console pour le débogage
         def _update_log():
             self.log_text.config(state='normal')
             self.log_text.insert(tk.END, message + "\n")
-            self.log_text.config(state='disabled')
             self.log_text.see(tk.END)
-        # `after` exécute la fonction dans le thread principal de l'interface
+            self.log_text.config(state='disabled')
+            self.root.update_idletasks()
+
         self.root.after(0, _update_log)
+
+    def clear_log(self):
+        """Vide la zone de texte des logs."""
+        self.log_text.config(state='normal')
+        self.log_text.delete('1.0', tk.END)
+        self.log_text.config(state='disabled')
 
     def load_script_from_file(self):
         """Ouvre une boîte de dialogue pour charger un fichier .txt dans la zone de script."""
@@ -74,24 +84,45 @@ class PodcastGeneratorApp:
             messagebox.showwarning("Script vide", "Veuillez entrer ou charger un script avant de lancer la génération.")
             return
 
+        # Demander à l'utilisateur où enregistrer le fichier de sortie
+        output_filepath = filedialog.asksaveasfilename(
+            title="Enregistrer le podcast sous...",
+            defaultextension=".wav",
+            filetypes=(("Fichiers Audio WAV", "*.wav"), ("Tous les fichiers", "*.*"))
+        )
+
+        if not output_filepath:
+            self.log_status("Génération annulée par l'utilisateur.")
+            return
+
+        # Extraire le répertoire et le nom de base du fichier
+        output_dir = os.path.dirname(output_filepath)
+        output_basename = os.path.splitext(os.path.basename(output_filepath))[0]
+
         # Désactiver les boutons pendant la génération
         self.generate_button.config(state='disabled')
         self.load_button.config(state='disabled')
-        
-        # Vider les logs précédents
-        self.log_text.config(state='normal')
-        self.log_text.delete('1.0', tk.END)
-        self.log_text.config(state='disabled')
 
-        thread = threading.Thread(target=self.run_generation, args=(script_content,))
+        # Afficher et démarrer la barre de progression
+        self.progress_bar.pack(fill=tk.X, pady=(10, 0), before=self.button_frame)
+        self.progress_bar.start()
+        
+        self.clear_log()
+
+        thread = threading.Thread(target=self.run_generation, args=(script_content, output_basename, output_dir))
         thread.daemon = True  # Permet à l'application de se fermer même si le thread tourne
         thread.start()
 
-    def run_generation(self, script_content):
+    def run_generation(self, script_content, output_basename, output_dir):
         """La fonction exécutée par le thread."""
         try:
-            self.log_status("Lancement de la génération...")
-            success = generate_podcast.generate(script_text=script_content, output_basename="podcast_gui_output", status_callback=self.log_status)
+            self.log_status(f"Lancement de la génération vers '{os.path.basename(output_dir)}'...")
+            success = self.generate_func(
+                script_text=script_content,
+                output_basename=output_basename,
+                output_dir=output_dir,
+                status_callback=self.log_status
+            )
             if success:
                 self.log_status("\n--- Génération terminée avec succès ! ---")
             else:
@@ -99,9 +130,16 @@ class PodcastGeneratorApp:
         except Exception as e:
             self.log_status(f"Une erreur critique est survenue : {e}")
         finally:
-            # Réactiver les boutons, en s'assurant que cela se fait dans le thread principal
-            self.root.after(0, lambda: self.generate_button.config(state='normal'))
-            self.root.after(0, lambda: self.load_button.config(state='normal'))
+            # Arrêter la progression et réactiver les boutons via le thread principal
+            self.root.after(0, self.on_generation_complete)
+
+    def on_generation_complete(self):
+        """Réinitialise l'interface une fois la génération terminée."""
+        self.progress_bar.stop()
+        self.progress_bar.pack_forget()
+        self.log_text.config(state='disabled') # On désactive la zone de log à la fin
+        self.generate_button.config(state='normal')
+        self.load_button.config(state='normal')
 
 def main():
     """Initialise l'application et lance la boucle principale de Tkinter."""
@@ -134,9 +172,9 @@ def main():
         )
         root.destroy()
         return
-
+    
     # Si tout est correct, on construit l'interface et on affiche la fenêtre
-    app = PodcastGeneratorApp(root, PODCAST_SCRIPT)
+    app = PodcastGeneratorApp(root, generate_func=generate, default_script=PODCAST_SCRIPT)
     root.deiconify()
     root.mainloop()
 
