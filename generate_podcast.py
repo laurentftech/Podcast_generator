@@ -4,6 +4,7 @@
 import mimetypes
 import os
 import struct
+import traceback
 from dotenv import load_dotenv
 from google import genai
 from google.genai import errors, types
@@ -13,18 +14,7 @@ from google.genai import errors, types
 PODCAST_SCRIPT = """Read aloud in a warm, welcoming tone
 John: Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs – my dogs' names are corgis! Who am I?
 Samantha: [amused] Queen Elizabeth II!
-
-John: Who am I? I am very big and strong. I have got a red beard and a large stomach. My clothes are rich and heavy. I have got a gold ring and a big sword. The king's throne is mine! I have got six wives! Who am I?
-Samantha: [amused] King Henry VIII!
-
-John: Who am I? I am tall and thin. I have got pale skin and red hair. My father's name is Henry. I have got a big white collar and a golden dress. In my hand, there is a scepter. My crown's jewels shine! Who am I?
-Samantha: [amused] Queen Elizabeth I!
-
-John: Who am I? I am short and serious. I have got black hair in a bun and a sad face. I wear black clothes – my husband's death made me very sad. I have got a small crown and an orb in my hands. My empire's size is very big. Who am I?
-Samantha: [amused] Queen Victoria!
-
-John: Who am I? I am a man with a short beard and brown hair. I have got a dark blue uniform. I am the new king – my mother's name was Elizabeth. I have got a golden scepter and a crown. My throne's color is red and gold. Who am I?
-Samantha: [amused] King Charles III!"""
+"""
 
 def save_binary_file(file_name: str, data: bytes, status_callback=print):
     """Sauvegarde les données binaires dans un fichier de manière sécurisée."""
@@ -37,7 +27,6 @@ def save_binary_file(file_name: str, data: bytes, status_callback=print):
 
 def generate(script_text: str, output_basename: str = "podcast_segment", status_callback=print, output_dir: str = "."):
     """Génère l'audio à partir d'un script en utilisant Gemini, avec un fallback de modèle."""
-    status_callback("DEBUG: Début de generate()")
     status_callback("Démarrage de la génération du podcast...")
     load_dotenv()
 
@@ -94,7 +83,8 @@ def generate(script_text: str, output_basename: str = "podcast_segment", status_
     for model_name in models_to_try:
         status_callback(f"\nTentative de génération avec le modèle : {model_name}...")
         try:
-            file_index = 0
+            audio_chunks = []
+            final_mime_type = ""
             for chunk in client.models.generate_content_stream(
                 model=model_name,
                 contents=contents,
@@ -106,37 +96,45 @@ def generate(script_text: str, output_basename: str = "podcast_segment", status_
                     or chunk.candidates[0].content.parts is None
                 ):
                     continue
-                if (
-                    chunk.candidates[0].content.parts[0].inline_data
-                    and chunk.candidates[0].content.parts[0].inline_data.data
-                ):
-                    inline_data = chunk.candidates[0].content.parts[0].inline_data
-                    data_buffer = inline_data.data
-                    file_extension = mimetypes.guess_extension(inline_data.mime_type)
-                    if file_extension is None:
-                        file_extension = ".wav"
-                        data_buffer = convert_to_wav(
-                            inline_data.data, inline_data.mime_type
-                        )
-                    
-                    output_path = os.path.join(output_dir, f"{output_basename}_{file_index}{file_extension}")
-                    save_binary_file(output_path, data_buffer, status_callback)
-                    file_index += 1
+
+                part = chunk.candidates[0].content.parts[0]
+                if part.inline_data and part.inline_data.data:
+                    audio_chunks.append(part.inline_data.data)
+                    if not final_mime_type:  # On ne stocke le mime_type qu'une seule fois
+                        final_mime_type = part.inline_data.mime_type
                 else:
                     status_callback(chunk.text)
+
+            if not audio_chunks:
+                raise errors.GoogleAPICallError("Aucune donnée audio n'a été générée par le modèle.")
+
+            # Concaténer tous les morceaux audio et sauvegarder en un seul fichier
+            full_audio_data = b"".join(audio_chunks)
+            file_extension = mimetypes.guess_extension(final_mime_type) or ".wav"
+            if file_extension == ".wav" and not final_mime_type.startswith("audio/wav"):
+                full_audio_data = convert_to_wav(full_audio_data, final_mime_type)
+
+            output_path = os.path.join(output_dir, f"{output_basename}{file_extension}")
+            save_binary_file(output_path, full_audio_data, status_callback)
 
             status_callback(f"Audio généré avec succès via {model_name}.")
             generated_successfully = True
             break  # Exit the model-selection loop on success
-        except Exception:
-            status_callback(f"Erreur avec le modèle '{model_name}'")
+        except errors.APIError as e:
+            # Erreur attendue de l'API (ex: modèle non dispo, quota dépassé). C'est normal de continuer.
+            status_callback(f"Erreur API avec le modèle '{model_name}'")
             status_callback("Tentative avec le modèle suivant...")
+        except Exception as e:
+            # Erreur inattendue et potentiellement critique (réseau, logique, etc.).
+            # On doit arrêter le processus et afficher un maximum d'informations.
+            status_callback(f"Une erreur critique inattendue est survenue : {e}")
+            status_callback(traceback.format_exc())
+            generated_successfully = False
+            break # Inutile de continuer avec d'autres modèles, l'erreur est grave.
 
     if not generated_successfully:
         status_callback("\nÉchec de la génération audio avec tous les modèles disponibles.")
-        return False
-    status_callback("DEBUG: Fin de generate()")
-    return True
+    return generated_successfully
 
 def convert_to_wav(audio_data: bytes, mime_type: str) -> bytes:
     """Generates a WAV file header for the given audio data and parameters.
