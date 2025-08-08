@@ -3,6 +3,7 @@ from tkinter import filedialog, scrolledtext, messagebox, ttk
 import threading
 import os
 import sys
+import queue
 
 class PodcastGeneratorApp:
     def __init__(self, root: tk.Tk, generate_func, default_script: str = ""):
@@ -10,6 +11,8 @@ class PodcastGeneratorApp:
         self.root.title("Générateur de Podcast")
         self.root.geometry("800x600")
         self.generate_func = generate_func
+        self.log_queue = queue.Queue()
+        self.poll_log_queue()
 
         # --- Cadre principal ---
         main_frame = tk.Frame(root, padx=10, pady=10)
@@ -43,16 +46,26 @@ class PodcastGeneratorApp:
         self.generate_button = tk.Button(self.button_frame, text="Lancer la génération", command=self.start_generation_thread)
         self.generate_button.pack(side=tk.LEFT)
 
-    def log_status(self, message: str):
-        print(message)  # Affiche le message dans la console pour le débogage
-        def _update_log():
-            self.log_text.config(state='normal')
-            self.log_text.insert(tk.END, message + "\n")
-            self.log_text.see(tk.END)
-            self.log_text.config(state='disabled')
-            self.root.update_idletasks()
+        # Ajoutez ceci à la fin de __init__ dans PodcastGeneratorApp
+        self.log_status("Test log depuis le thread principal")
 
-        self.root.after(0, _update_log)
+    def log_status(self, message: str):
+        self.log_queue.put(message)
+
+    def poll_log_queue(self):
+        try:
+            while True:
+                message = self.log_queue.get_nowait()
+                self._update_log(message)
+        except queue.Empty:
+            pass
+        self.root.after(100, self.poll_log_queue)  # Vérifie la queue toutes les 100 ms
+
+    def _update_log(self, message):
+        self.log_text.config(state='normal')
+        self.log_text.insert(tk.END, message + "\n")
+        self.log_text.see(tk.END)
+        self.log_text.config(state='disabled')
 
     def clear_log(self):
         """Vide la zone de texte des logs."""
@@ -104,13 +117,13 @@ class PodcastGeneratorApp:
         self.load_button.config(state='disabled')
 
         # Afficher et démarrer la barre de progression
-        self.progress_bar.pack(fill=tk.X, pady=(10, 0), before=self.button_frame)
-        self.progress_bar.start()
-        
         self.clear_log()
 
+        self.progress_bar.pack(fill=tk.X, pady=(10, 0), before=self.button_frame)
+        self.progress_bar.start()
+
         thread = threading.Thread(target=self.run_generation, args=(script_content, output_basename, output_dir))
-        thread.daemon = True  # Permet à l'application de se fermer même si le thread tourne
+        thread.daemon = True
         thread.start()
 
     def run_generation(self, script_content, output_basename, output_dir):
@@ -134,10 +147,13 @@ class PodcastGeneratorApp:
             self.root.after(0, self.on_generation_complete)
 
     def on_generation_complete(self):
-        """Réinitialise l'interface une fois la génération terminée."""
+        self.log_status("Fin de la génération (callback on_generation_complete appelé).")
+        print("DEBUG: on_generation_complete appelée")  # Console
         self.progress_bar.stop()
-        self.progress_bar.pack_forget()
-        self.log_text.config(state='disabled') # On désactive la zone de log à la fin
+        print("DEBUG: progress_bar.stop() appelée")  # Console
+        if self.progress_bar.winfo_ismapped():
+            self.progress_bar.pack_forget()
+        self.log_text.config(state='disabled')
         self.generate_button.config(state='normal')
         self.load_button.config(state='normal')
 
