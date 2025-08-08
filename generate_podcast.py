@@ -210,4 +210,8 @@ def parse_audio_mime_type(mime_type: str) -> dict[str, int | None]:
 
 
 if __name__ == "__main__":
-    generate(PODCAST_SCRIPT, "royal_family_quiz")
+    # Pour l'exécution en ligne de commande, on utilise un mapping par défaut.
+    default_speaker_mapping = {"John": "Schedar", "Samantha": "Zephyr"}
+    generate(script_text=PODCAST_SCRIPT, 
+             speaker_mapping=default_speaker_mapping, 
+             output_basename="royal_family_quiz")
