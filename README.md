@@ -15,6 +15,7 @@ Une application de bureau simple mais puissante, développée en Python avec Tki
 - Lecture et arrêt de l'audio généré directement depuis l'application (via FFmpeg/ffplay).
 - Accès direct au fichier généré via le gestionnaire de fichiers du système.
 - Gestion de la clé API : demandée une seule fois et **sauvegardée de manière sécurisée** dans le trousseau natif du système (Keychain sur macOS, etc.).
+- **Versioning automatique** basé sur les tags Git.
 
 ---
 
@@ -25,7 +26,6 @@ Une application de bureau simple mais puissante, développée en Python avec Tki
 Pour la conversion et la lecture audio, cette application nécessite que **FFmpeg** soit installé sur votre système.
 
 Sur macOS, le moyen le plus simple de l'installer est via [Homebrew](https://brew.sh/index_fr) :
-
 ```sh
 brew install ffmpeg
 ```

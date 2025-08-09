@@ -6,6 +6,7 @@ import subprocess
 import sys
 import queue
 import json
+from importlib import metadata
 import webbrowser
 from datetime import datetime
 
@@ -42,7 +43,14 @@ AVAILABLE_VOICES = {
     "Sulafat": "Warm"
 }
 
-__version__ = "1.0.0"
+def get_app_version() -> str:
+    """Récupère la version de l'application depuis les métadonnées du paquet."""
+    try:
+        # Fonctionne lorsque le paquet est installé (même en mode éditable)
+        return metadata.version("Podcast_creator")
+    except metadata.PackageNotFoundError:
+        # Fallback si le script est exécuté sans être installé
+        return "0.0.0-dev"
 
 def get_asset_path(filename: str) -> str | None:
     """
@@ -64,7 +72,7 @@ class PodcastGeneratorApp:
 
     def __init__(self, root: tk.Tk, generate_func, logger, api_key: str, default_script: str = ""):
         self.root = root
-        self.root.title(f"Créateur de Podcast v{__version__}")
+        self.root.title(f"Créateur de Podcast v{get_app_version()}")
         self.root.geometry("960x700")
 
         # --- Application Icon ---
@@ -398,7 +406,7 @@ class AboutWindow(tk.Toplevel):
         main_frame = tk.Frame(self, padx=20, pady=15)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        tk.Label(main_frame, text=f"Créateur de Podcast v{__version__}", font=('Helvetica', 12, 'bold')).pack(pady=(0, 5))
+        tk.Label(main_frame, text=f"Créateur de Podcast v{get_app_version()}", font=('Helvetica', 12, 'bold')).pack(pady=(0, 5))
         tk.Label(main_frame, text=f"Copyright (c) {datetime.now().year} Laurent FRANCOISE").pack()
         tk.Label(main_frame, text="Licence : MIT License").pack(pady=(0, 15))
 
