@@ -251,7 +251,8 @@ class PodcastGeneratorApp:
         output_filepath = filedialog.asksaveasfilename(
             title="Enregistrer le podcast sous...",
             defaultextension=".wav",
-            filetypes=(("Fichiers Audio WAV", "*.wav"), ("Tous les fichiers", "*.*"))
+            filetypes=(("Fichiers Audio WAV", "*.wav"), ("Tous les fichiers", "*.*")),
+            initialdir= os.path.expanduser("~/Downloads"),
         )
 
         if not output_filepath:
