@@ -2,14 +2,15 @@ import tkinter as tk
 from tkinter import filedialog, scrolledtext, messagebox, ttk
 import threading
 import os
+import subprocess
 import sys
 import queue
 import json
 
 try:
-    from playsound import playsound
+    import simpleaudio as sa
 except ImportError:
-    playsound = None # Gère l'absence de la bibliothèque
+    sa = None # Gère l'absence de la bibliothèque
 
 AVAILABLE_VOICES = {
     "Zephyr": "Bright",
@@ -44,7 +45,6 @@ AVAILABLE_VOICES = {
     "Sulafat": "Warm"
 }
 
-
 class PodcastGeneratorApp:
     SETTINGS_FILE = "settings.json"
     DEFAULT_SPEAKER_SETTINGS = {"John": "Schedar", "Samantha": "Zephyr"}
@@ -52,10 +52,10 @@ class PodcastGeneratorApp:
     def __init__(self, root: tk.Tk, generate_func, default_script: str = ""):
         self.root = root
         self.root.title("Générateur de Podcast")
-        self.root.geometry("800x600")
+        self.root.geometry("960x700")
         self.generate_func = generate_func
         self.log_queue = queue.Queue()
-        self.GENERATION_COMPLETE = object()  # Sentinel pour marquer la fin
+        self.playback_obj = None # Pour garder une référence au processus de lecture
         self.last_generated_filepath = None
         
         self.speaker_settings = self.load_settings()
@@ -104,16 +104,22 @@ class PodcastGeneratorApp:
         self.button_frame.pack(fill=tk.X, pady=(10, 0))
 
         # Définir une largeur commune pour l'uniformité visuelle
-        common_button_width = 26
+        common_button_width = 22
 
+        # --- Boutons alignés à gauche ---
         self.load_button = tk.Button(self.button_frame, text="Charger un script (.txt)", command=self.load_script_from_file, width=common_button_width)
-        self.load_button.pack(side=tk.LEFT, padx=(0, 10))
+        self.load_button.pack(side=tk.LEFT, padx=(0, 5))
 
         self.generate_button = tk.Button(self.button_frame, text="Lancer la génération", command=self.start_generation_thread, width=common_button_width)
         self.generate_button.pack(side=tk.LEFT)
 
+        # --- Boutons alignés à droite (packés en ordre inverse pour le bon affichage) ---
+        self.show_button = tk.Button(self.button_frame, text="Ouvrir le dossier", command=self.open_file_location, state='disabled', width=common_button_width)
+        self.show_button.pack(side=tk.RIGHT, padx=(5, 0))
+
         self.play_button = tk.Button(self.button_frame, text="▶️ Lire", command=self.play_last_generated_file, state='disabled', width=common_button_width)
-        self.play_button.pack(side=tk.LEFT, padx=(10, 0))
+        self.play_button.pack(side=tk.RIGHT)
+
 
     def load_settings(self):
         """Charge les paramètres depuis le fichier JSON."""
@@ -152,7 +158,7 @@ class PodcastGeneratorApp:
             "Crédits :\n"
             " - Google Gemini API pour la génération audio\n"
             " - Tkinter pour l'interface graphique\n"
-            " - playsound pour la lecture audio"
+            " - simpleaudio pour la lecture audio"
         )
         messagebox.showinfo(about_title, about_message, parent=self.root)
 
@@ -165,9 +171,12 @@ class PodcastGeneratorApp:
         # (comme on_generation_complete) entre deux affichages de log.
         try:
             message = self.log_queue.get_nowait()
-            if isinstance(message, tuple) and message[0] is self.GENERATION_COMPLETE:
-                was_successful = message[1]
-                self.on_generation_complete(success=was_successful)
+            if isinstance(message, tuple):
+                msg_type = message[0]
+                if msg_type == 'GENERATION_COMPLETE':
+                    self.on_generation_complete(success=message[1])
+                elif msg_type == 'UPDATE_PLAY_BUTTON':
+                    self.play_button.config(text=message[1], state=message[2])
             else:
                 self._update_log(message)
         except queue.Empty:
@@ -202,7 +211,7 @@ class PodcastGeneratorApp:
             messagebox.showerror("Erreur de lecture", f"Impossible de lire le fichier :\n{e}")
 
     def start_generation_thread(self):
-        """Lance la génération dans un thread séparé pour ne pas geler l'interface."""
+        """Lance la génération dans un thread séparé pour ne pas geler l interface."""
         script_content = self.script_text.get("1.0", tk.END).strip()
         if not script_content:
             messagebox.showwarning("Script vide", "Veuillez entrer ou charger un script avant de lancer la génération.")
@@ -227,6 +236,7 @@ class PodcastGeneratorApp:
         self.generate_button.config(state='disabled')
         self.load_button.config(state='disabled')
         self.play_button.config(state='disabled')
+        self.show_button.config(state='disabled')
         self.menubar.entryconfig("Options", state="disabled")
 
         # Afficher et démarrer la barre de progression
@@ -265,12 +275,13 @@ class PodcastGeneratorApp:
             # On utilise la queue, notre canal de communication fiable,
             # pour signaler la fin de la génération et son statut (succès/échec).
             success = bool(generated_filepath)
-            self.log_queue.put((self.GENERATION_COMPLETE, success))
+            self.log_queue.put(('GENERATION_COMPLETE', success))
 
     def on_generation_complete(self, success: bool):
         if success:
             self.root.bell()
-            if playsound:
+            if sys.platform == "darwin" or sa:
+                self.show_button.config(state='normal')
                 self.play_button.config(state='normal')
 
         self.progress_bar.stop()
@@ -281,32 +292,68 @@ class PodcastGeneratorApp:
             self.progress_bar.pack_forget()
         self.log_text.config(state='disabled') # On désactive la zone de log à la toute fin
 
+    def open_file_location(self):
+        """Ouvre le dossier contenant le dernier fichier généré et le sélectionne."""
+        if not self.last_generated_filepath or not os.path.exists(self.last_generated_filepath):
+            messagebox.showerror("Fichier introuvable", "Le fichier audio généré n'a pas été trouvé ou n'est plus accessible.")
+            return
+
+        try:
+            if sys.platform == "darwin":  # macOS
+                # 'open -R' révèle le fichier dans le Finder
+                subprocess.run(["open", "-R", self.last_generated_filepath], check=True)
+            elif sys.platform == "win32":  # Windows
+                # 'explorer /select,' sélectionne le fichier dans l'Explorateur
+                subprocess.run(["explorer", "/select,", os.path.normpath(self.last_generated_filepath)], check=True)
+            else:  # Linux et autres (ouvre le dossier contenant)
+                subprocess.run(["xdg-open", os.path.dirname(self.last_generated_filepath)], check=True)
+        except (FileNotFoundError, subprocess.CalledProcessError) as e:
+            messagebox.showerror("Erreur", f"Impossible d'ouvrir le gestionnaire de fichiers.\n"
+                                           f"Vérifiez que les outils système sont accessibles.\n\nErreur : {e}")
+
     def play_last_generated_file(self):
-        """Joue le dernier fichier audio généré dans un thread séparé."""
-        if not playsound:
+        """Joue ou arrête la lecture du dernier fichier audio généré."""
+        # --- Logique pour arrêter la lecture ---
+        if self.playback_obj:
+            if sys.platform == "darwin":
+                if self.playback_obj.poll() is None: # Vérifie si le processus est en cours
+                    self.playback_obj.terminate()
+            elif sa and self.playback_obj.is_playing():
+                self.playback_obj.stop()
+            return
+
+        # --- Logique pour démarrer la lecture ---
+        if sys.platform != "darwin" and not sa:
             messagebox.showerror(
                 "Dépendance manquante",
-                "La bibliothèque 'playsound' est requise pour lire l'audio.\n\n"
-                "Veuillez l'installer avec : pip install playsound"
+                "La bibliothèque 'simpleaudio' est requise pour lire l'audio.\n\n"
+                "Veuillez l'installer avec : pip install simpleaudio"
             )
             return
 
         if not self.last_generated_filepath or not os.path.exists(self.last_generated_filepath):
             messagebox.showerror("Fichier introuvable", "Le fichier audio généré n'a pas été trouvé ou n'est plus accessible.")
             return
+        
+        threading.Thread(target=self._play_in_thread, daemon=True).start()
 
-        def _play_in_thread():
-            try:
-                self.play_button.config(state='disabled')
-                playsound(self.last_generated_filepath)
-            except Exception as e:
-                self.log_status(f"Erreur de lecture audio : {e}")
-                messagebox.showerror("Erreur de lecture", f"Impossible de lire le fichier audio.\n{e}")
-            finally:
-                if self.root.winfo_exists():
-                    self.play_button.config(state='normal')
-
-        threading.Thread(target=_play_in_thread, daemon=True).start()
+    def _play_in_thread(self):
+        """La fonction de lecture exécutée dans un thread séparé."""
+        try:
+            self.log_queue.put(('UPDATE_PLAY_BUTTON', '⏹️ Stopper', 'normal'))
+            if sys.platform == "darwin":
+                self.playback_obj = subprocess.Popen(["afplay", self.last_generated_filepath])
+                self.playback_obj.wait()
+            else:
+                wave_obj = sa.WaveObject.from_wave_file(self.last_generated_filepath)
+                self.playback_obj = wave_obj.play()
+                self.playback_obj.wait_done()
+        except Exception as e:
+            self.log_status(f"Erreur de lecture audio : {e}")
+        finally:
+            self.playback_obj = None
+            if self.root.winfo_exists():
+                self.log_queue.put(('UPDATE_PLAY_BUTTON', '▶️ Lire', 'normal'))
 
     def on_settings_window_close(self):
         """Callback pour réactiver le menu lorsque la fenêtre des paramètres est fermée."""
@@ -382,7 +429,7 @@ class SettingsWindow(tk.Toplevel):
         self.entries.append(entry_tuple)
 
     def delete_row(self, row_container, entry_tuple):
-        """Supprime une ligne de speaker de l'interface et de la liste."""
+        """Supprime une ligne de speaker de l interface et de la liste."""
         row_container.destroy()
         self.entries.remove(entry_tuple)
 
@@ -416,7 +463,7 @@ class SettingsWindow(tk.Toplevel):
         self.destroy()
 
 def main():
-    """Initialise l'application et lance la boucle principale de Tkinter."""
+    # Initialise l application et lance la boucle principale de Tkinter 
     # Crée la fenêtre racine mais la cache pour l'instant.
     # Cela permet d'afficher des boîtes de dialogue d'erreur de manière fiable
     # même si l'initialisation complète de l'interface échoue.

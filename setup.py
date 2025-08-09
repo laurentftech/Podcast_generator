@@ -18,7 +18,7 @@ setup(
     install_requires=[
         'google-genai',
         'python-dotenv',
-        'playsound==1.2.2', # Il est bon de spécifier les versions qui fonctionnent
+        'simpleaudio',
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
