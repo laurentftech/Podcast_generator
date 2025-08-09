@@ -70,6 +70,11 @@ class PodcastGeneratorApp:
         options_menu.add_separator()
         options_menu.add_command(label="Quitter", command=self.root.quit)
 
+        # Menu Aide
+        help_menu = tk.Menu(self.menubar, tearoff=0)
+        self.menubar.add_cascade(label="Aide", menu=help_menu)
+        help_menu.add_command(label="À propos...", command=self.show_about_window)
+
         self.poll_log_queue()
 
         # --- Cadre principal ---
@@ -136,6 +141,20 @@ class PodcastGeneratorApp:
         # On désactive le bouton pendant que la fenêtre est ouverte pour éviter les doublons
         self.menubar.entryconfig("Options", state="disabled")
         SettingsWindow(self.root, self.speaker_settings, self.save_settings, self.on_settings_window_close, self.DEFAULT_SPEAKER_SETTINGS)
+
+    def show_about_window(self):
+        """Affiche la fenêtre 'À propos'."""
+        about_title = "À propos de Générateur de Podcast"
+        about_message = (
+            "Générateur de Podcast v1.0\n\n"
+            "Copyright (c) 2025 Laurent FRANCOISE\n\n"
+            "Licence : MIT License\n\n"
+            "Crédits :\n"
+            " - Google Gemini API pour la génération audio\n"
+            " - Tkinter pour l'interface graphique\n"
+            " - playsound pour la lecture audio"
+        )
+        messagebox.showinfo(about_title, about_message, parent=self.root)
 
     def log_status(self, message: str):
         self.log_queue.put(message)
