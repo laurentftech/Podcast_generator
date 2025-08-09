@@ -46,13 +46,18 @@ AVAILABLE_VOICES = {
 }
 
 class PodcastGeneratorApp:
-    SETTINGS_FILE = "settings.json"
     DEFAULT_SPEAKER_SETTINGS = {"John": "Schedar", "Samantha": "Zephyr"}
 
     def __init__(self, root: tk.Tk, generate_func, default_script: str = ""):
         self.root = root
         self.root.title("Générateur de Podcast")
         self.root.geometry("960x700")
+
+        # --- Définition des chemins de configuration ---
+        from generate_podcast import get_app_data_dir # Importation locale
+        self.app_data_dir = get_app_data_dir()
+        self.settings_filepath = os.path.join(self.app_data_dir, "settings.json")
+
         self.generate_func = generate_func
         self.log_queue = queue.Queue()
         self.playback_obj = None # Pour garder une référence au processus de lecture
@@ -124,7 +129,7 @@ class PodcastGeneratorApp:
     def load_settings(self):
         """Charge les paramètres depuis le fichier JSON."""
         try:
-            with open(self.SETTINGS_FILE, 'r') as f:
+            with open(self.settings_filepath, 'r') as f:
                 settings = json.load(f)
                 # On vérifie que la clé existe, sinon on retourne les défauts
                 return settings.get("speaker_voices", self.DEFAULT_SPEAKER_SETTINGS.copy())
@@ -136,7 +141,8 @@ class PodcastGeneratorApp:
         """Sauvegarde les paramètres dans le fichier JSON."""
         self.speaker_settings = settings_to_save
         try:
-            with open(self.SETTINGS_FILE, 'w') as f:
+            os.makedirs(self.app_data_dir, exist_ok=True) # S'assure que le dossier existe
+            with open(self.settings_filepath, 'w') as f:
                 json.dump({"speaker_voices": settings_to_save}, f, indent=4)
             self.log_status("Paramètres des voix sauvegardés.")
         except IOError as e:
