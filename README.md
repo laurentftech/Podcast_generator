@@ -1,10 +1,21 @@
 # Créateur de Podcast
 
-Ce projet est une application de bureau simple mais puissante, développée en Python avec Tkinter, qui permet de créer un podcast audio multi-locuteurs à partir d'un script texte, en utilisant l'API de synthèse vocale de Google Gemini.
+Ce projet est une application de bureau simple mais puissante, développée en Python avec Tkinter, qui permet de créer un podcast audio multi-locuteurs à partir d'un script texte, en utilisant l'API de synthèse vocale de [Google Gemini](https://ai.google.dev/).
 
 ![Capture d'écran de l'application](podcast_creator_screenshot.png)
 
-## Fonctionnalités
+---
+
+## 📋 Prérequis
+
+Avant d'utiliser l'application, assurez-vous d'avoir :
+- **FFmpeg** installé sur votre système ([instructions ci-dessous](#1-dépendance-externe--ffmpeg-requis)).
+- Une **clé API Google Gemini** valide ([obtenir une clé](https://ai.google.dev/tutorials/setup)).
+- **Python 3.9+** si vous lancez l'application depuis le code source.
+
+---
+
+## ✨ Fonctionnalités
 
 - Interface graphique simple avec Tkinter.
 - Génération audio multi-locuteurs via l'API Google Gemini.
@@ -12,9 +23,11 @@ Ce projet est une application de bureau simple mais puissante, développée en P
 - Paramètres de voix personnalisables et sauvegardés.
 - Lecture et arrêt de l'audio généré directement depuis l'application (via FFmpeg/ffplay).
 - Accès direct au fichier généré via le gestionnaire de fichiers du système.
-- Gestion de la clé API : demandée une seule fois et **sauvegardée de manière sécurisée** dans le trousseau natif du système (Keychain sur macOS, etc.).
+- Gestion sécurisée de la clé API dans le trousseau natif du système (Keychain macOS, etc.).
 
-## Installation
+---
+
+## 📦 Installation
 
 ### 1. Dépendance Externe : FFmpeg (Requis)
 
@@ -24,85 +37,119 @@ Sur macOS, le moyen le plus simple de l'installer est via [Homebrew](https://bre
 ```sh
 brew install ffmpeg
 ```
-Sur Windows ou Linux, téléchargez-le depuis le [site officiel de FFmpeg](https://ffmpeg.org/download.html) et assurez-vous qu'il est accessible dans le PATH de votre système.
+Sur Windows ou Linux, téléchargez-le depuis le [site officiel de FFmpeg](https://ffmpeg.org/download.html) et assurez-vous qu'il est accessible dans le PATH.
 
-### 2. Pour les utilisateurs (Application)
+---
+
+### 2. Pour les utilisateurs (Application prête à l'emploi)
+
 1.  Allez dans l'onglet **"Releases"** (ou "Tags") de ce dépôt.
-2.  Téléchargez la dernière version pour votre système d'exploitation (par exemple, `Podcast-Creator-v1.0-macOS.zip`).
+2.  Téléchargez la dernière version pour votre système d'exploitation.
 3.  Décompressez le fichier `.zip`.
-4.  Déplacez l'application `Podcast Creator.app` dans votre dossier **Applications**.
+4.  Déplacez l'application `Podcast Creator.app` (ou équivalent Windows/Linux) dans le dossier de votre choix.
 
-#### Note importante pour les utilisateurs macOS
+#### Note importante pour macOS
 
-Au premier lancement, macOS affichera un message de sécurité car l'application n'est pas distribuée via l'App Store. **Ceci est un comportement normal.** Pour autoriser l'application, choisissez l'une des deux méthodes suivantes :
+L'application n'étant pas signée via l'App Store, macOS affichera un avertissement. Suivez l'une de ces méthodes selon votre version de macOS :
 
-**Méthode 1 : Clic droit (recommandé)**
+**Méthode 1 : Clic droit**
 1.  Faites un **clic droit** (ou Ctrl-clic) sur l'icône de `Podcast Creator`.
-2.  Sélectionnez **"Ouvrir"** dans le menu.
-3.  Une nouvelle fenêtre de dialogue s'ouvrira avec un bouton **"Ouvrir"**. Cliquez dessus.
+2.  Sélectionnez **"Ouvrir"**.
+3.  Cliquez sur **"Ouvrir"** dans la boîte de dialogue.
 
 **Méthode 2 : Réglages Système**
-1.  Essayez d'ouvrir l'application en double-cliquant. Un message d'erreur apparaîtra. Cliquez sur **OK**.
-2.  Ouvrez les **Réglages Système** de votre Mac.
-3.  Allez dans la section **Confidentialité et sécurité**.
-4.  Faites défiler vers le bas jusqu'à la section "Sécurité". Vous y verrez un message indiquant que l'ouverture de "Podcast Creator" a été bloquée.
-5.  Cliquez sur le bouton **"Ouvrir quand même"**.
+1.  Essayez d'ouvrir l'application normalement (double-clic).
+2.  Dans **Réglages Système → Confidentialité et sécurité**, autorisez l'ouverture.
 
-Vous n'aurez à effectuer cette manipulation qu'une seule fois.
+Cette opération est à faire une seule fois.
 
 #### Premier Lancement : Clé API
 
-Au premier démarrage, une fenêtre vous demandera de fournir votre **clé API Google Gemini**. Collez-la pour pouvoir utiliser l'application. Cette clé sera sauvegardée pour les lancements futurs.
+Lors du premier démarrage, saisissez votre **clé API Google Gemini** ([obtenir une clé](https://ai.google.dev/tutorials/setup)). Elle sera sauvegardée de manière sécurisée.
+
+---
 
 ### 3. Pour les développeurs (Depuis le code source)
 
-Cette section vous guide pour lancer l'application depuis le code source.
-
 #### Prérequis
-
-- Python 3.9+ (versions stables comme 3.11 ou 3.12 recommandées)
+- Python 3.9+
 - Git
-- FFmpeg (voir la section 1)
+- FFmpeg
 
-##### 2. Installation et Lancement
-
+#### Installation et lancement
 ```sh
 # 1. Clonez le dépôt
 git clone https://gitea.gandulf78.synology.me/laurent/Podcast_creator.git
 cd Podcast_creator
 
-# 2. Créez et activez un environnement virtuel
+# 2. Créez un environnement virtuel
 python -m venv .venv
-source .venv/bin/activate  # Sur macOS/Linux
-# .\.venv\Scripts\activate  # Sur Windows
+source .venv/bin/activate  # macOS/Linux
+# .\.venv\Scripts\activate  # Windows
 
-# 3. Installez les dépendances Python
+# 3. Installez les dépendances
 pip install -r requirements.txt
 
 # 4. Lancez l'application
 python gui.py
 ```
 
-##### 3. Configuration
-
-Créez un fichier nommé `.env` à la racine du projet et ajoutez votre clé API Gemini :
-
+#### Configuration
+Créez un fichier `.env` à la racine :
 ```
 GEMINI_API_KEY="VOTRE_CLE_API_ICI"
 ```
 
-##### 4. Lancement de l'application
-
+#### Création d’un exécutable
 ```sh
-python gui.py
-```
-
-##### 5. Création de l'exécutable
-
-```sh
-
-sips -s format icns podcast.png --out podcast.icns # Convertir l'image en format .icns
-# Installez PyInstaller si ce n'est pas déjà fait
+sips -s format icns podcast.png --out podcast.icns
 pip install pyinstaller
 pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
 ```
+
+---
+
+## 💡 Exemple d’utilisation
+
+Script texte :
+```
+Locuteur_1: Bonjour et bienvenue dans notre podcast !
+Locuteur_2: Aujourd'hui, nous allons parler d'intelligence artificielle.
+```
+Locuteur_1 et Locuteur_2 seront reconnus comme deux voix distinctes, à configurer dans Options / Paramètres de voix...
+Résultat : un fichier MP3 ou WAV avec deux voix distinctes.
+
+---
+
+## 🛠 Compatibilité
+
+- macOS (testé)
+- Windows (prévoir FFplay dans le PATH pour lecture intégrée)
+- Linux (supporté, dépendances identiques à macOS)
+
+---
+
+## 📜 Licence
+
+Ce projet est distribué sous licence MIT. Voir le fichier `LICENSE` pour plus d’informations.
+
+---
+
+## 🤝 Contribuer
+
+1. Forkez le dépôt
+2. Créez une branche : `git checkout -b feature/ma-fonctionnalite`
+3. Committez vos changements : `git commit -m "Ajout de ma fonctionnalité"`
+4. Poussez la branche : `git push origin feature/ma-fonctionnalite`
+5. Ouvrez une Pull Request
+
+---
+
+## 🐞 Bugs connus / Limitations
+- Nécessite une connexion Internet pour générer l'audio.
+- Pas encore de support pour la synthèse hors ligne.
+
+---
+
+**Auteur** : Laurent FRANCOISE
+**Contact** : laurent.francoise@gmail.com
