@@ -83,7 +83,7 @@ pip install -r requirements.txt
 python gui.py
 ```
 
-#### 3. Configuration
+##### 3. Configuration
 
 Créez un fichier nommé `.env` à la racine du projet et ajoutez votre clé API Gemini :
 
@@ -91,13 +91,13 @@ Créez un fichier nommé `.env` à la racine du projet et ajoutez votre clé API
 GEMINI_API_KEY="VOTRE_CLE_API_ICI"
 ```
 
-#### 4. Lancement de l'application
+##### 4. Lancement de l'application
 
 ```sh
 python gui.py
 ```
 
-#### 5. Création de l'exécutable
+##### 5. Création de l'exécutable
 
 ```sh
 
