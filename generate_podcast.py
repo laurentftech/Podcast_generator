@@ -4,8 +4,8 @@
 import logging
 import mimetypes
 import os
+import subprocess
 import sys
-import struct
 import traceback
 from dotenv import load_dotenv
 from google import genai
@@ -20,15 +20,6 @@ PODCAST_SCRIPT = """Read aloud in a warm, welcoming tone
 John: Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs – my dogs' names are corgis! Who am I?
 Samantha: [amused] Queen Elizabeth II!
 """
-
-def save_binary_file(file_name: str, data: bytes, status_callback=print):
-    """Sauvegarde les données binaires dans un fichier de manière sécurisée."""
-    try:
-        with open(file_name, "wb") as f:
-            f.write(data)
-        status_callback(f"Fichier sauvegardé : {file_name}")
-    except IOError as e:
-        status_callback(f"Erreur lors de la sauvegarde du fichier {file_name}: {e}")
 
 def setup_logging() -> logging.Logger:
     """Configure le logging pour écrire dans un fichier dans le dossier de l'application."""
@@ -148,16 +139,17 @@ def get_api_key(status_callback, logger: logging.Logger, parent_window=None) -> 
     logger.info("Recherche de la clé API terminée.")
     return api_key
 
-def generate(script_text: str, speaker_mapping: dict, api_key: str, output_basename: str = "podcast_segment", status_callback=print, output_dir: str = ".") -> str | None:
+def generate(script_text: str, speaker_mapping: dict, api_key: str, output_filepath: str, status_callback=print) -> str | None:
     """Génère l'audio à partir d'un script en utilisant Gemini, avec un fallback de modèle."""
     logger = logging.getLogger("PodcastCreator")
     logger.info("Démarrage de la fonction de génération.")
     status_callback("Démarrage de la génération du podcast...")
+
     if not api_key:
         return None
 
     # S'assurer que le dossier de sortie existe
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(os.path.dirname(output_filepath), exist_ok=True)
 
     client = genai.Client(api_key=api_key)
 
@@ -192,7 +184,6 @@ def generate(script_text: str, speaker_mapping: dict, api_key: str, output_basen
     )
 
     generated_successfully = False
-    output_path = None
     for model_name in models_to_try:
         status_callback(f"\nTentative de génération avec le modèle : {model_name}...")
         try:
@@ -221,14 +212,40 @@ def generate(script_text: str, speaker_mapping: dict, api_key: str, output_basen
             if not audio_chunks:
                 raise errors.GoogleAPICallError("Aucune donnée audio n'a été générée par le modèle.")
 
-            # Concaténer tous les morceaux audio et sauvegarder en un seul fichier
+            # --- Conversion avec FFmpeg ---
             full_audio_data = b"".join(audio_chunks)
-            file_extension = mimetypes.guess_extension(final_mime_type) or ".wav"
-            if file_extension == ".wav" and not final_mime_type.startswith("audio/wav"):
-                full_audio_data = convert_to_wav(full_audio_data, final_mime_type)
+            output_format = os.path.splitext(output_filepath)[1].lower().strip('.')
+            if output_format not in ["wav", "mp3"]:
+                status_callback(f"Format de fichier non supporté : {output_format}. Utilisation de 'mp3' par défaut.")
+                output_format = "mp3"
+                output_filepath = f"{os.path.splitext(output_filepath)[0]}.mp3"
 
-            output_path = os.path.join(output_dir, f"{output_basename}{file_extension}")
-            save_binary_file(output_path, full_audio_data, status_callback)
+            parameters = parse_audio_mime_type(final_mime_type)
+            ffmpeg_format = "s16le" # PCM 16-bit signed little-endian, standard pour L16
+
+            command = [
+                "ffmpeg",
+                "-y",  # Écrase le fichier de sortie sans demander
+                "-f", ffmpeg_format,
+                "-ar", str(parameters["rate"]),
+                "-ac", "1",  # Mono
+                "-i", "pipe:0",  # Lit les données depuis l'entrée standard (stdin)
+                output_filepath,
+            ]
+
+            status_callback(f"Conversion avec FFmpeg en {os.path.basename(output_filepath)}...")
+            process = subprocess.run(command, input=full_audio_data, capture_output=True, check=False)
+
+            if process.returncode != 0:
+                ffmpeg_error = process.stderr.decode('utf-8', errors='ignore')
+                logger.error(f"Erreur FFmpeg:\n{ffmpeg_error}")
+                status_callback("--- ERREUR LORS DE LA CONVERSION AUDIO ---")
+                status_callback("Veuillez vérifier que FFmpeg est correctement installé et accessible dans le PATH.")
+                status_callback(f"Détail de l'erreur FFmpeg : {ffmpeg_error.strip().splitlines()[-1]}")
+                generated_successfully = False
+                break # Erreur critique, inutile d'essayer d'autres modèles
+
+            status_callback(f"Fichier sauvegardé avec succès : {output_filepath}")
 
             status_callback(f"Audio généré avec succès via {model_name}.")
             generated_successfully = True
@@ -250,47 +267,7 @@ def generate(script_text: str, speaker_mapping: dict, api_key: str, output_basen
     if not generated_successfully:
         status_callback("\nÉchec de la génération audio avec tous les modèles disponibles.")
         return None
-    return output_path
-
-def convert_to_wav(audio_data: bytes, mime_type: str) -> bytes:
-    """Generates a WAV file header for the given audio data and parameters.
-
-    Args:
-        audio_data: The raw audio data as a bytes object.
-        mime_type: Mime type of the audio data.
-
-    Returns:
-        A bytes object representing the WAV file header.
-    """
-    parameters = parse_audio_mime_type(mime_type)
-    bits_per_sample = parameters["bits_per_sample"]
-    sample_rate = parameters["rate"]
-    num_channels = 1
-    data_size = len(audio_data)
-    bytes_per_sample = bits_per_sample // 8
-    block_align = num_channels * bytes_per_sample
-    byte_rate = sample_rate * block_align
-    chunk_size = 36 + data_size  # 36 bytes for header fields before data chunk size
-
-    # http://soundfile.sapp.org/doc/WaveFormat/
-
-    header = struct.pack(
-        "<4sI4s4sIHHIIHH4sI",
-        b"RIFF",          # ChunkID
-        chunk_size,       # ChunkSize (total file size - 8 bytes)
-        b"WAVE",          # Format
-        b"fmt ",          # Subchunk1ID
-        16,               # Subchunk1Size (16 for PCM)
-        1,                # AudioFormat (1 for PCM)
-        num_channels,     # NumChannels
-        sample_rate,      # SampleRate
-        byte_rate,        # ByteRate
-        block_align,      # BlockAlign
-        bits_per_sample,  # BitsPerSample
-        b"data",          # Subchunk2ID
-        data_size         # Subchunk2Size (size of audio data)
-    )
-    return header + audio_data
+    return output_filepath
 
 def parse_audio_mime_type(mime_type: str) -> dict[str, int | None]:
     """Parses bits per sample and rate from an audio MIME type string.
@@ -341,4 +318,4 @@ if __name__ == "__main__":
         generate(script_text=PODCAST_SCRIPT, 
                  speaker_mapping=default_speaker_mapping, 
                  api_key=api_key,
-                 output_basename="royal_family_quiz")
+                 output_filepath="royal_family_quiz.mp3")
