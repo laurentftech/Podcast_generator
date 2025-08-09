@@ -2,8 +2,7 @@
 
 Ce projet est une application de bureau simple mais puissante, développée en Python avec Tkinter, qui permet de transformer un script texte en un podcast audio multi-locuteurs en utilisant l'API de synthèse vocale de Google Gemini.
 
-![Capture d'écran de l'application](URL_DE_VOTRE_CAPTURE_D_ECRAN.png)
-*(Astuce : Faites une capture d'écran de votre application et hébergez-la sur votre Gitea ou un service comme Imgur pour remplacer le lien ci-dessus)*
+![Capture d'écran de l'application](podcast_creator_screenshot.png)
 
 ## Fonctionnalités
 
