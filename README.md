@@ -1,13 +1,18 @@
 # Générateur de Podcast
 
-Une application de bureau simple pour générer des podcasts audio multi-locuteurs à partir de scripts en utilisant l'API Google Gemini.
+Ce projet est une application de bureau simple mais puissante, développée en Python avec Tkinter, qui permet de transformer un script texte en un podcast audio multi-locuteurs en utilisant l'API de synthèse vocale de Google Gemini.
+
+![Capture d'écran de l'application](URL_DE_VOTRE_CAPTURE_D_ECRAN.png)
+*(Astuce : Faites une capture d'écran de votre application et hébergez-la sur votre Gitea ou un service comme Imgur pour remplacer le lien ci-dessus)*
 
 ## Fonctionnalités
 
 - Interface graphique simple avec Tkinter.
 - Génération audio multi-locuteurs.
 - Paramètres de voix personnalisables et sauvegardés.
-- Lecture de l'audio généré directement depuis l'application.
+- Lecture et arrêt de l'audio généré directement depuis l'application.
+- Accès direct au fichier généré via le gestionnaire de fichiers du système.
+- Gestion intelligente de la clé API (demandée une seule fois et sauvegardée de manière sécurisée).
 
 ## Installation (pour les développeurs)
 
@@ -15,8 +20,7 @@ Une application de bureau simple pour générer des podcasts audio multi-locuteu
 - Python 3.9 ou supérieur
 - Git
 
-### 1. Cloner le projet
-
+### 1. Cloner le dépôt
 ```sh
 git clone https://gitea.gandulf78.synology.me/laurent/Podcast_creator.git
 cd Podcast_creator
