@@ -1,6 +1,7 @@
 # To run this code you need to install the following dependencies:
 # pip install google-genai python-dotenv
 
+import logging
 import mimetypes
 import os
 import sys
@@ -29,6 +30,23 @@ def save_binary_file(file_name: str, data: bytes, status_callback=print):
     except IOError as e:
         status_callback(f"Erreur lors de la sauvegarde du fichier {file_name}: {e}")
 
+def setup_logging() -> logging.Logger:
+    """Configure le logging pour écrire dans un fichier dans le dossier de l'application."""
+    logger = logging.getLogger("PodcastCreator")
+    if logger.hasHandlers(): # Évite d'ajouter des handlers en double
+        return logger
+
+    log_dir = get_app_data_dir()
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, 'app.log')
+
+    logger.setLevel(logging.INFO)
+    handler = logging.FileHandler(log_file, 'w', 'utf-8')
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(module)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    return logger
+
 def get_app_data_dir() -> str:
     """Retourne le chemin du dossier de configuration standard pour l'application."""
     app_name = "PodcastCreator"
@@ -39,13 +57,16 @@ def get_app_data_dir() -> str:
     else: # Linux et autres
         return os.path.join(os.path.expanduser('~'), '.config', app_name)
 
-def get_api_key(status_callback) -> str | None:
+def get_api_key(status_callback, logger: logging.Logger, parent_window=None) -> str | None:
     """
     Trouve la clé API. Si elle n'est pas trouvée, demande à l'utilisateur et la sauvegarde.
     """
-    # 1. Définir les chemins de configuration
+    logger.info("="*20)
+    logger.info("Début de la recherche de la clé API...")
+    # 1. Définir les chemins de configuration et chercher une clé existante
     app_data_dir = get_app_data_dir()
     primary_dotenv_path = os.path.join(app_data_dir, '.env')
+    api_key = None
 
     # Chemin portable (à côté de l'exécutable)
     if getattr(sys, 'frozen', False):
@@ -55,54 +76,83 @@ def get_api_key(status_callback) -> str | None:
     else:
         portable_path_base = os.path.dirname(os.path.abspath(__file__))
     portable_dotenv_path = os.path.join(portable_path_base, '.env')
+    logger.info(f"Chemin .env portable vérifié : {portable_dotenv_path}")
+    logger.info(f"Chemin .env système vérifié : {primary_dotenv_path}")
 
-    # 2. Chercher un .env existant (priorité au portable, puis au standard)
+    # 2. Chercher un .env existant et charger la clé (priorité au portable)
     dotenv_path_to_load = None
     if os.path.exists(portable_dotenv_path):
+        logger.info(f"Fichier .env portable trouvé.")
         dotenv_path_to_load = portable_dotenv_path
     elif os.path.exists(primary_dotenv_path):
+        logger.info(f"Fichier .env système trouvé.")
         dotenv_path_to_load = primary_dotenv_path
+    else:
+        logger.info("Aucun fichier .env trouvé.")
 
-    # 3. Si non trouvé, demander à l'utilisateur
-    if not dotenv_path_to_load:
-        status_callback("Clé API non trouvée. Ouverture de la boîte de dialogue...")
-        # Crée une fenêtre racine temporaire et la cache
-        root = tk.Tk()
-        root.withdraw()
+    if dotenv_path_to_load:
+        logger.info(f"Chargement des variables depuis : {dotenv_path_to_load}")
+        load_dotenv(dotenv_path=dotenv_path_to_load)
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if api_key:
+            logger.info("Clé API trouvée dans les variables d'environnement.")
+        else:
+            logger.info("Fichier .env chargé, mais la variable GEMINI_API_KEY est absente ou vide.")
+
+    # 3. Si la clé n'est toujours pas trouvée (fichier .env absent ou clé vide/blanche), demander à l'utilisateur
+    if not api_key or not api_key.strip():
+        logger.info("Clé API non trouvée, ouverture de la boîte de dialogue pour l'utilisateur.")
+        status_callback("Clé API non trouvée ou invalide. Ouverture de la boîte de dialogue...")
+
+        # Gère la fenêtre parente pour les boîtes de dialogue.
+        # Si aucune n'est fournie (mode CLI), on en crée une temporaire.
+        dialog_parent = parent_window
+        we_created_root = False
+        if dialog_parent is None:
+            dialog_parent = tk.Tk()
+            dialog_parent.withdraw()
+            we_created_root = True
 
         messagebox.showinfo(
             "Bienvenue !",
-            "Bienvenue dans le Générateur de Podcast !\n\n"
-            "Pour fonctionner, l'application a besoin de votre clé API Google Gemini. "
-            "Vous n'aurez à la fournir qu'une seule fois.",
-            parent=root
+            "Bienvenue dans le Créateur de Podcast !\n\n"
+            "Pour fonctionner, l'application a besoin de votre clé API Google Gemini.\n\n"
+            "Vous pouvez en obtenir une gratuitement à l'adresse suivante :\n"
+            "https://ai.google.dev/gemini-api",
+            parent=dialog_parent
         )
         
-        api_key = simpledialog.askstring(
+        api_key_input = simpledialog.askstring(
             "Clé API requise",
             "Veuillez coller votre clé API Google Gemini :",
-            parent=root
+            parent=dialog_parent
         )
-        root.destroy()
 
-        if api_key:
+        if we_created_root:
+            dialog_parent.destroy()
+
+        if api_key_input:
+            logger.info("L'utilisateur a fourni une clé API.")
+            api_key = api_key_input
             os.makedirs(app_data_dir, exist_ok=True)
             with open(primary_dotenv_path, 'w') as f:
-                f.write(f'GEMINI_API_KEY="{api_key}"')
+                f.write(f'GEMINI_API_KEY="{api_key_input}"')
+            logger.info(f"Nouvelle clé sauvegardée dans : {primary_dotenv_path}")
             status_callback("Clé API sauvegardée pour les futurs lancements.")
-            dotenv_path_to_load = primary_dotenv_path
         else:
+            logger.info("L'utilisateur a annulé la saisie de la clé API.")
             status_callback("Aucune clé API fournie. Annulation.")
             return None
 
-    # 4. Charger la configuration et retourner la clé
-    load_dotenv(dotenv_path=dotenv_path_to_load)
-    return os.environ.get("GEMINI_API_KEY")
+    # 4. Retourner la clé
+    logger.info("Recherche de la clé API terminée.")
+    return api_key
 
-def generate(script_text: str, speaker_mapping: dict, output_basename: str = "podcast_segment", status_callback=print, output_dir: str = ".") -> str | None:
+def generate(script_text: str, speaker_mapping: dict, api_key: str, output_basename: str = "podcast_segment", status_callback=print, output_dir: str = ".") -> str | None:
     """Génère l'audio à partir d'un script en utilisant Gemini, avec un fallback de modèle."""
+    logger = logging.getLogger("PodcastCreator")
+    logger.info("Démarrage de la fonction de génération.")
     status_callback("Démarrage de la génération du podcast...")
-    api_key = get_api_key(status_callback)
     if not api_key:
         return None
 
@@ -187,11 +237,13 @@ def generate(script_text: str, speaker_mapping: dict, output_basename: str = "po
             # Erreur attendue de l'API (ex: modèle non dispo, quota dépassé). C'est normal de continuer.
             status_callback(f"Erreur API avec le modèle '{model_name}'")
             status_callback("Tentative avec le modèle suivant...")
+            logger.warning(f"Erreur API avec le modèle '{model_name}': {e}")
         except Exception as e:
             # Erreur inattendue et potentiellement critique (réseau, logique, etc.).
             # On doit arrêter le processus et afficher un maximum d'informations.
             status_callback(f"Une erreur critique inattendue est survenue : {e}")
             status_callback(traceback.format_exc())
+            logger.error(f"Erreur critique inattendue: {e}\n{traceback.format_exc()}")
             generated_successfully = False
             break # Inutile de continuer avec d'autres modèles, l'erreur est grave.
 
@@ -282,7 +334,11 @@ def parse_audio_mime_type(mime_type: str) -> dict[str, int | None]:
 
 if __name__ == "__main__":
     # Pour l'exécution en ligne de commande, on utilise un mapping par défaut.
-    default_speaker_mapping = {"John": "Schedar", "Samantha": "Zephyr"}
-    generate(script_text=PODCAST_SCRIPT, 
-             speaker_mapping=default_speaker_mapping, 
-             output_basename="royal_family_quiz")
+    logger = setup_logging()
+    api_key = get_api_key(print, logger)
+    if api_key:
+        default_speaker_mapping = {"John": "Schedar", "Samantha": "Zephyr"}
+        generate(script_text=PODCAST_SCRIPT, 
+                 speaker_mapping=default_speaker_mapping, 
+                 api_key=api_key,
+                 output_basename="royal_family_quiz")

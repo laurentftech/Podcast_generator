@@ -6,6 +6,8 @@ import subprocess
 import sys
 import queue
 import json
+import webbrowser
+from datetime import datetime
 
 try:
     import simpleaudio as sa
@@ -63,7 +65,7 @@ def get_asset_path(filename: str) -> str | None:
 class PodcastGeneratorApp:
     DEFAULT_SPEAKER_SETTINGS = {"John": "Schedar", "Samantha": "Zephyr"}
 
-    def __init__(self, root: tk.Tk, generate_func, default_script: str = ""):
+    def __init__(self, root: tk.Tk, generate_func, logger, api_key: str, default_script: str = ""):
         self.root = root
         self.root.title("Créateur de Podcast")
         self.root.geometry("960x700")
@@ -84,6 +86,8 @@ class PodcastGeneratorApp:
         self.settings_filepath = os.path.join(self.app_data_dir, "settings.json")
 
         self.generate_func = generate_func
+        self.logger = logger
+        self.api_key = api_key
         self.log_queue = queue.Queue()
         self.playback_obj = None # Pour garder une référence au processus de lecture
         self.last_generated_filepath = None
@@ -104,6 +108,7 @@ class PodcastGeneratorApp:
         help_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Aide", menu=help_menu)
         help_menu.add_command(label="À propos...", command=self.show_about_window)
+        self.logger.info("Interface principale initialisée.")
 
         self.poll_log_queue()
 
@@ -172,6 +177,7 @@ class PodcastGeneratorApp:
             self.log_status("Paramètres des voix sauvegardés.")
         except IOError as e:
             messagebox.showerror("Erreur de sauvegarde", f"Impossible de sauvegarder les paramètres:\n{e}")
+            self.logger.error(f"Erreur de sauvegarde des paramètres: {e}")
 
     def open_settings_window(self):
         """Ouvre la fenêtre de gestion des paramètres."""
@@ -181,19 +187,8 @@ class PodcastGeneratorApp:
 
     def show_about_window(self):
         """Affiche la fenêtre 'À propos'."""
-        about_title = "À propos de Créateur de Podcast"
-        about_message = (
-            "Créateur de Podcast v1.0\n\n"
-            "Copyright (c) 2025 Laurent FRANCOISE\n\n"
-            "Licence : MIT License\n\n"
-            "Crédits :\n"
-            " - Google Gemini API pour la génération audio\n"
-            " - Tkinter pour l'interface graphique\n"
-            " - simpleaudio pour la lecture audio\n"
-            " - Icône par Smashicons (www.flaticon.com)"
-        )
-        messagebox.showinfo(about_title, about_message, parent=self.root)
-
+        AboutWindow(self.root)
+        
     def log_status(self, message: str):
         self.log_queue.put(message)
 
@@ -243,6 +238,7 @@ class PodcastGeneratorApp:
             self.log_status(f"Script chargé depuis : {os.path.basename(filepath)}")
         except Exception as e:
             messagebox.showerror("Erreur de lecture", f"Impossible de lire le fichier :\n{e}")
+            self.logger.error(f"Erreur de lecture du script: {e}")
 
     def start_generation_thread(self):
         """Lance la génération dans un thread séparé pour ne pas geler l interface."""
@@ -279,29 +275,34 @@ class PodcastGeneratorApp:
         self.progress_bar.pack(fill=tk.X, pady=(10, 0), before=self.button_frame)
         self.progress_bar.start()
 
-        thread = threading.Thread(target=self.run_generation, args=(script_content, output_basename, output_dir, self.speaker_settings))
+        thread = threading.Thread(target=self.run_generation, args=(script_content, output_basename, output_dir, self.speaker_settings, self.api_key))
         thread.daemon = True
         thread.start()
 
-    def run_generation(self, script_content, output_basename, output_dir, speaker_mapping):
+    def run_generation(self, script_content, output_basename, output_dir, speaker_mapping, api_key):
         """La fonction exécutée par le thread."""
         generated_filepath = None
         try:
+            self.logger.info("Démarrage du thread de génération.")
             self.log_status(f"Lancement de la génération vers '{os.path.basename(output_dir)}'...")
             generated_filepath = self.generate_func(
                 script_text=script_content,
                 speaker_mapping=speaker_mapping,
                 output_basename=output_basename,
                 output_dir=output_dir,
-                status_callback=self.log_status
+                status_callback=self.log_status,
+                api_key=api_key
             )
             if generated_filepath:
                 self.last_generated_filepath = generated_filepath
+                self.logger.info(f"Génération terminée avec succès. Fichier: {generated_filepath}")
                 self.log_status(f"\n--- Génération terminée avec succès ! Fichier : {os.path.basename(generated_filepath)} ---")
             else:
+                self.logger.warning("La fonction de génération s'est terminée sans retourner de chemin de fichier.")
                 self.log_status("\n--- La génération a échoué. Veuillez vérifier les logs. ---")
         except Exception as e:
-            self.log_status(f"Une erreur critique est survenue : {e}")
+            self.logger.error(f"Erreur non interceptée dans le thread de génération: {e}", exc_info=True)
+            self.log_status(f"Une erreur critique est survenue dans le thread : {e}")
             generated_filepath = None # S'assurer que le statut est bien 'échec'
         finally:
             # On utilise la queue, notre canal de communication fiable,
@@ -381,6 +382,7 @@ class PodcastGeneratorApp:
                 self.playback_obj = wave_obj.play()
                 self.playback_obj.wait_done()
         except Exception as e:
+            self.logger.error(f"Erreur de lecture audio: {e}", exc_info=True)
             self.log_status(f"Erreur de lecture audio : {e}")
         finally:
             self.playback_obj = None
@@ -390,6 +392,43 @@ class PodcastGeneratorApp:
     def on_settings_window_close(self):
         """Callback pour réactiver le menu lorsque la fenêtre des paramètres est fermée."""
         self.menubar.entryconfig("Options", state="normal")
+
+class AboutWindow(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("À propos de Créateur de Podcast")
+        self.transient(parent)
+        self.grab_set()
+        self.resizable(False, False)
+
+        main_frame = tk.Frame(self, padx=20, pady=15)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(main_frame, text="Créateur de Podcast v1.0", font=('Helvetica', 12, 'bold')).pack(pady=(0, 5))
+        tk.Label(main_frame, text=f"Copyright (c) {datetime.now().year} Laurent FRANCOISE").pack()
+        tk.Label(main_frame, text="Licence : MIT License").pack(pady=(0, 15))
+
+        credits_frame = tk.LabelFrame(main_frame, text="Crédits et Remerciements", padx=10, pady=10)
+        credits_frame.pack(fill=tk.X, pady=(0, 10))
+
+        # Gemini API link
+        gemini_frame = tk.Frame(credits_frame)
+        gemini_frame.pack(fill=tk.X, pady=2)
+        tk.Label(gemini_frame, text="- API Google Gemini :").pack(side=tk.LEFT)
+        link_label = tk.Label(gemini_frame, text="ai.google.dev/gemini-api", fg="blue", cursor="hand2")
+        link_label.pack(side=tk.LEFT, padx=5)
+        link_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://ai.google.dev/gemini-api"))
+
+        tk.Label(credits_frame, text="- Tkinter pour l'interface graphique", anchor="w").pack(fill=tk.X, pady=2)
+        tk.Label(credits_frame, text="- simpleaudio pour la lecture audio", anchor="w").pack(fill=tk.X, pady=2)
+        tk.Label(credits_frame, text="- Icône par Smashicons (www.flaticon.com)", anchor="w").pack(fill=tk.X, pady=2)
+
+        ok_button = tk.Button(main_frame, text="OK", command=self.destroy, width=10)
+        ok_button.pack(pady=(10, 0))
+        ok_button.focus_set()
+        
+        self.bind('<Return>', lambda event: ok_button.invoke())
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
 
 class SettingsWindow(tk.Toplevel):
     def __init__(self, parent, current_settings, save_callback, close_callback, default_settings):
@@ -515,19 +554,30 @@ def main():
 
     # --- Importation des dépendances ---
     try:
-        from generate_podcast import generate, PODCAST_SCRIPT
+        from generate_podcast import generate, PODCAST_SCRIPT, setup_logging, get_api_key
     except ImportError as e:
         messagebox.showerror(
             "Erreur d'importation",
             f"Le fichier 'generate_podcast.py' est introuvable.\n\n"
             f"Veuillez vous assurer qu'il se trouve dans le même dossier que gui.py.\n\n"
             f"Détail de l'erreur : {e}"
-        )
+        , parent=root)
+        root.destroy()
+        return
+    
+    # Initialise le logging avant toute autre chose
+    logger = setup_logging()
+
+    # --- Vérification de la clé API au démarrage ---
+    api_key = get_api_key(lambda msg: logger.info(msg), logger, parent_window=root)
+    if not api_key:
+        logger.info("Application fermée car aucune clé API n'a été fournie au démarrage.")
+        messagebox.showwarning("Clé API requise", "L'application ne peut pas démarrer sans clé API.", parent=root)
         root.destroy()
         return
     
     # Si tout est correct, on construit l'interface et on affiche la fenêtre
-    app = PodcastGeneratorApp(root, generate_func=generate, default_script=PODCAST_SCRIPT)
+    app = PodcastGeneratorApp(root, generate_func=generate, logger=logger, api_key=api_key, default_script=PODCAST_SCRIPT)
     root.deiconify()
     root.mainloop()
 
