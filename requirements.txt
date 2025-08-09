@@ -1,3 +1,4 @@
 google-genai
 python-dotenv
 keyring
+setuptools-scm

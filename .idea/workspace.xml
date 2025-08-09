@@ -4,13 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0201e436-1814-4e0c-adab-c6994ce2ec5f" name="Changes" comment="ffmpeg path">
-      <change beforePath="$PROJECT_DIR$/.idea/Podcast_creator.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Podcast_creator.iml" afterDir="false" />
+    <list default="true" id="0201e436-1814-4e0c-adab-c6994ce2ec5f" name="Changes" comment="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/generate_podcast.py" beforeDir="false" afterPath="$PROJECT_DIR$/generate_podcast.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/setup.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -42,19 +39,19 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "Python.generate_podcast.executor": "Run",
-    "Python.gui.executor": "Debug",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/laurent/Projets/Podcast_creator",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.generate_podcast.executor&quot;: &quot;Run&quot;,
+    &quot;Python.gui.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/laurent/Projets/Podcast_creator&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.github.blarc.ai.commits.intellij.plugin.settings.AppSettingsConfigurable&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$" />
@@ -379,29 +376,91 @@
       <option name="project" value="LOCAL" />
       <updated>1754736869604</updated>
     </task>
-    <option name="localTasksCounter" value="32" />
+    <task id="LOCAL-00032" summary="update">
+      <option name="closed" value="true" />
+      <created>1754741560667</created>
+      <option name="number" value="00032" />
+      <option name="presentableId" value="LOCAL-00032" />
+      <option name="project" value="LOCAL" />
+      <updated>1754741560667</updated>
+    </task>
+    <task id="LOCAL-00033" summary="update">
+      <option name="closed" value="true" />
+      <created>1754741607978</created>
+      <option name="number" value="00033" />
+      <option name="presentableId" value="LOCAL-00033" />
+      <option name="project" value="LOCAL" />
+      <updated>1754741607978</updated>
+    </task>
+    <task id="LOCAL-00034" summary="Update file dialog to use shorter file type descriptions for audio formats.">
+      <option name="closed" value="true" />
+      <created>1754742257332</created>
+      <option name="number" value="00034" />
+      <option name="presentableId" value="LOCAL-00034" />
+      <option name="project" value="LOCAL" />
+      <updated>1754742257332</updated>
+    </task>
+    <task id="LOCAL-00035" summary="Update README.md headings to use consistent level 3 headings (#####).">
+      <option name="closed" value="true" />
+      <created>1754743007502</created>
+      <option name="number" value="00035" />
+      <option name="presentableId" value="LOCAL-00035" />
+      <option name="project" value="LOCAL" />
+      <updated>1754743007502</updated>
+    </task>
+    <task id="LOCAL-00036" summary="Add keyring dependency and improve API key security handling in generate_podcast.py">
+      <option name="closed" value="true" />
+      <created>1754743883387</created>
+      <option name="number" value="00036" />
+      <option name="presentableId" value="LOCAL-00036" />
+      <option name="project" value="LOCAL" />
+      <updated>1754743883387</updated>
+    </task>
+    <task id="LOCAL-00037" summary="Improved API key security handling and added Keyring dependency: secures API key in keyring (Keychain on macOS, etc.) and updated README.md instructions for API key management.">
+      <option name="closed" value="true" />
+      <created>1754771857959</created>
+      <option name="number" value="00037" />
+      <option name="presentableId" value="LOCAL-00037" />
+      <option name="project" value="LOCAL" />
+      <updated>1754771857959</updated>
+    </task>
+    <task id="LOCAL-00038" summary="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency.">
+      <option name="closed" value="true" />
+      <created>1754771977942</created>
+      <option name="number" value="00038" />
+      <option name="presentableId" value="LOCAL-00038" />
+      <option name="project" value="LOCAL" />
+      <updated>1754771977942</updated>
+    </task>
+    <option name="localTasksCounter" value="39" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="1st version" />
-    <MESSAGE value="1st working version" />
-    <MESSAGE value="update .gitignore to include settings.json" />
-    <MESSAGE value="add LICENSE and README files" />
-    <MESSAGE value="update .gitignore, add help menu and about window in gui.py, and enhance README with installation instructions" />
-    <MESSAGE value="update gui.py to clarify comments and reset current settings to defaults" />
-    <MESSAGE value="refactor: update podcast generator to use simpleaudio, add API key handling, and improve GUI functionality" />
-    <MESSAGE value="refactor: update settings file handling to use app data directory" />
-    <MESSAGE value="update README.md to enhance project description, add screenshot suggestion, and clarify installation instructions" />
-    <MESSAGE value="update README.md to include a screenshot and remove placeholder instructions" />
-    <MESSAGE value="update README.md to improve installation instructions for users and developers" />
-    <MESSAGE value="update: enhance README with installation instructions, add asset path handling in gui.py, and update .gitignore" />
-    <MESSAGE value="update" />
-    <MESSAGE value="rename for consistency" />
-    <MESSAGE value="{&#10;    &quot;error&quot;: {&#10;        &quot;message&quot;: &quot;You didn't provide an API key. You need to provide your API key in an Authorization header using Bearer auth (i.e. Authorization: Bearer YOUR_KEY), or as the password field (with blank username) if you're accessing the API from your browser and are prompted for a username and password. You can obtain an API key from https://platform.openai.com/account/api-keys.&quot;,&#10;        &quot;type&quot;: &quot;invalid_request_error&quot;,&#10;        &quot;param&quot;: null,&#10;        &quot;code&quot;: null&#10;    }&#10;}" />
-    <MESSAGE value="API key improvement" />
-    <MESSAGE value="defaut download folder change" />
-    <MESSAGE value="mp3 generation" />
-    <MESSAGE value="ffmpeg path" />
-    <option name="LAST_COMMIT_MESSAGE" value="ffmpeg path" />
+    <MESSAGE value="Improved API key security handling and added Keyring dependency: secures API key in keyring (Keychain on macOS, etc.) and updated README.md" />
+    <MESSAGE value="Improved API key security handling and added Keyring dependency: secures API key in keyring (Keychain on macOS, etc.) and updated README.md instructions" />
+    <MESSAGE value="Improved API key security handling and added Keyring dependency: secures API key in keyring (Keychain on macOS, etc.) and updated README.md instructions for" />
+    <MESSAGE value="Improved API key security handling and added Keyring dependency: secures API key in keyring (Keychain on macOS, etc.) and updated README.md instructions for API" />
+    <MESSAGE value="Improved API key security handling and added Keyring dependency: secures API key in keyring (Keychain on macOS, etc.) and updated README.md instructions for API key" />
+    <MESSAGE value="Improved API key security handling and added Keyring dependency: secures API key in keyring (Keychain on macOS, etc.) and updated README.md instructions for API key management" />
+    <MESSAGE value="Improved API key security handling and added Keyring dependency: secures API key in keyring (Keychain on macOS, etc.) and updated README.md instructions for API key management." />
+    <MESSAGE value="Impro" />
+    <MESSAGE value="Improved" />
+    <MESSAGE value="Improved API" />
+    <MESSAGE value="Improved API key" />
+    <MESSAGE value="Improved API key security" />
+    <MESSAGE value="Improved API key security:" />
+    <MESSAGE value="Improved API key security: Set" />
+    <MESSAGE value="Improved API key security: Set GEM" />
+    <MESSAGE value="Improved API key security: Set GEMIN" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in ." />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with key" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with keyring" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency." />
+    <option name="LAST_COMMIT_MESSAGE" value="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency." />
   </component>
 </project>
