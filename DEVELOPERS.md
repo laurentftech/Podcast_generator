@@ -39,6 +39,8 @@ Les tests se font manuellement en lançant l'application et en vérifiant le com
 ### 1. Préparer la version
     Mettre à jour le changelog (CHANGELOG.md)
     Vérifier que toutes les fonctionnalités sont testées et fonctionnelles
+    ⚠️Attention : le répertoire de travail doit être absolument "propre" (sans fichier non commité ou non exclus via .gitignore) pour assurer un numéro de version stable dans l'application générée.
+
     
 ### 2. Taguer la version
 
