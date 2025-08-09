@@ -48,6 +48,7 @@ git commit -m "Préparation version vX.Y.Z"
 git tag -a vX.Y.Z -m "Version X.Y.Z"
 git push origin main
 git push origin vX.Y.Z
+pip install -e .
 ```
 
 ### 3. Générer l'exécutable
