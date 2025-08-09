@@ -1,3 +1,23 @@
-# Environment variables
+# Fichiers de configuration spécifiques à l'utilisateur
 .env
-/settings.json
+
+# Environnement virtuel Python
+.venv/
+venv/
+
+# Fichiers de cache et compilés de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Dossiers de build et de distribution
+build/
+dist/
+*.egg-info/
+
+# Fichiers générés par PyInstaller
+*.spec
+
+# Fichiers système (macOS)
+.DS_Store
