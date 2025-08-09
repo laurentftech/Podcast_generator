@@ -13,16 +13,36 @@ Ce projet est une application de bureau simple mais puissante, développée en P
 - Accès direct au fichier généré via le gestionnaire de fichiers du système.
 - Gestion intelligente de la clé API (demandée une seule fois et sauvegardée de manière sécurisée).
 
-## Installation (pour les développeurs)
+## Installation
 
-### Prérequis
-- Python 3.9 ou supérieur
+### Pour les utilisateurs (Recommandé)
+
+1.  Allez dans l'onglet **"Releases"** (ou "Tags") de ce dépôt.
+2.  Téléchargez la dernière version pour votre système d'exploitation (par exemple, `Podcast-Generator-v1.0-macOS.zip`).
+3.  Décompressez le fichier `.zip`.
+4.  Double-cliquez sur l'application `Podcast Generator`.
+5.  Au premier lancement, une fenêtre vous demandera de fournir votre clé API Google Gemini. Collez-la et c'est tout !
+
+### Pour les développeurs
+
+#### 1. Prérequis
+
+- Python 3.9+
 - Git
 
-### 1. Cloner le dépôt
+#### 2. Installation
 ```sh
+# Clonez le dépôt (remplacez l'URL par celle de votre dépôt)
 git clone https://gitea.gandulf78.synology.me/laurent/Podcast_creator.git
 cd Podcast_creator
+
+# Créez et activez un environnement virtuel
+python -m venv .venv
+source .venv/bin/activate  # Sur macOS/Linux
+# .\.venv\Scripts\activate  # Sur Windows
+
+# Installez les dépendances
+pip install -r requirements.txt
 ```
 
 ### 2. Créer un environnement virtuel et installer les dépendances
