@@ -4,10 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0201e436-1814-4e0c-adab-c6994ce2ec5f" name="Changes" comment="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency.">
+    <list default="true" id="0201e436-1814-4e0c-adab-c6994ce2ec5f" name="Changes" comment="Simplifies release workflow documentation.">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/setup.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DEVELOPERS.md" beforeDir="false" afterPath="$PROJECT_DIR$/DEVELOPERS.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -432,26 +432,22 @@
       <option name="project" value="LOCAL" />
       <updated>1754771977942</updated>
     </task>
-    <option name="localTasksCounter" value="39" />
+    <task id="LOCAL-00039" summary="Simplifies release workflow documentation.">
+      <option name="closed" value="true" />
+      <created>1754776289569</created>
+      <option name="number" value="00039" />
+      <option name="presentableId" value="LOCAL-00039" />
+      <option name="project" value="LOCAL" />
+      <updated>1754776289569</updated>
+    </task>
+    <option name="localTasksCounter" value="40" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Improved API key security handling and added Keyring dependency: secures API key in keyring (Keychain on macOS, etc.) and updated README.md" />
-    <MESSAGE value="Improved API key security handling and added Keyring dependency: secures API key in keyring (Keychain on macOS, etc.) and updated README.md instructions" />
-    <MESSAGE value="Improved API key security handling and added Keyring dependency: secures API key in keyring (Keychain on macOS, etc.) and updated README.md instructions for" />
-    <MESSAGE value="Improved API key security handling and added Keyring dependency: secures API key in keyring (Keychain on macOS, etc.) and updated README.md instructions for API" />
-    <MESSAGE value="Improved API key security handling and added Keyring dependency: secures API key in keyring (Keychain on macOS, etc.) and updated README.md instructions for API key" />
-    <MESSAGE value="Improved API key security handling and added Keyring dependency: secures API key in keyring (Keychain on macOS, etc.) and updated README.md instructions for API key management" />
-    <MESSAGE value="Improved API key security handling and added Keyring dependency: secures API key in keyring (Keychain on macOS, etc.) and updated README.md instructions for API key management." />
-    <MESSAGE value="Impro" />
-    <MESSAGE value="Improved" />
-    <MESSAGE value="Improved API" />
-    <MESSAGE value="Improved API key" />
-    <MESSAGE value="Improved API key security" />
-    <MESSAGE value="Improved API key security:" />
-    <MESSAGE value="Improved API key security: Set" />
-    <MESSAGE value="Improved API key security: Set GEM" />
-    <MESSAGE value="Improved API key security: Set GEMIN" />
+    <MESSAGE value="Improved API key security: Set GEMINI" />
+    <MESSAGE value="Improved API key security: Set GEMINI_" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_" />
     <MESSAGE value="Improved API key security: Set GEMINI_API_KEY" />
     <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in" />
     <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in ." />
@@ -460,7 +456,19 @@
     <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with key" />
     <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with keyring" />
     <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency" />
-    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency." />
-    <option name="LAST_COMMIT_MESSAGE" value="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency." />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency and" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency and updated" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency and updated READ" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency and updated README" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency and updated README." />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency and updated README.md" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency and updated README.md for publication" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency and updated README.md for publication work" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency and updated README.md for publication workflow" />
+    <MESSAGE value="Improved API key security: Set GEMINI_API_KEY in .env with keyring dependency and updated README.md for publication workflow." />
+    <MESSAGE value="Simp" />
+    <MESSAGE value="Simplifies release workflow documentation.&#10;" />
+    <MESSAGE value="Simplifies release workflow documentation." />
+    <option name="LAST_COMMIT_MESSAGE" value="Simplifies release workflow documentation." />
   </component>
 </project>
