@@ -6,13 +6,7 @@ import subprocess
 import sys
 import queue
 import json
-import webbrowser
 from datetime import datetime
-
-try:
-    import simpleaudio as sa
-except ImportError:
-    sa = None # Gère l'absence de la bibliothèque
 
 AVAILABLE_VOICES = {
     "Zephyr": "Bright",
@@ -81,7 +75,7 @@ class PodcastGeneratorApp:
                 pass
 
         # --- Définition des chemins de configuration ---
-        from generate_podcast import get_app_data_dir # Importation locale
+        from generate_podcast import get_app_data_dir, find_ffplay_path # Importation locale
         self.app_data_dir = get_app_data_dir()
         self.settings_filepath = os.path.join(self.app_data_dir, "settings.json")
 
@@ -91,6 +85,7 @@ class PodcastGeneratorApp:
         self.log_queue = queue.Queue()
         self.playback_obj = None # Pour garder une référence au processus de lecture
         self.last_generated_filepath = None
+        self.ffplay_path = find_ffplay_path()
         
         self.speaker_settings = self.load_settings()
 
@@ -107,6 +102,7 @@ class PodcastGeneratorApp:
         # Menu Aide
         help_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Aide", menu=help_menu)
+        help_menu.add_command(label="Documentation (Gitea)...", command=self.open_documentation)
         help_menu.add_command(label="À propos...", command=self.show_about_window)
         self.logger.info("Interface principale initialisée.")
 
@@ -189,6 +185,10 @@ class PodcastGeneratorApp:
         """Affiche la fenêtre 'À propos'."""
         AboutWindow(self.root)
         
+    def open_documentation(self):
+        """Ouvre le lien vers la documentation ou le dépôt."""
+        webbrowser.open_new_tab("https://gitea.gandulf78.synology.me/laurent/Podcast_creator")
+
     def log_status(self, message: str):
         self.log_queue.put(message)
 
@@ -313,7 +313,7 @@ class PodcastGeneratorApp:
     def on_generation_complete(self, success: bool):
         if success:
             self.root.bell()
-            if sys.platform == "darwin" or sa:
+            if self.ffplay_path:
                 self.show_button.config(state='normal')
                 self.play_button.config(state='normal')
 
@@ -346,43 +346,34 @@ class PodcastGeneratorApp:
 
     def play_last_generated_file(self):
         """Joue ou arrête la lecture du dernier fichier audio généré."""
-        # --- Logique pour arrêter la lecture ---
-        if self.playback_obj:
-            if sys.platform == "darwin":
-                if self.playback_obj.poll() is None: # Vérifie si le processus est en cours
-                    self.playback_obj.terminate()
-            elif sa and self.playback_obj.is_playing():
-                self.playback_obj.stop()
+        if self.playback_obj and self.playback_obj.poll() is None:
+            self.playback_obj.terminate() # Stoppe le processus ffplay s'il est en cours
             return
 
-        # --- Logique pour démarrer la lecture ---
-        if sys.platform != "darwin" and not sa:
+        if not self.ffplay_path:
             messagebox.showerror(
-                "Dépendance manquante",
-                "La bibliothèque 'simpleaudio' est requise pour lire l'audio.\n\n"
-                "Veuillez l'installer avec : pip install simpleaudio"
+                "Lecteur audio introuvable",
+                "La commande 'ffplay' (qui fait partie de FFmpeg) est introuvable.\n\n"
+                "La lecture est désactivée. Veuillez vous assurer que FFmpeg est bien installé."
             )
+            self.play_button.config(state='disabled')
             return
 
         if not self.last_generated_filepath or not os.path.exists(self.last_generated_filepath):
             messagebox.showerror("Fichier introuvable", "Le fichier audio généré n'a pas été trouvé ou n'est plus accessible.")
             return
-        
+
         threading.Thread(target=self._play_in_thread, daemon=True).start()
 
     def _play_in_thread(self):
         """La fonction de lecture exécutée dans un thread séparé."""
         try:
             self.log_queue.put(('UPDATE_PLAY_BUTTON', '⏹️ Stopper', 'normal'))
-            if sys.platform == "darwin":
-                self.playback_obj = subprocess.Popen(["afplay", self.last_generated_filepath])
-                self.playback_obj.wait()
-            else:
-                wave_obj = sa.WaveObject.from_wave_file(self.last_generated_filepath)
-                self.playback_obj = wave_obj.play()
-                self.playback_obj.wait_done()
+            command = [self.ffplay_path, "-nodisp", "-autoexit", self.last_generated_filepath]
+            self.playback_obj = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.playback_obj.wait()
         except Exception as e:
-            self.logger.error(f"Erreur de lecture audio: {e}", exc_info=True)
+            self.logger.error(f"Erreur de lecture audio avec ffplay: {e}", exc_info=True)
             self.log_status(f"Erreur de lecture audio : {e}")
         finally:
             self.playback_obj = None
@@ -392,6 +383,8 @@ class PodcastGeneratorApp:
     def on_settings_window_close(self):
         """Callback pour réactiver le menu lorsque la fenêtre des paramètres est fermée."""
         self.menubar.entryconfig("Options", state="normal")
+
+import webbrowser
 
 class AboutWindow(tk.Toplevel):
     def __init__(self, parent):
@@ -420,7 +413,6 @@ class AboutWindow(tk.Toplevel):
         link_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://ai.google.dev/gemini-api"))
 
         tk.Label(credits_frame, text="- Tkinter pour l'interface graphique", anchor="w").pack(fill=tk.X, pady=2)
-        tk.Label(credits_frame, text="- simpleaudio pour la lecture audio", anchor="w").pack(fill=tk.X, pady=2)
         tk.Label(credits_frame, text="- Icône par Smashicons (www.flaticon.com)", anchor="w").pack(fill=tk.X, pady=2)
 
         ok_button = tk.Button(main_frame, text="OK", command=self.destroy, width=10)
@@ -554,7 +546,7 @@ def main():
 
     # --- Importation des dépendances ---
     try:
-        from generate_podcast import generate, PODCAST_SCRIPT, setup_logging, get_api_key
+        from generate_podcast import generate, PODCAST_SCRIPT, setup_logging, get_api_key, find_ffplay_path
     except ImportError as e:
         messagebox.showerror(
             "Erreur d'importation",

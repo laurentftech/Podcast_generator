@@ -10,15 +10,15 @@ Ce projet est une application de bureau simple mais puissante, développée en P
 - Génération audio multi-locuteurs via l'API Google Gemini.
 - Exportation audio au format **MP3** (par défaut) ou **WAV**.
 - Paramètres de voix personnalisables et sauvegardés.
-- Lecture et arrêt de l'audio généré directement depuis l'application.
+- Lecture et arrêt de l'audio généré directement depuis l'application (via FFmpeg/ffplay).
 - Accès direct au fichier généré via le gestionnaire de fichiers du système.
 - Gestion intelligente de la clé API (demandée une seule fois et sauvegardée de manière sécurisée).
 
 ## Installation
 
-### 1. Dépendance Externe : FFmpeg (Obligatoire)
+### 1. Dépendance Externe : FFmpeg (Requis)
 
-Pour la conversion audio, cette application nécessite que **FFmpeg** soit installé sur votre système.
+Pour la conversion et la lecture audio, cette application nécessite que **FFmpeg** soit installé sur votre système.
 
 Sur macOS, le moyen le plus simple de l'installer est via [Homebrew](https://brew.sh/index_fr) :
 ```sh
@@ -83,7 +83,7 @@ pip install -r requirements.txt
 python gui.py
 ```
 
-### 3. Configuration
+#### 3. Configuration
 
 Créez un fichier nommé `.env` à la racine du projet et ajoutez votre clé API Gemini :
 
@@ -91,13 +91,13 @@ Créez un fichier nommé `.env` à la racine du projet et ajoutez votre clé API
 GEMINI_API_KEY="VOTRE_CLE_API_ICI"
 ```
 
-### 4. Lancement de l'application
+#### 4. Lancement de l'application
 
 ```sh
 python gui.py
 ```
 
-### 4. Création de l'exécutable
+#### 5. Création de l'exécutable
 
 ```sh
 
