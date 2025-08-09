@@ -5,6 +5,7 @@ import logging
 import mimetypes
 import os
 import subprocess
+import shutil
 import sys
 import traceback
 from dotenv import load_dotenv
@@ -47,6 +48,21 @@ def get_app_data_dir() -> str:
         return os.path.join(os.environ['APPDATA'], app_name)
     else: # Linux et autres
         return os.path.join(os.path.expanduser('~'), '.config', app_name)
+
+def find_ffmpeg_path() -> str | None:
+    """
+    Trouve le chemin de l'exécutable FFmpeg.
+    Cherche d'abord dans le PATH, puis dans les emplacements Homebrew courants.
+    """
+    # 1. Chercher dans le PATH système (ce qui fonctionnera si le PATH est bien configuré)
+    path = shutil.which("ffmpeg")
+    if path:
+        return path
+    # 2. Si non trouvé, chercher dans les emplacements Homebrew connus
+    for brew_path in ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg"]:
+        if os.path.exists(brew_path):
+            return brew_path
+    return None
 
 def get_api_key(status_callback, logger: logging.Logger, parent_window=None) -> str | None:
     """
@@ -145,6 +161,13 @@ def generate(script_text: str, speaker_mapping: dict, api_key: str, output_filep
     logger.info("Démarrage de la fonction de génération.")
     status_callback("Démarrage de la génération du podcast...")
 
+    ffmpeg_path = find_ffmpeg_path()
+    if not ffmpeg_path:
+        status_callback("--- ERREUR CRITIQUE ---")
+        status_callback("L'exécutable FFmpeg est introuvable sur ce système.")
+        status_callback("Veuillez l'installer (par ex. avec 'brew install ffmpeg') et réessayer.")
+        logger.error("FFmpeg n'a pas été trouvé dans le PATH ou les emplacements Homebrew.")
+        return None
     if not api_key:
         return None
 
@@ -224,7 +247,7 @@ def generate(script_text: str, speaker_mapping: dict, api_key: str, output_filep
             ffmpeg_format = "s16le" # PCM 16-bit signed little-endian, standard pour L16
 
             command = [
-                "ffmpeg",
+                ffmpeg_path,
                 "-y",  # Écrase le fichier de sortie sans demander
                 "-f", ffmpeg_format,
                 "-ar", str(parameters["rate"]),
