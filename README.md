@@ -6,88 +6,88 @@ Une application de bureau simple mais puissante, développée en Python avec Tki
 
 ---
 
-## ✨ Fonctionnalités
+## 📋 Prérequis
 
-- Interface graphique simple avec Tkinter.
-- Génération audio multi-locuteurs via l'API Google Gemini.
-- Exportation audio au format **MP3** (par défaut) ou **WAV**.
-- Paramètres de voix personnalisables et sauvegardés.
-- Lecture et arrêt de l'audio généré directement depuis l'application (via FFmpeg/ffplay).
-- Accès direct au fichier généré via le gestionnaire de fichiers du système.
-- Gestion de la clé API : demandée une seule fois et **sauvegardée de manière sécurisée** dans le trousseau natif du système (Keychain sur macOS, etc.).
-- **Versioning automatique** basé sur les tags Git.
+Avant d'utiliser l'application, assurez-vous d'avoir :
+
+- **FFmpeg** installé ([instructions](#1-dépendance-externe--ffmpeg-requis)).
+- Une **clé API Google Gemini** valide ([obtenir une clé](https://ai.google.dev/tutorials/setup)).
+- **Python 3.9+** (si utilisation depuis le code source).
+- Une **connexion Internet** (l'audio est généré via l'API en ligne).
 
 ---
 
-## 📦 Installation (pour les utilisateurs)
+## ✨ Fonctionnalités
+
+- **Génération Audio** : Créez des podcasts multi-locuteurs en utilisant les voix de haute qualité de l'API Google Gemini.
+- **Interface Simple** : Une interface graphique intuitive construite avec Tkinter.
+- **Formats Flexibles** : Exportez vos créations au format **MP3** (par défaut) ou **WAV**.
+- **Personnalisation** : Configurez et sauvegardez les voix pour chaque locuteur.
+- **Lecture Intégrée** : Écoutez et arrêtez la lecture de l'audio directement depuis l'application (nécessite FFmpeg).
+- **Gestion Sécurisée** : Votre clé API est demandée une seule fois et stockée de manière sécurisée (`keyring`).
+- **Version basée sur les tags Git** : La version affichée dans l'application correspond au dernier tag Git.
+
+---
+
+## 📦 Installation
 
 ### 1. Dépendance Externe : FFmpeg (Requis)
 
-Pour la conversion et la lecture audio, cette application nécessite que **FFmpeg** soit installé sur votre système.
+Pour la conversion et la lecture audio, installez **FFmpeg** :
 
-Sur macOS, le moyen le plus simple de l'installer est via [Homebrew](https://brew.sh/index_fr) :
+macOS (via Homebrew) :
 ```sh
 brew install ffmpeg
 ```
-Sur Windows ou Linux, téléchargez-le depuis le [site officiel de FFmpeg](https://ffmpeg.org/download.html) et assurez-vous qu'il est accessible dans le PATH.
+Windows / Linux : [Télécharger depuis le site officiel](https://ffmpeg.org/download.html) et ajouter au PATH.
 
 ---
 
 ### 2. Pour les utilisateurs (Application prête à l'emploi)
 
-1.  Allez dans l'onglet **"Releases"** (ou "Tags") de ce dépôt.
-2.  Téléchargez la dernière version pour votre système d'exploitation.
-3.  Décompressez le fichier `.zip`.
-4.  Déplacez l'application `Podcast Creator.app` (ou équivalent Windows/Linux) dans le dossier de votre choix.
+1.  Allez dans l'onglet **"Releases"** ou **"Tags"**.
+2.  Téléchargez la version correspondant à votre OS.
+3.  Décompressez le `.zip`.
+4.  Placez l'application dans le dossier de votre choix.
 
-#### Note importante pour macOS
+#### Note macOS
 
-L'application n'étant pas signée via l'App Store, macOS affichera un avertissement. Suivez l'une de ces méthodes selon votre version de macOS :
+macOS affichera un avertissement au premier lancement (application non signée).  
 
-**Méthode 1 : Clic droit**
-1.  Faites un **clic droit** (ou Ctrl-clic) sur l'icône de `Podcast Creator`.
-2.  Sélectionnez **"Ouvrir"**.
-3.  Cliquez sur **"Ouvrir"** dans la boîte de dialogue.
+**Méthode rapide** :
+1. Clic droit sur l'icône → **Ouvrir** → **Ouvrir**.
 
-**Méthode 2 : Réglages Système**
-1.  Essayez d'ouvrir l'application normalement (double-clic).
-2.  Dans **Réglages Système → Confidentialité et sécurité**, autorisez l'ouverture.
-
-Cette opération est à faire une seule fois.
+**Méthode via réglages** :
+1. Double-clic (message d’erreur).
+2. **Réglages Système → Confidentialité et sécurité** → **Ouvrir quand même**.
 
 #### Premier Lancement : Clé API
-
-Lors du premier démarrage, saisissez votre **clé API Google Gemini** ([obtenir une clé](https://ai.google.dev/tutorials/setup)). Elle sera sauvegardée de manière sécurisée.
+L’application demandera votre clé API Google Gemini lors du premier lancement. Elle sera sauvegardée de manière sécurisée.
 
 ---
 
 ### 3. Pour les développeurs (Depuis le code source)
 
-#### Prérequis
-- Python 3.9+
-- Git
-- FFmpeg
-
-#### Installation et lancement
+#### Installation rapide
 ```sh
-# 1. Clonez le dépôt
+# Clone du dépôt
 git clone https://gitea.gandulf78.synology.me/laurent/Podcast_creator.git
 cd Podcast_creator
 
-# 2. Créez un environnement virtuel
+# Environnement virtuel
 python -m venv .venv
 source .venv/bin/activate  # macOS/Linux
 # .\.venv\Scripts\activate  # Windows
 
-# 3. Installez les dépendances
+# Dépendances
 pip install -r requirements.txt
 
-# 4. Lancez l'application
+# Lancement
 python gui.py
 ```
 
 #### Configuration
-Créez un fichier `.env` à la racine :
+Créer un fichier `.env` à la racine :
 ```
 GEMINI_API_KEY="VOTRE_CLE_API_ICI"
 ```
@@ -101,6 +101,17 @@ pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
 
 ---
 
+## 🚀 Workflow de publication
+
+Voir le fichier [`DEVELOPERS.md`](DEVELOPERS.md) pour la procédure complète :  
+- Tests
+- Tag Git (`git tag -a vX.Y.Z`)
+- Build avec PyInstaller
+- Création du ZIP
+- Publication dans **Releases**
+
+---
+
 ## 💡 Exemple d’utilisation
 
 Script texte :
@@ -108,8 +119,7 @@ Script texte :
 Locuteur_1: Bonjour et bienvenue dans notre podcast !
 Locuteur_2: Aujourd'hui, nous allons parler d'intelligence artificielle.
 ```
-Locuteur_1 et Locuteur_2 seront reconnus comme deux voix distinctes, à configurer dans Options / Paramètres de voix...
-Résultat : un fichier MP3 ou WAV avec deux voix distinctes.
+Résultat : un fichier MP3 ou WAV avec deux voix distinctes, configurées dans **Options → Paramètres de voix**.
 
 ---
 
@@ -117,13 +127,13 @@ Résultat : un fichier MP3 ou WAV avec deux voix distinctes.
 
 - macOS (testé)
 - Windows (prévoir FFplay dans le PATH pour lecture intégrée)
-- Linux (supporté, dépendances identiques à macOS)
+- Linux (mêmes dépendances que macOS)
 
 ---
 
 ## 📜 Licence
 
-Ce projet est distribué sous licence MIT. Voir le fichier `LICENSE` pour plus d’informations.
+Projet distribué sous licence MIT — voir le fichier `LICENSE`.
 
 ---
 
@@ -131,17 +141,19 @@ Ce projet est distribué sous licence MIT. Voir le fichier `LICENSE` pour plus d
 
 1. Forkez le dépôt
 2. Créez une branche : `git checkout -b feature/ma-fonctionnalite`
-3. Committez vos changements : `git commit -m "Ajout de ma fonctionnalité"`
-4. Poussez la branche : `git push origin feature/ma-fonctionnalite`
+3. Commit : `git commit -m "Ajout de ma fonctionnalité"`
+4. Push : `git push origin feature/ma-fonctionnalite`
 5. Ouvrez une Pull Request
 
 ---
 
 ## 🐞 Bugs connus / Limitations
-- Nécessite une connexion Internet pour générer l'audio.
-- Pas encore de support pour la synthèse hors ligne.
+- Connexion Internet obligatoire
+- Pas encore de support pour la synthèse hors ligne
 
 ---
 
-**Auteur** : Laurent FRANCOISE
-**Contact** : laurent.francoise@gmail.com
+## 👤 Auteur
+
+**Laurent FRANCOISE**  
+📧 laurent.francoise@gmail.com
