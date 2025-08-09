@@ -28,7 +28,7 @@ Au premier lancement, macOS affichera un message de sécurité car l'application
 
 Pour autoriser l'application, choisissez l'une des deux méthodes suivantes (selon version de macOS) :
 
-**Méthode 1 : Clic droit **
+**Méthode 1 : Clic droit**
 1.  Faites un **clic droit** (ou Ctrl-clic) sur l'icône de `Podcast Creator`.
 2.  Sélectionnez **"Ouvrir"** dans le menu.
 3.  Une nouvelle fenêtre de dialogue s'ouvrira avec un bouton **"Ouvrir"**. Cliquez dessus.
