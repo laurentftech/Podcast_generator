@@ -21,7 +21,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='Podcast Generator',
+    name='Podcast Creator',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -41,11 +41,11 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='Podcast Generator',
+    name='Podcast Creator',
 )
 app = BUNDLE(
     coll,
-    name='Podcast Generator.app',
+    name='Podcast Creator.app',
     icon='podcast.icns',
     bundle_identifier=None,
 )
