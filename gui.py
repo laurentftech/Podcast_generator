@@ -6,6 +6,7 @@ import subprocess
 import sys
 import queue
 import json
+import webbrowser
 from datetime import datetime
 
 AVAILABLE_VOICES = {
@@ -41,6 +42,8 @@ AVAILABLE_VOICES = {
     "Sulafat": "Warm"
 }
 
+__version__ = "1.0.0"
+
 def get_asset_path(filename: str) -> str | None:
     """
     Gets the absolute path to an asset, handling running from source and from
@@ -61,7 +64,7 @@ class PodcastGeneratorApp:
 
     def __init__(self, root: tk.Tk, generate_func, logger, api_key: str, default_script: str = ""):
         self.root = root
-        self.root.title("Créateur de Podcast")
+        self.root.title(f"Créateur de Podcast v{__version__}")
         self.root.geometry("960x700")
 
         # --- Application Icon ---
@@ -384,8 +387,6 @@ class PodcastGeneratorApp:
         """Callback pour réactiver le menu lorsque la fenêtre des paramètres est fermée."""
         self.menubar.entryconfig("Options", state="normal")
 
-import webbrowser
-
 class AboutWindow(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
@@ -397,7 +398,7 @@ class AboutWindow(tk.Toplevel):
         main_frame = tk.Frame(self, padx=20, pady=15)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        tk.Label(main_frame, text="Créateur de Podcast v1.0", font=('Helvetica', 12, 'bold')).pack(pady=(0, 5))
+        tk.Label(main_frame, text=f"Créateur de Podcast v{__version__}", font=('Helvetica', 12, 'bold')).pack(pady=(0, 5))
         tk.Label(main_frame, text=f"Copyright (c) {datetime.now().year} Laurent FRANCOISE").pack()
         tk.Label(main_frame, text="Licence : MIT License").pack(pady=(0, 15))
 
@@ -423,6 +424,8 @@ class AboutWindow(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.destroy)
 
 class SettingsWindow(tk.Toplevel):
+    VOICE_DISPLAY_LIST = [f"{name} - {desc}" for name, desc in AVAILABLE_VOICES.items()]
+
     def __init__(self, parent, current_settings, save_callback, close_callback, default_settings):
         super().__init__(parent)
         self.title("Paramètres des voix")
@@ -434,7 +437,6 @@ class SettingsWindow(tk.Toplevel):
         self.save_callback = save_callback
         self.close_callback = close_callback
         self.protocol("WM_DELETE_WINDOW", self.cancel_and_close) # Gère la fermeture avec la croix
-        self.voice_display_list = [f"{name} - {desc}" for name, desc in AVAILABLE_VOICES.items()]
         self.entries = []
 
         main_frame = tk.Frame(self, padx=10, pady=10)
@@ -470,7 +472,7 @@ class SettingsWindow(tk.Toplevel):
         speaker_entry = tk.Entry(row_container)
         speaker_entry.insert(0, speaker_text)
 
-        voice_combo = ttk.Combobox(row_container, values=self.voice_display_list)
+        voice_combo = ttk.Combobox(row_container, values=self.VOICE_DISPLAY_LIST)
         # Retrouve la chaîne complète à afficher, ou utilise la valeur brute si c'est une voix personnalisée
         initial_display_value = voice_text
         if voice_text in AVAILABLE_VOICES:

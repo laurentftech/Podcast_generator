@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import errors, types
 
+import keyring
 # On importe les outils pour la boîte de dialogue
 import tkinter as tk
 from tkinter import simpledialog, messagebox
@@ -49,78 +50,77 @@ def get_app_data_dir() -> str:
     else: # Linux et autres
         return os.path.join(os.path.expanduser('~'), '.config', app_name)
 
-def find_ffmpeg_path() -> str | None:
+def _find_command_path(command: str) -> str | None:
     """
-    Trouve le chemin de l'exécutable FFmpeg.
-    Cherche d'abord dans le PATH, puis dans les emplacements Homebrew courants.
+    Finds the path to an executable.
+    Searches the system PATH first, then common Homebrew locations.
     """
     # 1. Chercher dans le PATH système (ce qui fonctionnera si le PATH est bien configuré)
-    path = shutil.which("ffmpeg")
+    path = shutil.which(command)
     if path:
         return path
     # 2. Si non trouvé, chercher dans les emplacements Homebrew connus
-    for brew_path in ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg"]:
+    for brew_path in [f"/opt/homebrew/bin/{command}", f"/usr/local/bin/{command}"]:
         if os.path.exists(brew_path):
             return brew_path
     return None
 
+def find_ffmpeg_path() -> str | None:
+    """Trouve le chemin de l'exécutable FFmpeg."""
+    return _find_command_path("ffmpeg")
+
 def find_ffplay_path() -> str | None:
-    """
-    Trouve le chemin de l'exécutable ffplay.
-    Cherche d'abord dans le PATH, puis dans les emplacements Homebrew courants.
-    """
-    path = shutil.which("ffplay")
-    if path:
-        return path
-    for brew_path in ["/opt/homebrew/bin/ffplay", "/usr/local/bin/ffplay"]:
-        if os.path.exists(brew_path):
-            return brew_path
-    return None
+    """Trouve le chemin de l'exécutable ffplay."""
+    return _find_command_path("ffplay")
 
 def get_api_key(status_callback, logger: logging.Logger, parent_window=None) -> str | None:
     """
-    Trouve la clé API. Si elle n'est pas trouvée, demande à l'utilisateur et la sauvegarde.
+    Trouve la clé API de manière sécurisée.
+    1. (Développeur) Cherche un fichier .env local.
+    2. (Utilisateur) Cherche la clé dans le trousseau système.
+    3. (Migration) Cherche un ancien fichier .env non sécurisé et le migre vers le trousseau.
+    4. (Premier lancement) Demande la clé à l'utilisateur et la sauvegarde dans le trousseau.
     """
+    SERVICE_NAME = "PodcastCreator"
+    ACCOUNT_NAME = "gemini_api_key"
     logger.info("="*20)
     logger.info("Début de la recherche de la clé API...")
-    # 1. Définir les chemins de configuration et chercher une clé existante
+
+    # --- 1. Pour les développeurs : priorité au fichier .env local ---
+    if not getattr(sys, 'frozen', False):
+        dev_dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+        if os.path.exists(dev_dotenv_path):
+            logger.info(f"Fichier .env de développement trouvé. Utilisation de cette clé.")
+            load_dotenv(dotenv_path=dev_dotenv_path)
+            dev_key = os.environ.get("GEMINI_API_KEY")
+            if dev_key:
+                return dev_key
+
+    # --- 2. Pour les utilisateurs : on cherche dans le trousseau sécurisé ---
+    api_key = keyring.get_password(SERVICE_NAME, ACCOUNT_NAME)
+    if api_key:
+        logger.info("Clé API trouvée dans le trousseau système sécurisé.")
+        return api_key
+
+    # --- 3. Migration depuis un ancien fichier .env non sécurisé ---
     app_data_dir = get_app_data_dir()
-    primary_dotenv_path = os.path.join(app_data_dir, '.env')
-    api_key = None
+    old_dotenv_path = os.path.join(app_data_dir, '.env')
+    if os.path.exists(old_dotenv_path):
+        logger.info(f"Ancien fichier .env trouvé à {old_dotenv_path}. Tentative de migration.")
+        load_dotenv(dotenv_path=old_dotenv_path)
+        old_key = os.environ.get("GEMINI_API_KEY")
+        if old_key:
+            logger.info("Clé trouvée dans l'ancien .env. Sauvegarde dans le trousseau et suppression de l'ancien fichier.")
+            keyring.set_password(SERVICE_NAME, ACCOUNT_NAME, old_key)
+            try:
+                os.remove(old_dotenv_path)
+                logger.info(f"Ancien fichier .env non sécurisé supprimé.")
+            except OSError as e:
+                logger.error(f"Impossible de supprimer l'ancien fichier .env : {e}")
+            return old_key
 
-    # Chemin portable (à côté de l'exécutable)
-    if getattr(sys, 'frozen', False):
-        portable_path_base = os.path.dirname(sys.executable)
-        if sys.platform == "darwin": # Remonter depuis le .app
-            portable_path_base = os.path.abspath(os.path.join(portable_path_base, "..", "..", ".."))
-    else:
-        portable_path_base = os.path.dirname(os.path.abspath(__file__))
-    portable_dotenv_path = os.path.join(portable_path_base, '.env')
-    logger.info(f"Chemin .env portable vérifié : {portable_dotenv_path}")
-    logger.info(f"Chemin .env système vérifié : {primary_dotenv_path}")
-
-    # 2. Chercher un .env existant et charger la clé (priorité au portable)
-    dotenv_path_to_load = None
-    if os.path.exists(portable_dotenv_path):
-        logger.info(f"Fichier .env portable trouvé.")
-        dotenv_path_to_load = portable_dotenv_path
-    elif os.path.exists(primary_dotenv_path):
-        logger.info(f"Fichier .env système trouvé.")
-        dotenv_path_to_load = primary_dotenv_path
-    else:
-        logger.info("Aucun fichier .env trouvé.")
-
-    if dotenv_path_to_load:
-        logger.info(f"Chargement des variables depuis : {dotenv_path_to_load}")
-        load_dotenv(dotenv_path=dotenv_path_to_load)
-        api_key = os.environ.get("GEMINI_API_KEY")
-        if api_key:
-            logger.info("Clé API trouvée dans les variables d'environnement.")
-        else:
-            logger.info("Fichier .env chargé, mais la variable GEMINI_API_KEY est absente ou vide.")
-
-    # 3. Si la clé n'est toujours pas trouvée (fichier .env absent ou clé vide/blanche), demander à l'utilisateur
-    if not api_key or not api_key.strip():
+    # --- 4. Si la clé n'est toujours pas trouvée, on la demande à l'utilisateur ---
+    if not api_key:
         logger.info("Clé API non trouvée, ouverture de la boîte de dialogue pour l'utilisateur.")
         status_callback("Clé API non trouvée ou invalide. Ouverture de la boîte de dialogue...")
 
@@ -154,17 +154,14 @@ def get_api_key(status_callback, logger: logging.Logger, parent_window=None) -> 
         if api_key_input:
             logger.info("L'utilisateur a fourni une clé API.")
             api_key = api_key_input
-            os.makedirs(app_data_dir, exist_ok=True)
-            with open(primary_dotenv_path, 'w') as f:
-                f.write(f'GEMINI_API_KEY="{api_key_input}"')
-            logger.info(f"Nouvelle clé sauvegardée dans : {primary_dotenv_path}")
-            status_callback("Clé API sauvegardée pour les futurs lancements.")
+            keyring.set_password(SERVICE_NAME, ACCOUNT_NAME, api_key_input)
+            logger.info(f"Nouvelle clé sauvegardée dans le trousseau système sécurisé.")
+            status_callback("Clé API sauvegardée de manière sécurisée pour les futurs lancements.")
         else:
             logger.info("L'utilisateur a annulé la saisie de la clé API.")
             status_callback("Aucune clé API fournie. Annulation.")
             return None
 
-    # 4. Retourner la clé
     logger.info("Recherche de la clé API terminée.")
     return api_key
 

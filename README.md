@@ -12,7 +12,7 @@ Ce projet est une application de bureau simple mais puissante, développée en P
 - Paramètres de voix personnalisables et sauvegardés.
 - Lecture et arrêt de l'audio généré directement depuis l'application (via FFmpeg/ffplay).
 - Accès direct au fichier généré via le gestionnaire de fichiers du système.
-- Gestion intelligente de la clé API (demandée une seule fois et sauvegardée de manière sécurisée).
+- Gestion de la clé API : demandée une seule fois et **sauvegardée de manière sécurisée** dans le trousseau natif du système (Keychain sur macOS, etc.).
 
 ## Installation
 
