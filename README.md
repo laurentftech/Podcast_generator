@@ -7,16 +7,26 @@ Ce projet est une application de bureau simple mais puissante, développée en P
 ## Fonctionnalités
 
 - Interface graphique simple avec Tkinter.
-- Génération audio multi-locuteurs.
+- Génération audio multi-locuteurs via l'API Google Gemini.
+- Exportation audio au format **MP3** (par défaut) ou **WAV**.
 - Paramètres de voix personnalisables et sauvegardés.
 - Lecture et arrêt de l'audio généré directement depuis l'application.
 - Accès direct au fichier généré via le gestionnaire de fichiers du système.
 - Gestion intelligente de la clé API (demandée une seule fois et sauvegardée de manière sécurisée).
 
-## Installation et Utilisation
+## Installation
 
-### Pour les utilisateurs (Recommandé)
+### 1. Dépendance Externe : FFmpeg (Obligatoire)
 
+Pour la conversion audio, cette application nécessite que **FFmpeg** soit installé sur votre système.
+
+Sur macOS, le moyen le plus simple de l'installer est via [Homebrew](https://brew.sh/index_fr) :
+```sh
+brew install ffmpeg
+```
+Sur Windows ou Linux, téléchargez-le depuis le [site officiel de FFmpeg](https://ffmpeg.org/download.html) et assurez-vous qu'il est accessible dans le PATH de votre système.
+
+### 2. Pour les utilisateurs (Application)
 1.  Allez dans l'onglet **"Releases"** (ou "Tags") de ce dépôt.
 2.  Téléchargez la dernière version pour votre système d'exploitation (par exemple, `Podcast-Creator-v1.0-macOS.zip`).
 3.  Décompressez le fichier `.zip`.
@@ -24,11 +34,9 @@ Ce projet est une application de bureau simple mais puissante, développée en P
 
 #### Note importante pour les utilisateurs macOS
 
-Au premier lancement, macOS affichera un message de sécurité car l'application n'est pas distribuée via l'App Store. **Ceci est un comportement normal.**
+Au premier lancement, macOS affichera un message de sécurité car l'application n'est pas distribuée via l'App Store. **Ceci est un comportement normal.** Pour autoriser l'application, choisissez l'une des deux méthodes suivantes :
 
-Pour autoriser l'application, choisissez l'une des deux méthodes suivantes (selon version de macOS) :
-
-**Méthode 1 : Clic droit**
+**Méthode 1 : Clic droit (recommandé)**
 1.  Faites un **clic droit** (ou Ctrl-clic) sur l'icône de `Podcast Creator`.
 2.  Sélectionnez **"Ouvrir"** dans le menu.
 3.  Une nouvelle fenêtre de dialogue s'ouvrira avec un bouton **"Ouvrir"**. Cliquez dessus.
@@ -44,16 +52,17 @@ Vous n'aurez à effectuer cette manipulation qu'une seule fois.
 
 #### Premier Lancement : Clé API
 
-Au premier démarrage, une fenêtre vous demandera de fournir votre clé API Google Gemini. Collez-la pour pouvoir utiliser l'application. Cette clé sera sauvegardée pour les lancements futurs.
+Au premier démarrage, une fenêtre vous demandera de fournir votre **clé API Google Gemini**. Collez-la pour pouvoir utiliser l'application. Cette clé sera sauvegardée pour les lancements futurs.
 
-### Pour les développeurs
+### 3. Pour les développeurs (Depuis le code source)
 
 Cette section vous guide pour lancer l'application depuis le code source.
 
-##### 1. Prérequis
+#### Prérequis
 
-- Python 3.9+
+- Python 3.9+ (versions stables comme 3.11 ou 3.12 recommandées)
 - Git
+- FFmpeg (voir la section 1)
 
 ##### 2. Installation et Lancement
 
@@ -67,7 +76,7 @@ python -m venv .venv
 source .venv/bin/activate  # Sur macOS/Linux
 # .\.venv\Scripts\activate  # Sur Windows
 
-# 3. Installez les dépendances
+# 3. Installez les dépendances Python
 pip install -r requirements.txt
 
 # 4. Lancez l'application

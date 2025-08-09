@@ -250,18 +250,18 @@ class PodcastGeneratorApp:
         # Demander à l'utilisateur où enregistrer le fichier de sortie
         output_filepath = filedialog.asksaveasfilename(
             title="Enregistrer le podcast sous...",
-            defaultextension=".wav",
-            filetypes=(("Fichiers Audio WAV", "*.wav"), ("Tous les fichiers", "*.*")),
+            defaultextension=".mp3",
+            filetypes=(
+                ("Fichiers Audio MP3", "*.mp3"),
+                ("Fichiers Audio WAV", "*.wav"),
+                ("Tous les fichiers", "*.*")
+            ),
             initialdir= os.path.expanduser("~/Downloads"),
         )
 
         if not output_filepath:
             self.log_status("Génération annulée par l'utilisateur.")
             return
-
-        # Extraire le répertoire et le nom de base du fichier
-        output_dir = os.path.dirname(output_filepath)
-        output_basename = os.path.splitext(os.path.basename(output_filepath))[0]
 
         # Désactiver les boutons pendant la génération
         self.generate_button.config(state='disabled')
@@ -276,21 +276,20 @@ class PodcastGeneratorApp:
         self.progress_bar.pack(fill=tk.X, pady=(10, 0), before=self.button_frame)
         self.progress_bar.start()
 
-        thread = threading.Thread(target=self.run_generation, args=(script_content, output_basename, output_dir, self.speaker_settings, self.api_key))
+        thread = threading.Thread(target=self.run_generation, args=(script_content, output_filepath, self.speaker_settings, self.api_key))
         thread.daemon = True
         thread.start()
 
-    def run_generation(self, script_content, output_basename, output_dir, speaker_mapping, api_key):
+    def run_generation(self, script_content, output_filepath, speaker_mapping, api_key):
         """La fonction exécutée par le thread."""
         generated_filepath = None
         try:
             self.logger.info("Démarrage du thread de génération.")
-            self.log_status(f"Lancement de la génération vers '{os.path.basename(output_dir)}'...")
+            self.log_status(f"Lancement de la génération vers '{os.path.basename(output_filepath)}'...")
             generated_filepath = self.generate_func(
                 script_text=script_content,
                 speaker_mapping=speaker_mapping,
-                output_basename=output_basename,
-                output_dir=output_dir,
+                output_filepath=output_filepath,
                 status_callback=self.log_status,
                 api_key=api_key
             )
