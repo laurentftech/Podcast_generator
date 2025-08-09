@@ -81,5 +81,5 @@ python gui.py
 sips -s format icns podcast.png --out podcast.icns # Convertir l'image en format .icns
 # Installez PyInstaller si ce n'est pas déjà fait
 pip install pyinstaller
-pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns --add-data="settings.json:." --add-data="README-UTILISATEUR.txt:." gui.py
+pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
 ```
