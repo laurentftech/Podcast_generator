@@ -1,17 +1,8 @@
 # Créateur de Podcast
 
-Ce projet est une application de bureau simple mais puissante, développée en Python avec Tkinter, qui permet de créer un podcast audio multi-locuteurs à partir d'un script texte, en utilisant l'API de synthèse vocale de [Google Gemini](https://ai.google.dev/).
+Une application de bureau simple mais puissante, développée en Python avec Tkinter, qui permet de créer un podcast audio multi-locuteurs à partir d'un script texte en utilisant l'API de synthèse vocale de [Google Gemini](https://ai.google.dev/).
 
 ![Capture d'écran de l'application](podcast_creator_screenshot.png)
-
----
-
-## 📋 Prérequis
-
-Avant d'utiliser l'application, assurez-vous d'avoir :
-- **FFmpeg** installé sur votre système ([instructions ci-dessous](#1-dépendance-externe--ffmpeg-requis)).
-- Une **clé API Google Gemini** valide ([obtenir une clé](https://ai.google.dev/tutorials/setup)).
-- **Python 3.9+** si vous lancez l'application depuis le code source.
 
 ---
 
@@ -23,17 +14,18 @@ Avant d'utiliser l'application, assurez-vous d'avoir :
 - Paramètres de voix personnalisables et sauvegardés.
 - Lecture et arrêt de l'audio généré directement depuis l'application (via FFmpeg/ffplay).
 - Accès direct au fichier généré via le gestionnaire de fichiers du système.
-- Gestion sécurisée de la clé API dans le trousseau natif du système (Keychain macOS, etc.).
+- Gestion de la clé API : demandée une seule fois et **sauvegardée de manière sécurisée** dans le trousseau natif du système (Keychain sur macOS, etc.).
 
 ---
 
-## 📦 Installation
+## 📦 Installation (pour les utilisateurs)
 
 ### 1. Dépendance Externe : FFmpeg (Requis)
 
 Pour la conversion et la lecture audio, cette application nécessite que **FFmpeg** soit installé sur votre système.
 
 Sur macOS, le moyen le plus simple de l'installer est via [Homebrew](https://brew.sh/index_fr) :
+
 ```sh
 brew install ffmpeg
 ```
