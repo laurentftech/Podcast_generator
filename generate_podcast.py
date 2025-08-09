@@ -31,7 +31,7 @@ def save_binary_file(file_name: str, data: bytes, status_callback=print):
 
 def get_app_data_dir() -> str:
     """Retourne le chemin du dossier de configuration standard pour l'application."""
-    app_name = "PodcastGenerator"
+    app_name = "PodcastCreator"
     if sys.platform == "darwin": # macOS
         return os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', app_name)
     elif sys.platform == "win32": # Windows
