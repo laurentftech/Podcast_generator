@@ -392,7 +392,9 @@ class SettingsWindow(tk.Toplevel):
         for widget in self.speaker_frame.winfo_children():
             widget.destroy()
         self.entries.clear()
-        # Remplit avec les valeurs par défaut
+        # Remplace les paramètres courants par une copie des défauts
+        self.current_settings = self.default_settings.copy()
+        # Remplit l'interface avec les nouvelles valeurs (qui sont maintenant les défauts)
         self.populate_fields()
 
     def save_and_close(self):
