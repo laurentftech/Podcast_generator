@@ -1,5 +1,6 @@
 # Fichiers de configuration spécifiques à l'utilisateur
 .env
+*.icns
 
 # Environnement virtuel Python
 .venv/
@@ -15,9 +16,6 @@ __pycache__/
 build/
 dist/
 *.egg-info/
-
-# Fichiers générés par PyInstaller
-*.spec
 
 # Fichiers système (macOS)
 .DS_Store

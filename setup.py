@@ -12,7 +12,7 @@ setup(
     description='Une application de bureau pour générer des podcasts audio à partir de scripts en utilisant l\'API Gemini.',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url='https://github.com/votre_nom_utilisateur/podcast_creator', # Mettez l'URL de votre repo GitHub ici
+    url='https://gitea.gandulf78.synology.me/laurent/Podcast_creator',
     license='MIT',
     py_modules=['gui', 'generate_podcast'], # Spécifie les modules principaux
     install_requires=[

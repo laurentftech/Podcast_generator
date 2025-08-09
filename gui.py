@@ -45,6 +45,21 @@ AVAILABLE_VOICES = {
     "Sulafat": "Warm"
 }
 
+def get_asset_path(filename: str) -> str | None:
+    """
+    Gets the absolute path to an asset, handling running from source and from
+    a PyInstaller bundle.
+    """
+    if getattr(sys, 'frozen', False):
+        # The application is frozen (packaged with PyInstaller)
+        bundle_dir = sys._MEIPASS
+    else:
+        # The application is running in a normal Python environment
+        bundle_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    path = os.path.join(bundle_dir, filename)
+    return path if os.path.exists(path) else None
+
 class PodcastGeneratorApp:
     DEFAULT_SPEAKER_SETTINGS = {"John": "Schedar", "Samantha": "Zephyr"}
 
@@ -52,6 +67,16 @@ class PodcastGeneratorApp:
         self.root = root
         self.root.title("Générateur de Podcast")
         self.root.geometry("960x700")
+
+        # --- Application Icon ---
+        icon_path = get_asset_path("podcast.png")
+        if icon_path:
+            try:
+                img = tk.PhotoImage(file=icon_path)
+                self.root.tk.call('wm', 'iconphoto', self.root._w, img)
+            except tk.TclError:
+                # In case of format error, continue without icon
+                pass
 
         # --- Définition des chemins de configuration ---
         from generate_podcast import get_app_data_dir # Importation locale
@@ -164,7 +189,8 @@ class PodcastGeneratorApp:
             "Crédits :\n"
             " - Google Gemini API pour la génération audio\n"
             " - Tkinter pour l'interface graphique\n"
-            " - simpleaudio pour la lecture audio"
+            " - simpleaudio pour la lecture audio\n"
+            " - Icône par Smashicons (www.flaticon.com)"
         )
         messagebox.showinfo(about_title, about_message, parent=self.root)
 
@@ -190,8 +216,10 @@ class PodcastGeneratorApp:
         self.root.after(100, self.poll_log_queue)  # Vérifie la queue toutes les 100 ms
 
     def _update_log(self, message):
+        self.log_text.config(state='normal')
         self.log_text.insert(tk.END, message + "\n")
         self.log_text.see(tk.END)
+        self.log_text.config(state='disabled')
 
     def clear_log(self):
         """Vide la zone de texte des logs."""
@@ -247,8 +275,6 @@ class PodcastGeneratorApp:
 
         # Afficher et démarrer la barre de progression
         self.clear_log()
-        # On active la zone de log pour pouvoir y écrire pendant la génération
-        self.log_text.config(state='normal')
 
         self.progress_bar.pack(fill=tk.X, pady=(10, 0), before=self.button_frame)
         self.progress_bar.start()

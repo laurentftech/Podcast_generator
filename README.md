@@ -13,7 +13,7 @@ Ce projet est une application de bureau simple mais puissante, développée en P
 - Accès direct au fichier généré via le gestionnaire de fichiers du système.
 - Gestion intelligente de la clé API (demandée une seule fois et sauvegardée de manière sécurisée).
 
-## Installation
+## Installation et Utilisation
 
 ### Pour les utilisateurs (Recommandé)
 
@@ -23,7 +23,7 @@ Ce projet est une application de bureau simple mais puissante, développée en P
 4.  Double-cliquez sur l'application `Podcast Generator`.
 5.  Au premier lancement, une fenêtre vous demandera de fournir votre clé API Google Gemini. Collez-la et c'est tout !
 
-### Pour les développeurs
+### Pour les développeurs (depuis le code source)
 
 #### 1. Prérequis
 
@@ -31,6 +31,7 @@ Ce projet est une application de bureau simple mais puissante, développée en P
 - Git
 
 #### 2. Installation
+
 ```sh
 # Clonez le dépôt (remplacez l'URL par celle de votre dépôt)
 git clone https://gitea.gandulf78.synology.me/laurent/Podcast_creator.git
@@ -71,4 +72,14 @@ GEMINI_API_KEY="VOTRE_CLE_API_ICI"
 
 ```sh
 python gui.py
+```
+
+### 4. Création de l'exécutable
+
+```sh
+
+sips -s format icns podcast.png --out podcast.icns # Convertir l'image en format .icns
+# Installez PyInstaller si ce n'est pas déjà fait
+pip install pyinstaller
+pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns --add-data="settings.json:." --add-data="README-UTILISATEUR.txt:." gui.py
 ```
