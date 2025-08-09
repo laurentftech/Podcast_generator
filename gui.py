@@ -252,9 +252,9 @@ class PodcastGeneratorApp:
             title="Enregistrer le podcast sous...",
             defaultextension=".mp3",
             filetypes=(
-                ("Fichiers Audio MP3", "*.mp3"),
-                ("Fichiers Audio WAV", "*.wav"),
-                ("Tous les fichiers", "*.*")
+                ("MP3", "*.mp3"),
+                ("WAV", "*.wav"),
+                ("Tous", "*.*")
             ),
             initialdir= os.path.expanduser("~/Downloads"),
         )
