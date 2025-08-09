@@ -13,39 +13,64 @@ Ce projet est une application de bureau simple mais puissante, développée en P
 - Accès direct au fichier généré via le gestionnaire de fichiers du système.
 - Gestion intelligente de la clé API (demandée une seule fois et sauvegardée de manière sécurisée).
 
-## Installation
+## Installation et Utilisation
 
 ### Pour les utilisateurs (Recommandé)
 
 1.  Allez dans l'onglet **"Releases"** (ou "Tags") de ce dépôt.
-2.  Téléchargez la dernière version pour votre système d'exploitation (par exemple, `Podcast-Generator-v1.0-macOS.zip`).
+2.  Téléchargez la dernière version pour votre système d'exploitation (par exemple, `Podcast-Creator-v1.0-macOS.zip`).
 3.  Décompressez le fichier `.zip`.
-4.  Double-cliquez sur l'application `Podcast Creator`.
-5.  Au premier lancement, une fenêtre vous demandera de fournir votre clé API Google Gemini. Collez-la et c'est tout !
+4.  Déplacez l'application `Podcast Creator.app` dans votre dossier **Applications**.
+
+#### Note importante pour les utilisateurs macOS
+
+Au premier lancement, macOS affichera un message de sécurité car l'application n'est pas distribuée via l'App Store. **Ceci est un comportement normal.**
+
+Pour autoriser l'application, choisissez l'une des deux méthodes suivantes (selon version de macOS) :
+
+**Méthode 1 : Clic droit **
+1.  Faites un **clic droit** (ou Ctrl-clic) sur l'icône de `Podcast Creator`.
+2.  Sélectionnez **"Ouvrir"** dans le menu.
+3.  Une nouvelle fenêtre de dialogue s'ouvrira avec un bouton **"Ouvrir"**. Cliquez dessus.
+
+**Méthode 2 : Réglages Système**
+1.  Essayez d'ouvrir l'application en double-cliquant. Un message d'erreur apparaîtra. Cliquez sur **OK**.
+2.  Ouvrez les **Réglages Système** de votre Mac.
+3.  Allez dans la section **Confidentialité et sécurité**.
+4.  Faites défiler vers le bas jusqu'à la section "Sécurité". Vous y verrez un message indiquant que l'ouverture de "Podcast Creator" a été bloquée.
+5.  Cliquez sur le bouton **"Ouvrir quand même"**.
+
+Vous n'aurez à effectuer cette manipulation qu'une seule fois.
+
+#### Premier Lancement : Clé API
+
+Au premier démarrage, une fenêtre vous demandera de fournir votre clé API Google Gemini. Collez-la pour pouvoir utiliser l'application. Cette clé sera sauvegardée pour les lancements futurs.
 
 ### Pour les développeurs
 
-#### 1. Prérequis
+Cette section vous guide pour lancer l'application depuis le code source.
+
+##### 1. Prérequis
 
 - Python 3.9+
 - Git
 
-#### 2. Installation et Lancement
+##### 2. Installation et Lancement
 
 ```sh
-# Clonez le dépôt (remplacez l'URL par celle de votre dépôt)
+# 1. Clonez le dépôt
 git clone https://gitea.gandulf78.synology.me/laurent/Podcast_creator.git
 cd Podcast_creator
 
-# Créez et activez un environnement virtuel
+# 2. Créez et activez un environnement virtuel
 python -m venv .venv
 source .venv/bin/activate  # Sur macOS/Linux
 # .\.venv\Scripts\activate  # Sur Windows
 
-# Installez les dépendances
+# 3. Installez les dépendances
 pip install -r requirements.txt
 
-# Lancez l'application
+# 4. Lancez l'application
 python gui.py
 ```
 
