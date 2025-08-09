@@ -38,7 +38,7 @@ Les tests se font manuellement en lançant l'application et en vérifiant le com
 
 ### 1. Préparer la version
     Mettre à jour le changelog (CHANGELOG.md)
-    Mettre à jour le numéro de version dans le code source (__version__ si défini)
+    Vérifier que toutes les fonctionnalités sont testées et fonctionnelles
     
 ### 2. Taguer la version
 

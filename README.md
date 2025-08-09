@@ -6,26 +6,15 @@ Une application de bureau simple mais puissante, développée en Python avec Tki
 
 ---
 
-## 📋 Prérequis
-
-Avant d'utiliser l'application, assurez-vous d'avoir :
-
-- **FFmpeg** installé ([instructions](#1-dépendance-externe--ffmpeg-requis)).
-- Une **clé API Google Gemini** valide ([obtenir une clé](https://ai.google.dev/tutorials/setup)).
-- **Python 3.9+** (si utilisation depuis le code source).
-- Une **connexion Internet** (l'audio est généré via l'API en ligne).
-
----
-
 ## ✨ Fonctionnalités
 
 - **Génération Audio** : Créez des podcasts multi-locuteurs en utilisant les voix de haute qualité de l'API Google Gemini.
 - **Interface Simple** : Une interface graphique intuitive construite avec Tkinter.
 - **Formats Flexibles** : Exportez vos créations au format **MP3** (par défaut) ou **WAV**.
-- **Personnalisation** : Configurez et sauvegardez les voix pour chaque locuteur.
+- **Personnalisation** : Configurez et sauvegardez les voix pour chaque locuteur de vos scripts.
 - **Lecture Intégrée** : Écoutez et arrêtez la lecture de l'audio directement depuis l'application (nécessite FFmpeg).
-- **Gestion Sécurisée** : Votre clé API est demandée une seule fois et stockée de manière sécurisée (`keyring`).
-- **Version basée sur les tags Git** : La version affichée dans l'application correspond au dernier tag Git.
+- **Gestion Sécurisée** : Votre clé API est demandée une seule fois et stockée de manière sécurisée dans le trousseau natif de votre système (`keyring`).
+- **Versioning Automatique** : La version de l'application est automatiquement synchronisée avec les tags Git du projet.
 
 ---
 
@@ -33,9 +22,9 @@ Avant d'utiliser l'application, assurez-vous d'avoir :
 
 ### 1. Dépendance Externe : FFmpeg (Requis)
 
-Pour la conversion et la lecture audio, installez **FFmpeg** :
+Pour la conversion et la lecture audio, cette application nécessite que **FFmpeg** soit installé sur votre système.
 
-macOS (via Homebrew) :
+Sur macOS, le moyen le plus simple de l'installer est via Homebrew :
 ```sh
 brew install ffmpeg
 ```
