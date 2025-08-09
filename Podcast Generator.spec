@@ -5,13 +5,14 @@ a = Analysis(
     ['gui.py'],
     pathex=[],
     binaries=[],
-    datas=[('podcast.png', '.')],  # Inclut le .png pour l'icône de la fenêtre
+    datas=[],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
     noarchive=False,
+    optimize=0,
 )
 pyz = PYZ(a.pure)
 
@@ -31,6 +32,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['podcast.icns'],
 )
 coll = COLLECT(
     exe,
@@ -44,6 +46,6 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='Podcast Generator.app',
-    icon='podcast.icns',  # L'icône de l'application .app sur macOS
+    icon='podcast.icns',
     bundle_identifier=None,
 )
