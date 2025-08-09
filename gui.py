@@ -65,7 +65,7 @@ class PodcastGeneratorApp:
 
     def __init__(self, root: tk.Tk, generate_func, default_script: str = ""):
         self.root = root
-        self.root.title("Générateur de Podcast")
+        self.root.title("Créateur de Podcast")
         self.root.geometry("960x700")
 
         # --- Application Icon ---
@@ -181,9 +181,9 @@ class PodcastGeneratorApp:
 
     def show_about_window(self):
         """Affiche la fenêtre 'À propos'."""
-        about_title = "À propos de Générateur de Podcast"
+        about_title = "À propos de Créateur de Podcast"
         about_message = (
-            "Générateur de Podcast v1.0\n\n"
+            "Créateur de Podcast v1.0\n\n"
             "Copyright (c) 2025 Laurent FRANCOISE\n\n"
             "Licence : MIT License\n\n"
             "Crédits :\n"

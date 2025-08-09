@@ -9,7 +9,7 @@ setup(
     version='1.0.0',
     author='Laurent FRANCOISE',
     author_email='lfrancoise@gmail.com',
-    description='Une application de bureau pour générer des podcasts audio à partir de scripts en utilisant l\'API Gemini.',
+    description='Une application de bureau pour créer des podcasts audio à partir de scripts en utilisant l\'API Gemini.',
     long_description=long_description,
     long_description_content_type="text/markdown",
     url='https://gitea.gandulf78.synology.me/laurent/Podcast_creator',
