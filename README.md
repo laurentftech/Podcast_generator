@@ -92,13 +92,7 @@ pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
 
 ## 🚀 Workflow de publication
 
-Voir le fichier [`DEVELOPERS.md`](DEVELOPERS.md) pour la procédure complète :  
-- Tests
-- Tag Git (`git tag -a vX.Y.Z`)
-- Build avec PyInstaller
-- Création du ZIP
-- Publication dans **Releases**
-
+Voir le fichier [`DEVELOPERS.md`](DEVELOPERS.md) pour la procédure complète de publication, y compris la création d'exécutables et la gestion des versions.
 ---
 
 ## 💡 Exemple d’utilisation
