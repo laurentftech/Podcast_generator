@@ -64,6 +64,19 @@ def find_ffmpeg_path() -> str | None:
             return brew_path
     return None
 
+def find_ffplay_path() -> str | None:
+    """
+    Trouve le chemin de l'exécutable ffplay.
+    Cherche d'abord dans le PATH, puis dans les emplacements Homebrew courants.
+    """
+    path = shutil.which("ffplay")
+    if path:
+        return path
+    for brew_path in ["/opt/homebrew/bin/ffplay", "/usr/local/bin/ffplay"]:
+        if os.path.exists(brew_path):
+            return brew_path
+    return None
+
 def get_api_key(status_callback, logger: logging.Logger, parent_window=None) -> str | None:
     """
     Trouve la clé API. Si elle n'est pas trouvée, demande à l'utilisateur et la sauvegarde.
