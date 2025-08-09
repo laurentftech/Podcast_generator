@@ -24,7 +24,7 @@ source .venv/bin/activate  # macOS/Linux
 
 # 3. Installer les dépendances
 pip install -r requirements.txt
-pip install -e .  # mode développement
+pip install -e .  # installe la version taguée en mode développement
 
 # 4. Lancer l'application
 python gui.py
