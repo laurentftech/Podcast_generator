@@ -18,7 +18,7 @@ setup(
     install_requires=[
         'google-genai',
         'python-dotenv',
-        'simpleaudio',
+        'keyring',
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
