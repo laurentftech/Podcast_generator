@@ -55,17 +55,24 @@ Thanks to the Google Gemini API, **Podcast Creator** supports multiple languages
 
 ---
 
-## 🧪 Example of Multilingual Usage
+## 💡 Examples
 
-Here's an example of a script for a multilingual podcast:
+### Creating multi-voice podcasts from written scripts
 
 ```txt
-Speaker_1 (fr): Bonjour à tous, bienvenue dans ce nouvel épisode.
-Speaker_2 (en): Hello everyone, welcome to this new episode.
-Speaker_3 (es): Hola a todos, bienvenidos a este nuevo episodio.
+John: Hello everyone, welcome to this new episode.
+Samantha: Today, we will explore the basics of artificial intelligence.
+John: Stay with us to learn more!
+Samantha: Don't forget to subscribe to our podcast.
 ```
 
-Each speaker can be configured within the application with the corresponding language for a natural and fluent output.
+### Here's an example of a script for a multilingual podcast:
+
+```txt
+John (fr): Bonjour à tous, bienvenue dans ce nouvel épisode.
+Samantha (en): Hello everyone, welcome to this new episode.
+John (es): Hola a todos, bienvenidos a este nuevo episodio.
+```
 
 ---
 

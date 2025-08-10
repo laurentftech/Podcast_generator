@@ -55,10 +55,10 @@ Grâce à l'API Google Gemini, **Créateur de Podcast** prend en charge plusieur
 ### Création de podcasts multi-voix à partir de scripts écrits
 
 ```txt
-Locuteur_1: Bonjour à tous, bienvenue dans ce nouvel épisode.
-Locuteur_2: Aujourd'hui, nous allons explorer les bases de l’intelligence artificielle.
-Locuteur_1: Restez avec nous pour en savoir plus !
-Locuteur_2: N'oubliez surtout pas de vous abonner à notre podcast.
+John: Bonjour à tous, bienvenue dans ce nouvel épisode.
+Samantha: Aujourd'hui, nous allons explorer les bases de l’intelligence artificielle.
+John: Restez avec nous pour en savoir plus !
+Samantha: N'oubliez surtout pas de vous abonner à notre podcast.
 ```
 
 ### Exemple multilingue
