@@ -1,6 +1,11 @@
 # Créateur de Podcast
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=000000)](https://www.buymeacoffee.com/laurentftech)
+
 
 Une application de bureau simple mais puissante, développée en Python avec Tkinter, qui permet de créer un podcast audio multi-locuteurs à partir d'un script texte en utilisant l'API de synthèse vocale de [Google Gemini](https://ai.google.dev/).
+
+
+
 
 ![Capture d'écran de l'application](podcast_creator_screenshot.png)
 
@@ -65,44 +70,11 @@ L’application demandera votre clé API Google Gemini lors du premier lancement
 
 ---
 
-### 3. Pour les développeurs (Depuis le code source)
+## 👨‍💻 Pour les développeurs
 
-#### Installation rapide
-```sh
-# Clone du dépôt
-git clone https://gitea.gandulf78.synology.me/laurent/Podcast_creator.git
-cd Podcast_creator
+Pour contribuer au projet, lancer le code ou créer votre propre version, veuillez consulter le guide complet pour les développeurs :
 
-# Environnement virtuel
-python -m venv .venv
-source .venv/bin/activate  # macOS/Linux
-# .\.venv\Scripts\activate  # Windows
-
-# Dépendances
-pip install -r requirements.txt
-
-# Lancement
-python gui.py
-```
-
-#### Configuration
-Créer un fichier `.env` à la racine :
-```
-GEMINI_API_KEY="VOTRE_CLE_API_ICI"
-```
-
-#### Création d’un exécutable
-```sh
-sips -s format icns podcast.png --out podcast.icns
-pip install pyinstaller
-pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
-```
-
----
-
-## 🚀 Workflow de publication
-
-Voir le fichier [`DEVELOPERS.md`](DEVELOPERS.md) pour la procédure complète de publication, y compris la création d'exécutables et la gestion des versions.
+**➡️ `DEVELOPERS.md`**
 
 ---
 
@@ -131,16 +103,6 @@ Projet distribué sous licence MIT — voir le fichier `LICENSE`.
 
 ---
 
-## 🤝 Contribuer
-
-1. Forkez le dépôt
-2. Créez une branche : `git checkout -b feature/ma-fonctionnalite`
-3. Commit : `git commit -m "Ajout de ma fonctionnalité"`
-4. Push : `git push origin feature/ma-fonctionnalite`
-5. Ouvrez une Pull Request
-
----
-
 ## 🐞 Bugs connus / Limitations
 - Connexion Internet obligatoire
 - Pas encore de support pour la synthèse hors ligne
@@ -151,4 +113,3 @@ Projet distribué sous licence MIT — voir le fichier `LICENSE`.
 
 **Laurent FRANCOISE**  
 📧 laurent.f.tech@icloud.com  
-❤️ [Soutenir le projet (Buy Me a Coffee)](https://buymeacoffee.com/laurentftech)
