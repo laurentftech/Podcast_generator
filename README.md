@@ -140,4 +140,4 @@ Projet distribué sous licence MIT — voir le fichier `LICENSE`.
 ## 👤 Auteur
 
 **Laurent FRANCOISE**  
-📧 laurent.francoise@gmail.com
+📧 laurent.f.tech@icloud.com
