@@ -12,6 +12,8 @@ A simple yet powerful desktop application developed in Python with Tkinter, whic
 
 ![Application Screenshot](podcast_creator_screenshot.png)
 
+See also the [French README](docs/README-fr.md) for a version in French.
+
 ---
 
 ## ✨ Features
