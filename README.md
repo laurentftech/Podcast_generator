@@ -20,7 +20,7 @@ Une application de bureau simple mais puissante, développée en Python avec Tki
 
 ## ✨ Cas d’usage concrets
 - **Création de Podcasts** : Transformez vos scripts en épisodes audio captivants avec des voix distinctes pour chaque personnage.
-- **Enseignement et formation** : Transformez vos supports de cours ou tutoriels écrits en podcasts audio dynamiques avec plusieurs voix pour capter l’attention des apprenants.
+- **Enseignement et formation** : Transformez vos supports de cours ou tutoriels écrits en podcasts audio dynamiques avec une ou plusieurs voix pour capter l’attention des apprenants.
 - **Pratique des langues** : Créez des dialogues multilingues pour les apprenants, avec des voix distinctes pour chaque personnage.
 - **Livres audio** : Convertissez des livres ou des articles en format audio, en utilisant différentes voix pour les narrateurs et les personnages.
 - **Création de contenu** : Génération rapide de podcasts ou d’épisodes audio à partir de scripts, idéal pour les créateurs qui souhaitent automatiser une partie de leur production.
