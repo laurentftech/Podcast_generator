@@ -1,11 +1,11 @@
 # Créateur de Podcast
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=000000)](https://www.buymeacoffee.com/laurentftech)
 
+If you enjoy this project and want to support my work, feel free to [buy me a coffee ☕](https://www.buymeacoffee.com/laurentftech). Thank you!
 
-Une application de bureau simple mais puissante, développée en Python avec Tkinter, qui permet de créer un podcast audio multi-locuteurs à partir d'un script texte en utilisant l'API de synthèse vocale de [Google Gemini](https://ai.google.dev/).
+---
 
-
-
+Une application de bureau simple mais puissante, développée en Python avec Tkinter, qui permet de créer un podcast audio multi-locuteurs à partir d'un script texte en utilisant l'API de synthèse vocale de Google Gemini, qui supporte plusieurs langues et accents pour un rendu naturel.
 
 ![Capture d'écran de l'application](podcast_creator_screenshot.png)
 
@@ -23,13 +23,33 @@ Une application de bureau simple mais puissante, développée en Python avec Tki
 
 ---
 
-## ✨ Cas d’usage concrets
-- **Création de Podcasts** : Transformez vos scripts en épisodes audio captivants avec des voix distinctes pour chaque personnage.
-- **Enseignement et formation** : Transformez vos supports de cours ou tutoriels écrits en podcasts audio dynamiques avec une ou plusieurs voix pour capter l’attention des apprenants.
-- **Pratique des langues** : Créez des dialogues multilingues pour les apprenants, avec des voix distinctes pour chaque personnage.
-- **Livres audio** : Convertissez des livres ou des articles en format audio, en utilisant différentes voix pour les narrateurs et les personnages.
-- **Création de contenu** : Génération rapide de podcasts ou d’épisodes audio à partir de scripts, idéal pour les créateurs qui souhaitent automatiser une partie de leur production.
-- **Accessibilité** : Rendez vos documents écrits accessibles aux personnes malvoyantes ou préférant le format audio.
+## 💡 Cas d’usage
+
+- **Enseignement et formation**  
+  Transformez vos supports de cours ou tutoriels écrits en podcasts audio dynamiques avec plusieurs voix pour capter l’attention des apprenants.
+
+- **Création de contenu**  
+  Génération rapide de podcasts ou d’épisodes audio à partir de scripts, idéal pour les créateurs qui souhaitent automatiser une partie de leur production.
+
+- **Accessibilité**  
+  Rendez vos documents écrits accessibles aux personnes malvoyantes ou préférant le format audio.
+
+- **Pratique des langues**  
+   Profitez du support multilingue pour créer des dialogues ou podcasts dans plusieurs langues, parfaits pour les professeurs, formateurs et apprenants en langues étrangères.
+
+---
+
+## 💡 Exemples d’utilisation
+
+### Création de podcasts multi-voix à partir de scripts écrits
+
+```txt
+Locuteur_1: Bonjour à tous, bienvenue dans ce nouvel épisode.
+Locuteur_2: Aujourd'hui, nous allons explorer les bases de l’intelligence artificielle.
+Locuteur_1: Restez avec nous pour en savoir plus !
+Locuteur_2: N'oubliez surtout pas de vous abonner à notre podcast.
+```
+Résultat : Un fichier audio MP3 ou WAV avec deux voix distinctes configurables.
 
 ---
 
