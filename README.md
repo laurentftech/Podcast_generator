@@ -26,6 +26,7 @@ Une application de bureau simple mais puissante, développée en Python avec Tki
 - **Création de contenu** : Génération rapide de podcasts ou d’épisodes audio à partir de scripts, idéal pour les créateurs qui souhaitent automatiser une partie de leur production.
 - **Accessibilité** : Rendez vos documents écrits accessibles aux personnes malvoyantes ou préférant le format audio.
 
+---
 
 ## 📦 Installation
 
