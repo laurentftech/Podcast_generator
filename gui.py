@@ -413,11 +413,10 @@ class AboutWindow(tk.Toplevel):
         support_frame = tk.LabelFrame(main_frame, text="Soutenir le projet", padx=10, pady=10)
         support_frame.pack(fill=tk.X, pady=(0, 10))
 
-        coffee_frame = tk.Frame(support_frame)
-        coffee_frame.pack(fill=tk.X)
-        tk.Label(coffee_frame, text="Offrez un café à l'auteur :").pack(side=tk.LEFT)
-        coffee_link = tk.Label(coffee_frame, text="buymeacoffee.com/laurentftech", fg="blue", cursor="hand2")
-        coffee_link.pack(side=tk.LEFT, padx=5)
+        tk.Label(support_frame, text="Si cette application vous est utile, vous pouvez soutenir son développement :").pack(pady=(0, 5))
+
+        coffee_link = tk.Label(support_frame, text="❤️ Offrir un café (Buy Me a Coffee)", fg="blue", cursor="hand2", font=('Helvetica', 10, 'bold'))
+        coffee_link.pack(pady=(0, 5))
         coffee_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://buymeacoffee.com/laurentftech"))
 
         credits_frame = tk.LabelFrame(main_frame, text="Crédits et Remerciements", padx=10, pady=10)

@@ -7,8 +7,9 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 ## [Unreleased]
 
 ### Added
-- Ajout d'un lien "Buy Me a Coffee" pour soutenir le projet dans la fenêtre "À propos" et le README.
+- Ajout d'un écran de démarrage (splash screen) pour améliorer l'expérience au lancement.
 - Ajout d'un fichier `CHANGELOG.md` pour suivre l'historique des versions.
+- Ajout d'un lien de soutien "Buy Me a Coffee" dans la fenêtre "À propos".
 
 ## [1.4.4] - 2024-08-10
 
