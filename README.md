@@ -23,6 +23,17 @@ Une application de bureau simple mais puissante, développée en Python avec Tki
 
 ---
 
+## 🌍 Support Multilingue
+
+Grâce à l'API Google Gemini, **Créateur de Podcast** prend en charge plusieurs langues et accents, ce qui vous permet de :
+
+- Créer des podcasts multilingues avec des voix distinctes par langue.  
+- Produire du contenu pour un public international.  
+- Faciliter l'apprentissage des langues avec des dialogues réalistes.  
+- Améliorer l'accessibilité en adaptant la langue au public cible.
+
+---
+
 ## 💡 Cas d’usage
 
 - **Enseignement et formation**  
@@ -49,7 +60,16 @@ Locuteur_2: Aujourd'hui, nous allons explorer les bases de l’intelligence arti
 Locuteur_1: Restez avec nous pour en savoir plus !
 Locuteur_2: N'oubliez surtout pas de vous abonner à notre podcast.
 ```
-Résultat : Un fichier audio MP3 ou WAV avec deux voix distinctes configurables.
+
+### Exemple multilingue
+
+Voici un exemple de script pour illustrer la prise en charge multilingue :
+
+```txt
+John (fr): Bonjour à tous, bienvenue dans ce nouvel épisode.
+Samantha (en): Hello everyone, welcome to this new episode.
+John (es): Hola a todos, bienvenidos a este nuevo episodio.
+```
 
 ---
 
