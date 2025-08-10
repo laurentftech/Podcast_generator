@@ -71,9 +71,9 @@ pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
 
 ### 4. Tester l'exécutable
 
-macOS : open dist/Podcast\ Generator.app
-Windows : double-cliquer sur dist/Podcast Generator.exe
-Linux : ./dist/Podcast\ Generator
+- macOS : open dist/Podcast\ Generator.app
+- Windows : double-cliquer sur dist/Podcast Generator.exe
+- Linux : ./dist/Podcast\ Generator
 
 ### 5. Nettoyer les fichiers temporaires
 ```sh
@@ -87,27 +87,27 @@ zip -r Podcast_Generator_vX.Y.Z.zip dist/Podcast\ Generator.app
 zip -r Podcast_Generator_vX.Y.Z.zip dist/Podcast\ Generator.exe
 ```
 
-### 7. Publier sur Gitea
-Aller dans Releases
-Sélectionner le tag vX.Y.Z
-Ajouter le fichier ZIP généré
-Renseigner la description de la release
+### 7. Publier sur Github
+- Aller dans Releases
+- Sélectionner le tag vX.Y.Z
+- Ajouter le fichier ZIP généré
+- Renseigner la description de la release
 
 
 # 🤝 Contribution
-Fork du dépôt
-Créer une branche : git checkout -b feature/ma-fonctionnalite
-Développer et tester les changements
-Commit : git commit -m "Ajout de ma fonctionnalité"
-Push : git push origin feature/ma-fonctionnalite
-Ouvrir une Pull Request
+- Fork du dépôt 
+- Créer une branche : git checkout -b feature/ma-fonctionnalite 
+- Développer et tester les changements 
+- Commit : git commit -m "Ajout de ma fonctionnalité"
+- Push : git push origin feature/ma-fonctionnalite 
+- Ouvrir une Pull Request
 
 # 🛠 Conseils de développement
-Respecter la structure du code existant
-Utiliser des noms de variables explicites
-Documenter les nouvelles fonctions avec des docstrings
-Faire des commits atomiques et clairs
-Tester la compatibilité sur macOS, Windows et Linux
+- Respecter la structure du code existant
+- Utiliser des noms de variables explicites
+- Documenter les nouvelles fonctions avec des docstrings
+- Faire des commits atomiques et clairs
+- Tester la compatibilité sur macOS, Windows et Linux
 
 # 📜 Licence
 Les contributions sont acceptées sous licence MIT.
