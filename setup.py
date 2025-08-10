@@ -1,7 +1,7 @@
 from setuptools import setup
 
 # Lit le contenu du fichier README pour la description longue
-with open("README.md", "r", encoding="utf-8") as fh:
+with open("docs/README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
