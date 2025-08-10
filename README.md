@@ -140,4 +140,5 @@ Projet distribué sous licence MIT — voir le fichier `LICENSE`.
 ## 👤 Auteur
 
 **Laurent FRANCOISE**  
-📧 laurent.f.tech@icloud.com
+📧 laurent.f.tech@icloud.com  
+❤️ [Soutenir le projet (Buy Me a Coffee)](https://buymeacoffee.com/laurentftech)

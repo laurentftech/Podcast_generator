@@ -113,7 +113,7 @@ class PodcastGeneratorApp:
         # Menu Aide
         help_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Aide", menu=help_menu)
-        help_menu.add_command(label="Documentation (Gitea)...", command=self.open_documentation)
+        help_menu.add_command(label="Documentation (Github)...", command=self.open_documentation)
         help_menu.add_command(label="À propos...", command=self.show_about_window)
         self.logger.info("Interface principale initialisée.")
 
@@ -198,7 +198,7 @@ class PodcastGeneratorApp:
         
     def open_documentation(self):
         """Ouvre le lien vers la documentation ou le dépôt."""
-        webbrowser.open_new_tab("https://gitea.gandulf78.synology.me/laurent/Podcast_creator")
+        webbrowser.open_new_tab("https://github.com/laurentftech/Podcast_creator")
 
     def log_status(self, message: str):
         self.log_queue.put(message)
@@ -409,6 +409,16 @@ class AboutWindow(tk.Toplevel):
         tk.Label(main_frame, text=f"Créateur de Podcast v{get_app_version()}", font=('Helvetica', 12, 'bold')).pack(pady=(0, 5))
         tk.Label(main_frame, text=f"Copyright (c) {datetime.now().year} Laurent FRANCOISE").pack()
         tk.Label(main_frame, text="Licence : MIT License").pack(pady=(0, 15))
+
+        support_frame = tk.LabelFrame(main_frame, text="Soutenir le projet", padx=10, pady=10)
+        support_frame.pack(fill=tk.X, pady=(0, 10))
+
+        coffee_frame = tk.Frame(support_frame)
+        coffee_frame.pack(fill=tk.X)
+        tk.Label(coffee_frame, text="Offrez un café à l'auteur :").pack(side=tk.LEFT)
+        coffee_link = tk.Label(coffee_frame, text="buymeacoffee.com/laurentftech", fg="blue", cursor="hand2")
+        coffee_link.pack(side=tk.LEFT, padx=5)
+        coffee_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://buymeacoffee.com/laurentftech"))
 
         credits_frame = tk.LabelFrame(main_frame, text="Crédits et Remerciements", padx=10, pady=10)
         credits_frame.pack(fill=tk.X, pady=(0, 10))
