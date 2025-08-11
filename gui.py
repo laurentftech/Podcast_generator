@@ -72,7 +72,7 @@ class PodcastGeneratorApp:
 
     def __init__(self, root: tk.Tk, generate_func, logger, api_key: str, default_script: str = ""):
         self.root = root
-        self.root.title(f"Créateur de Podcast v{get_app_version()}")
+        self.root.title(f"Générateur de podcast v{get_app_version()}")
         self.root.geometry("960x700")
 
         # --- Application Icon ---
