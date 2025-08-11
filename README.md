@@ -78,40 +78,31 @@ John (es): Hola a todos, bienvenidos a este nuevo episodio.
 
 ## 📦 Installation
 
-### Prerequisites
+	1.	Go to the “Releases” or “Tags” tab.
+	2.	Download the version corresponding to your OS.
+	3.	Unzip the .zip file.
+	4.	Place the application in the folder of your choice.
 
-- Python 3.8 or higher
-- Google Gemini API key
-- Required Python packages (see `requirements.txt`)
+### macOS Note
+macOS will display a warning the first time you launch the app (unsigned application).
 
-### Steps
+Quick method:
+	1.	Right-click the icon → Open → Open.
 
-1. Clone the repository:
+Settings method:
+	1.	Double-click (error message).
+	2.	System Settings → Privacy & Security → Open Anyway.
 
-   ```bash
-   git clone https://github.com/laurentftech/Podcast_creator.git
-   cd Podcast_creator
-   ```
+### First Launch: API Key
+The application will ask for your Google Gemini API key upon first launch.
+It will be stored securely.
 
-2. Install dependencies:
+⸻
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+👨‍💻 For Developers
+To contribute to the project, run the code, or create your own build, please refer to the full developer guide:
+➡️ DEVELOPERS.md
 
-3. Set up environment variables:
-
-   Create a `.env` file in the project root and add your Google Gemini API key:
-
-   ```env
-   GEMINI_API_KEY=your_google_gemini_api_key_here
-   ```
-
-4. Run the application:
-
-   ```bash
-   python app.py
-   ```
 
 ---
 
