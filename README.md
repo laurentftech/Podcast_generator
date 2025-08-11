@@ -1,5 +1,5 @@
 
-# Podcast Creator
+# Podcast Generator
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=000000)](https://www.buymeacoffee.com/laurentftech)
 
 If you enjoy this project and want to support my work, feel free to [buy me a coffee](https://www.buymeacoffee.com/laurentftech) ☕. Thank you for your support!
@@ -30,7 +30,7 @@ See also the [French README](docs/README-fr.md) for a version in French.
 
 ## 🌍 Multilingual Support
 
-Thanks to the Google Gemini API, **Podcast Creator** supports multiple languages and accents, allowing you to:
+Thanks to the Google Gemini API, **Podcast Generator** supports multiple languages and accents, allowing you to:
 
 - Create multilingual podcasts with distinct voices for each language.
 - Produce content for an international audience.
