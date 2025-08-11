@@ -76,26 +76,48 @@ John (es): Hola a todos, bienvenidos a este nuevo episodio.
 
 ---
 
-## 📦 Installation
+# 📦 Installation
 
-	1.	Go to the “Releases” or “Tags” tab.
-	2.	Download the version corresponding to your OS.
-	3.	Unzip the .zip file.
-	4.	Place the application in the folder of your choice.
+## 1. External Dependency: FFmpeg (Required)
 
-### macOS Note
-macOS will display a warning the first time you launch the app (unsigned application).
+For audio conversion and playback, this application requires FFmpeg to be installed on your system.
 
-Quick method:
-	1.	Right-click the icon → Open → Open.
+- **macOS**: The easiest way to install it is via Homebrew:  
+  ```bash
+  brew install ffmpeg
+  ```
+- **Windows / Linux**: Download it from the [official website](https://ffmpeg.org/download.html) and add it to your system's PATH.
 
-Settings method:
-	1.	Double-click (error message).
-	2.	System Settings → Privacy & Security → Open Anyway.
+---
 
-### First Launch: API Key
-The application will ask for your Google Gemini API key upon first launch.
+## 2. Installing the Application
+
+1. Go to the **"Releases"** or **"Tags"** tab.  
+2. Download the version corresponding to your operating system.  
+3. Unzip the `.zip` file.  
+4. Place the application in the folder of your choice.  
+
+---
+
+## 💡 Note for macOS
+
+When launching the application for the first time, macOS will block it because it comes from an unidentified developer (unsigned application).
+
+**Recommended procedure (Recent macOS versions)**  
+1. Double-click the application icon (an error message will appear saying it cannot be opened).  
+2. Open **System Settings → Privacy & Security**.  
+3. In the **Security** section, click **Open Anyway**.  
+4. Confirm the opening.  
+
+ℹ️ On some older versions of macOS, it was sometimes possible to bypass the warning by right-clicking → **Open**, but this method is no longer reliable on recent versions.
+
+---
+
+## First Launch: API Key
+
+On first launch, the application will request your **Google Gemini API key**.  
 It will be stored securely.
+
 
 ⸻
 
