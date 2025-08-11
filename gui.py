@@ -379,9 +379,13 @@ class PodcastGeneratorApp:
     def _play_in_thread(self):
         """The playback function executed in a separate thread."""
         try:
+            creation_flags = 0
+            if sys.platform == "win32":
+                creation_flags = subprocess.CREATE_NO_WINDOW
+
             self.log_queue.put(('UPDATE_PLAY_BUTTON', '⏹️ Stop', 'normal'))
             command = [self.ffplay_path, "-nodisp", "-autoexit", "-loglevel", "quiet", self.last_generated_filepath]
-            self.playback_obj = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.playback_obj = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=creation_flags)
             self.playback_obj.wait()
         except Exception as e:
             self.logger.error(f"Audio playback error with ffplay: {e}", exc_info=True)

@@ -267,8 +267,12 @@ def generate(script_text: str, speaker_mapping: dict, api_key: str, output_filep
             ]
 
             status_callback(f"Converting with FFmpeg to {os.path.basename(output_filepath)}...")
-            process = subprocess.run(command, input=full_audio_data, capture_output=True, check=False, creationflags=subprocess.CREATE_NO_WINDOW)
 
+            creation_flags = 0
+            if sys.platform == "win32":
+                creation_flags = subprocess.CREATE_NO_WINDOW
+
+            process = subprocess.run(command, input=full_audio_data, capture_output=True, check=False, creationflags=creation_flags)
             if process.returncode != 0:
                 ffmpeg_error = process.stderr.decode('utf-8', errors='ignore')
                 logger.error(f"FFmpeg error:\n{ffmpeg_error}")
