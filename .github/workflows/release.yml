@@ -32,7 +32,7 @@ jobs:
 
       - name: Package macOS ZIP
         run: |
-          zip -r Podcast_Generator_${GITHUB_REF#refs/tags/}_macos.zip dist/Podcast\ Generator.app
+          zip -r Podcast_Generator_${{ github.ref_name }}_macos.zip dist/Podcast\ Generator.app
 
       - name: Clean up macOS
         run: rm -rf build dist __pycache__ *.spec podcast.icns
@@ -70,7 +70,7 @@ jobs:
         run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.ico gui.py
 
       - name: Package Windows ZIP
-        run: powershell Compress-Archive -Path dist\Podcast\ Generator.exe -DestinationPath Podcast_Generator_${{ github.ref_name }}_windows.zip
+        run: powershell Compress-Archive -Path "dist\Podcast Generator.exe" -DestinationPath Podcast_Generator_${{ github.ref_name }}_windows.zip
 
       - name: Clean up Windows
         run: |
@@ -120,7 +120,7 @@ jobs:
     needs: [build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
-      - name: Télécharger artefacts macOS, Windows, Linux
+      - name: Télécharger artefact macOS
         uses: actions/download-artifact@v4
         with:
           name: Podcast_Generator_${{ github.ref_name }}_macos.zip
