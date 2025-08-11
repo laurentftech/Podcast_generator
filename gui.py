@@ -46,10 +46,10 @@ AVAILABLE_VOICES = {
 def get_app_version() -> str:
     """Gets the application version from the package metadata."""
     try:
-        # Fonctionne lorsque le paquet est installé (même en mode éditable)
+        # Works when the package is installed (even in editable mode)
         return metadata.version("Podcast_generator")
     except metadata.PackageNotFoundError:
-        # Fallback si le script est exécuté sans être installé
+        # Fallback if the script is run without being installed
         return "0.0.0-dev"
 
 def get_asset_path(filename: str) -> str | None:
@@ -86,7 +86,7 @@ class PodcastGeneratorApp:
                 pass
 
         # --- Define configuration paths ---
-        from generate_podcast import get_app_data_dir, find_ffplay_path # Importation locale
+        from generate_podcast import get_app_data_dir, find_ffplay_path # Local import
         self.app_data_dir = get_app_data_dir()
         self.settings_filepath = os.path.join(self.app_data_dir, "settings.json")
 
@@ -171,14 +171,14 @@ class PodcastGeneratorApp:
                 # Check
                 return settings.get("speaker_voices", self.DEFAULT_SPEAKER_SETTINGS.copy())
         except (FileNotFoundError, json.JSONDecodeError):
-            # Retourne une copie des valeurs par défaut si le fichier n'existe pas ou est corrompu
+            # Returns a copy of the default values if the file does not exist or is corrupt
             return self.DEFAULT_SPEAKER_SETTINGS.copy()
 
     def save_settings(self, settings_to_save):
-        """Sauvegarde les paramètres dans le fichier JSON."""
+        """Saves the settings to the JSON file."""
         self.speaker_settings = settings_to_save
         try:
-            os.makedirs(self.app_data_dir, exist_ok=True) # S'assure que le dossier existe
+            os.makedirs(self.app_data_dir, exist_ok=True) # Ensures the directory exists
             with open(self.settings_filepath, 'w') as f:
                 json.dump({"speaker_voices": settings_to_save}, f, indent=4)
             self.log_status("Voice settings saved successfully.")
@@ -187,13 +187,13 @@ class PodcastGeneratorApp:
             self.logger.error(f"Saving error for settings: {e}")
 
     def open_settings_window(self):
-        """Ouvre la fenêtre de gestion des paramètres."""
-        # On désactive le bouton pendant que la fenêtre est ouverte pour éviter les doublons
+        """Opens the settings management window."""
+        # Disable the button while the window is open to avoid duplicates
         self.menubar.entryconfig("Options", state="disabled")
         SettingsWindow(self.root, self.speaker_settings, self.save_settings, self.on_settings_window_close, self.DEFAULT_SPEAKER_SETTINGS)
 
     def show_about_window(self):
-        """Affiche la fenêtre 'À propos'."""
+        """Displays the 'About' window."""
         AboutWindow(self.root)
         
     def open_documentation(self):
@@ -204,9 +204,9 @@ class PodcastGeneratorApp:
         self.log_queue.put(message)
 
     def poll_log_queue(self):
-        # On ne traite qu'un seul message à la fois pour ne pas bloquer la boucle d'événements.
-        # Cela garantit que l'interface reste réactive et peut traiter d'autres tâches
-        # (comme on_generation_complete) entre deux affichages de log.
+        # We only process one message at a time to avoid blocking the event loop.
+        # This ensures the interface remains responsive and can handle other tasks
+        # (like on_generation_complete) between log displays.
         try:
             message = self.log_queue.get_nowait()
             if isinstance(message, tuple):
@@ -218,8 +218,8 @@ class PodcastGeneratorApp:
             else:
                 self._update_log(message)
         except queue.Empty:
-            pass  # La file est vide, on ne fait rien
-        self.root.after(100, self.poll_log_queue)  # Vérifie la queue toutes les 100 ms
+            pass  # The queue is empty, do nothing
+        self.root.after(100, self.poll_log_queue)  # Check the queue every 100 ms
 
     def _update_log(self, message):
         self.log_text.config(state='normal')
@@ -228,13 +228,13 @@ class PodcastGeneratorApp:
         self.log_text.config(state='disabled')
 
     def clear_log(self):
-        """Vide la zone de texte des logs."""
+        """Clears the log text area."""
         self.log_text.config(state='normal')
         self.log_text.delete('1.0', tk.END)
         self.log_text.config(state='disabled')
 
     def load_script_from_file(self):
-        """Ouvre une boîte de dialogue pour charger un fichier .txt dans la zone de script."""
+        """Opens a dialog to load a .txt file into the script area."""
         filepath = filedialog.askopenfilename(
             title="Open a script file",
             filetypes=(("Text files", "*.txt"), ("All files", "*.*"))
@@ -252,13 +252,13 @@ class PodcastGeneratorApp:
             self.logger.error(f"Error reading the script: {e}")
 
     def start_generation_thread(self):
-        """Lance la génération dans un thread séparé pour ne pas geler l interface."""
+        """Starts the generation in a separate thread to avoid freezing the UI."""
         script_content = self.script_text.get("1.0", tk.END).strip()
         if not script_content:
             messagebox.showwarning("Empty script", "Please enter or load a script before starting generation.")
             return
 
-        # Demander à l'utilisateur où enregistrer le fichier de sortie
+        # Ask the user where to save the output file
         output_filepath = filedialog.asksaveasfilename(
             title="Save podcast as...",
             defaultextension=".mp3",
@@ -274,14 +274,14 @@ class PodcastGeneratorApp:
             self.log_status("Generation cancelled by user.")
             return
 
-        # Désactiver les boutons pendant la génération
+        # Disable buttons during generation
         self.generate_button.config(state='disabled')
         self.load_button.config(state='disabled')
         self.play_button.config(state='disabled')
         self.show_button.config(state='disabled')
         self.menubar.entryconfig("Options", state="disabled")
 
-        # Afficher et démarrer la barre de progression
+        # Show and start the progress bar
         self.clear_log()
 
         self.progress_bar.pack(fill=tk.X, pady=(10, 0), before=self.button_frame)
@@ -316,8 +316,8 @@ class PodcastGeneratorApp:
             self.log_status(f"A critical error occurred in the thread: {e}")
             generated_filepath = None # Ensure the status is 'failure'
         finally:
-            # Use the queue, our reliable communication channel,
-            # to signal the end of generation and its status (success/failure).
+            # We use the queue, our reliable communication channel,
+            # to signal the end of the generation and its status (success/failure).
             success = bool(generated_filepath)
             self.log_queue.put(('GENERATION_COMPLETE', success))
 
@@ -334,7 +334,7 @@ class PodcastGeneratorApp:
         self.menubar.entryconfig("Options", state="normal")
         if self.progress_bar.winfo_ismapped():
             self.progress_bar.pack_forget()
-        self.log_text.config(state='disabled') # On désactive la zone de log à la toute fin
+        self.log_text.config(state='disabled') # Disable the log area at the very end
 
     def open_file_location(self):
         """Opens the folder containing the last generated file and selects it."""
@@ -380,7 +380,7 @@ class PodcastGeneratorApp:
         """The playback function executed in a separate thread."""
         try:
             self.log_queue.put(('UPDATE_PLAY_BUTTON', '⏹️ Stop', 'normal'))
-            command = [self.ffplay_path, "-nodisp", "-autoexit", self.last_generated_filepath]
+            command = [self.ffplay_path, "-nodisp", "-autoexit", "-loglevel", "quiet", self.last_generated_filepath]
             self.playback_obj = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.playback_obj.wait()
         except Exception as e:
@@ -392,7 +392,7 @@ class PodcastGeneratorApp:
                 self.log_queue.put(('UPDATE_PLAY_BUTTON', '▶️ Play', 'normal'))
 
     def on_settings_window_close(self):
-        """Callback pour réactiver le menu lorsque la fenêtre des paramètres est fermée."""
+        """Callback to re-enable the menu when the settings window is closed."""
         self.menubar.entryconfig("Options", state="normal")
 
 class AboutWindow(tk.Toplevel):
@@ -445,7 +445,7 @@ class SettingsWindow(tk.Toplevel):
 
     def __init__(self, parent, current_settings, save_callback, close_callback, default_settings):
         super().__init__(parent)
-        self.title("Voice Settings")
+        self.title("Voice settings")
         self.transient(parent)
         self.grab_set()
 
@@ -453,7 +453,7 @@ class SettingsWindow(tk.Toplevel):
         self.current_settings = dict(current_settings) # Crée une copie
         self.save_callback = save_callback
         self.close_callback = close_callback
-        self.protocol("WM_DELETE_WINDOW", self.cancel_and_close) # Gère la fermeture avec la croix
+        self.protocol("WM_DELETE_WINDOW", self.cancel_and_close) # Manages closing with the cross
         self.entries = []
 
         main_frame = tk.Frame(self, padx=10, pady=10)
@@ -482,7 +482,7 @@ class SettingsWindow(tk.Toplevel):
             self.add_row(speaker, voice)
 
     def add_row(self, speaker_text="", voice_text=""):
-        """Ajoute une ligne complète pour un speaker avec une liste déroulante pour la voix."""
+        """Adds a complete row for a speaker with a dropdown list for the voice."""
         row_container = tk.Frame(self.speaker_frame)
         row_container.pack(fill=tk.X, pady=2)
 
@@ -490,7 +490,7 @@ class SettingsWindow(tk.Toplevel):
         speaker_entry.insert(0, speaker_text)
 
         voice_combo = ttk.Combobox(row_container, values=self.VOICE_DISPLAY_LIST)
-        # Retrouve la chaîne complète à afficher, ou utilise la valeur brute si c'est une voix personnalisée
+        # Finds the full string to display, or uses the raw value if it's a custom voice
         initial_display_value = voice_text
         if voice_text in AVAILABLE_VOICES:
             initial_display_value = f"{voice_text} - {AVAILABLE_VOICES[voice_text]}"
@@ -499,7 +499,7 @@ class SettingsWindow(tk.Toplevel):
         entry_tuple = (speaker_entry, voice_combo)
         delete_button = tk.Button(row_container, text="-", width=2, command=lambda: self.delete_row(row_container, entry_tuple))
 
-        # Layout avec grid pour un meilleur alignement
+        # Layout with grid for better alignment
         row_container.columnconfigure(0, weight=1)
         row_container.columnconfigure(1, weight=1)
         row_container.columnconfigure(2, weight=0)
@@ -511,19 +511,19 @@ class SettingsWindow(tk.Toplevel):
         self.entries.append(entry_tuple)
 
     def delete_row(self, row_container, entry_tuple):
-        """Supprime une ligne de speaker de l interface et de la liste."""
+        """Deletes a speaker row from the interface and the list."""
         row_container.destroy()
         self.entries.remove(entry_tuple)
 
     def restore_defaults(self):
-        """Efface les champs actuels et les remplit avec les paramètres par défaut."""
-        # Vide l'interface et la liste interne
+        """Clears the current fields and fills them with the default settings."""
+        # Empties the interface and the internal list
         for widget in self.speaker_frame.winfo_children():
             widget.destroy()
         self.entries.clear()
-        # Remplace les paramètres courants par une copie des défauts
+        # Replaces the current settings with a copy of the defaults
         self.current_settings = self.default_settings.copy()
-        # Remplit l'interface avec les nouvelles valeurs (qui sont maintenant les défauts)
+        # Fills the interface with the new values (which are now the defaults)
         self.populate_fields()
 
     def save_and_close(self):
@@ -532,7 +532,7 @@ class SettingsWindow(tk.Toplevel):
             speaker = speaker_entry.get().strip()
             full_voice_string = voice_combo.get().strip()
             if speaker and full_voice_string:
-                # Extrait seulement le nom de la voix (avant le " - ")
+                # Extracts only the voice name (before the " - ")
                 voice_name = full_voice_string.split(' - ')[0]
                 new_settings[speaker] = voice_name
 
@@ -545,22 +545,22 @@ class SettingsWindow(tk.Toplevel):
         self.destroy()
 
 def main():
-    # Initialise l application et lance la boucle principale de Tkinter 
-    # Crée la fenêtre racine mais la cache pour l'instant.
-    # Cela permet d'afficher des boîtes de dialogue d'erreur de manière fiable
-    # même si l'initialisation complète de l'interface échoue.
+    # Initializes the application and starts the main Tkinter loop
+    # Creates the root window but hides it for now.
+    # This allows for reliable display of error dialogs
+    # even if the full interface initialization fails.
     root = tk.Tk()
     root.withdraw()
 
-    # --- Correction du chemin d'importation ---
-    # S'assure que le script peut trouver 'generate_podcast.py'
-    # peu importe d'où il est exécuté.
+    # --- Import path correction ---
+    # Ensures the script can find 'generate_podcast.py'
+    # regardless of where it is executed from.
     try:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         if script_dir not in sys.path:
             sys.path.insert(0, script_dir)
     except NameError:
-        # __file__ n'est pas défini dans certains environnements interactifs
+        # __file__ is not defined in some interactive environments
         pass
 
     # --- Importing dependencies ---
@@ -576,10 +576,10 @@ def main():
         root.destroy()
         return
 
-    # Initialise le logging avant toute autre chose
+    # Initializes logging before anything else
     logger = setup_logging()
 
-    # --- Vérification de la clé API au démarrage ---
+    # --- API key check at startup ---
     api_key = get_api_key(lambda msg: logger.info(msg), logger, parent_window=root)
     if not api_key:
         logger.info("Application closed because no API key was provided at startup.")
@@ -587,7 +587,7 @@ def main():
         root.destroy()
         return
     
-    # Si tout est correct, on construit l'interface et on affiche la fenêtre
+    # If everything is correct, we build the interface and display the window
     app = PodcastGeneratorApp(root, generate_func=generate, logger=logger, api_key=api_key, default_script=PODCAST_SCRIPT)
     root.deiconify()
     root.mainloop()

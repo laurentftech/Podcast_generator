@@ -179,9 +179,9 @@ def generate(script_text: str, speaker_mapping: dict, api_key: str, output_filep
         logger.error("FFmpeg was not found in the PATH or Homebrew locations.")
         return None
     if not api_key:
-        return None
+        return None # Should not happen if get_api_key is called first, but as a safeguard.
 
-    # S'assurer que le dossier de sortie existe
+    # Ensure the output directory exists
     os.makedirs(os.path.dirname(output_filepath), exist_ok=True)
 
     client = genai.Client(api_key=api_key)
@@ -267,7 +267,7 @@ def generate(script_text: str, speaker_mapping: dict, api_key: str, output_filep
             ]
 
             status_callback(f"Converting with FFmpeg to {os.path.basename(output_filepath)}...")
-            process = subprocess.run(command, input=full_audio_data, capture_output=True, check=False)
+            process = subprocess.run(command, input=full_audio_data, capture_output=True, check=False, creationflags=subprocess.CREATE_NO_WINDOW)
 
             if process.returncode != 0:
                 ffmpeg_error = process.stderr.decode('utf-8', errors='ignore')
@@ -336,14 +336,14 @@ def parse_audio_mime_type(mime_type: str) -> dict[str, int | None]:
             try:
                 rate = int(param.split('=', 1)[1])
             except (ValueError, IndexError):
-                pass # Garde la valeur par défaut si l'analyse échoue
-            break # Fréquence trouvée, pas besoin de continuer
+                pass  # Keep the default value if parsing fails
+            break  # Rate found, no need to continue
 
     return {"bits_per_sample": bits_per_sample, "rate": rate}
 
 
 if __name__ == "__main__":
-    # Pour l'exécution en ligne de commande, on utilise un mapping par défaut.
+    # For command-line execution, we use a default mapping.
     logger = setup_logging()
     api_key = get_api_key(print, logger)
     if api_key:
