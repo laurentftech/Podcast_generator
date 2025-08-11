@@ -73,7 +73,7 @@ jobs:
         run: dir dist
 
       - name: Package Windows ZIP
-        run: powershell -Command "Compress-Archive -Path 'dist\\Podcast Generator.exe' -DestinationPath 'Podcast_Generator_${{ github.ref_name }}_windows.zip'"
+        run: powershell -Command "Compress-Archive -Path 'dist\\Podcast Generator\\Podcast Generator.exe' -DestinationPath 'Podcast_Generator_${{ github.ref_name }}_windows.zip'"
 
       - name: Clean up Windows
         run: |
