@@ -47,7 +47,7 @@ def get_app_version() -> str:
     """Récupère la version de l'application depuis les métadonnées du paquet."""
     try:
         # Fonctionne lorsque le paquet est installé (même en mode éditable)
-        return metadata.version("Podcast_creator")
+        return metadata.version("Podcast_generator")
     except metadata.PackageNotFoundError:
         # Fallback si le script est exécuté sans être installé
         return "0.0.0-dev"

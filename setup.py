@@ -1,17 +1,17 @@
 from setuptools import setup
 
 # Lit le contenu du fichier README pour la description longue
-with open("docs/README.md", "r", encoding="utf-8") as fh:
+with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name='Podcast_creator',
+    name='Podcast Generator',
     author='Laurent FRANCOISE',
-    author_email='lfrancoise@gmail.com',
+    author_email='laurent.f.tech@icloud.com',
     description='Une application de bureau pour créer des podcasts audio à partir de scripts en utilisant l\'API Gemini.',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url='https://gitea.gandulf78.synology.me/laurent/Podcast_creator',
+    url='https://github.com/laurentftech/Podcast_generator',
     license='MIT',
     use_scm_version=True,
     setup_requires=['setuptools_scm'],
