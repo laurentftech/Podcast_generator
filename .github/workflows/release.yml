@@ -31,6 +31,22 @@ jobs:
       - name: Build executable ARM64
         run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
 
+      - name: Create self-signed certificate
+        run: |
+          CERT_NAME="LaurentFTech Self-Signed"
+          security create-keychain -p "" temp.keychain
+          security default-keychain -s temp.keychain
+          security unlock-keychain -p "" temp.keychain
+          security set-keychain-settings -t 3600 -u temp.keychain
+          security add-trusted-cert -d -r trustRoot -k temp.keychain <(openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=$CERT_NAME")
+          security import key.pem -k temp.keychain -T /usr/bin/codesign
+          security import cert.pem -k temp.keychain -T /usr/bin/codesign
+
+      - name: Sign the app
+        run: |
+          codesign --deep --force --sign "LaurentFTech Self-Signed" --timestamp --options runtime dist/Podcast\ Generator.app
+          xattr -dr com.apple.quarantine dist/Podcast\ Generator.app
+
       - name: Package ARM64 zip
         run: zip -r Podcast_Generator_${{ github.ref_name }}_MacOS_arm64.zip dist/Podcast\ Generator.app
 
@@ -59,6 +75,22 @@ jobs:
 
       - name: Build executable Intel
         run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
+
+      - name: Create self-signed certificate
+        run: |
+          CERT_NAME="LaurentFTech Self-Signed"
+          security create-keychain -p "" temp.keychain
+          security default-keychain -s temp.keychain
+          security unlock-keychain -p "" temp.keychain
+          security set-keychain-settings -t 3600 -u temp.keychain
+          security add-trusted-cert -d -r trustRoot -k temp.keychain <(openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=$CERT_NAME")
+          security import key.pem -k temp.keychain -T /usr/bin/codesign
+          security import cert.pem -k temp.keychain -T /usr/bin/codesign
+
+      - name: Sign the app
+        run: |
+          codesign --deep --force --sign "LaurentFTech Self-Signed" --timestamp --options runtime dist/Podcast\ Generator.app
+          xattr -dr com.apple.quarantine dist/Podcast\ Generator.app
 
       - name: Package Intel zip
         run: zip -r Podcast_Generator_${{ github.ref_name }}_MacOS_x86_64.zip dist/Podcast\ Generator.app
