@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - 'v*.*.*'
-  workflow_dispatch:
 
 jobs:
   build-macos:
@@ -70,7 +69,7 @@ jobs:
         run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.ico gui.py
 
       - name: Package Windows ZIP
-        run: powershell Compress-Archive -Path "dist\Podcast Generator.exe" -DestinationPath Podcast_Generator_${{ github.ref_name }}_windows.zip
+        run: powershell -Command "Compress-Archive -Path 'dist\\Podcast Generator.exe' -DestinationPath 'Podcast_Generator_${{ github.ref_name }}_windows.zip'"
 
       - name: Clean up Windows
         run: |
