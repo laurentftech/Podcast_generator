@@ -72,7 +72,7 @@ class PodcastGeneratorApp:
 
     def __init__(self, root: tk.Tk, generate_func, logger, api_key: str, default_script: str = ""):
         self.root = root
-        self.root.title(f"Générateur de podcast v{get_app_version()}")
+        self.root.title(f"Podcast Generator v{get_app_version()}")
         self.root.geometry("960x700")
 
         # --- Application Icon ---
@@ -106,16 +106,16 @@ class PodcastGeneratorApp:
 
         options_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Options", menu=options_menu)
-        options_menu.add_command(label="Paramètres des voix...", command=self.open_settings_window)
+        options_menu.add_command(label="Voice settings...", command=self.open_settings_window)
         options_menu.add_separator()
-        options_menu.add_command(label="Quitter", command=self.root.quit)
+        options_menu.add_command(label="Quit Podcast Generator", command=self.root.quit)
 
         # Menu Aide
         help_menu = tk.Menu(self.menubar, tearoff=0)
-        self.menubar.add_cascade(label="Aide", menu=help_menu)
+        self.menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="Documentation (Github)...", command=self.open_documentation)
-        help_menu.add_command(label="À propos...", command=self.show_about_window)
-        self.logger.info("Interface principale initialisée.")
+        help_menu.add_command(label="About...", command=self.show_about_window)
+        self.logger.info("Main interface initialized.")
 
         self.poll_log_queue()
 
@@ -124,7 +124,7 @@ class PodcastGeneratorApp:
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         # --- Zone de texte pour le script ---
-        script_frame = tk.LabelFrame(main_frame, text="Script à lire", padx=5, pady=5)
+        script_frame = tk.LabelFrame(main_frame, text="Script to read", padx=5, pady=5)
         script_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
 
         self.script_text = scrolledtext.ScrolledText(script_frame, wrap=tk.WORD, height=15, width=80)
@@ -132,7 +132,7 @@ class PodcastGeneratorApp:
         self.script_text.insert(tk.END, default_script)
 
         # --- Zone pour les logs/status ---
-        log_frame = tk.LabelFrame(main_frame, text="Status de la génération", padx=5, pady=5)
+        log_frame = tk.LabelFrame(main_frame, text="Generation status", padx=5, pady=5)
         log_frame.pack(fill=tk.BOTH, expand=True)
 
         self.log_text = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, height=10, state='disabled')
@@ -149,17 +149,17 @@ class PodcastGeneratorApp:
         common_button_width = 22
 
         # --- Boutons alignés à gauche ---
-        self.load_button = tk.Button(self.button_frame, text="Charger un script (.txt)", command=self.load_script_from_file, width=common_button_width)
+        self.load_button = tk.Button(self.button_frame, text="Load a script (.txt)", command=self.load_script_from_file, width=common_button_width)
         self.load_button.pack(side=tk.LEFT, padx=(0, 5))
 
-        self.generate_button = tk.Button(self.button_frame, text="Lancer la génération", command=self.start_generation_thread, width=common_button_width)
+        self.generate_button = tk.Button(self.button_frame, text="Start generation", command=self.start_generation_thread, width=common_button_width)
         self.generate_button.pack(side=tk.LEFT)
 
         # --- Boutons alignés à droite (packés en ordre inverse pour le bon affichage) ---
-        self.show_button = tk.Button(self.button_frame, text="Ouvrir le dossier", command=self.open_file_location, state='disabled', width=common_button_width)
+        self.show_button = tk.Button(self.button_frame, text="Open file location", command=self.open_file_location, state='disabled', width=common_button_width)
         self.show_button.pack(side=tk.RIGHT, padx=(5, 0))
 
-        self.play_button = tk.Button(self.button_frame, text="▶️ Lire", command=self.play_last_generated_file, state='disabled', width=common_button_width)
+        self.play_button = tk.Button(self.button_frame, text="▶️ Play", command=self.play_last_generated_file, state='disabled', width=common_button_width)
         self.play_button.pack(side=tk.RIGHT)
 
 
@@ -181,10 +181,10 @@ class PodcastGeneratorApp:
             os.makedirs(self.app_data_dir, exist_ok=True) # S'assure que le dossier existe
             with open(self.settings_filepath, 'w') as f:
                 json.dump({"speaker_voices": settings_to_save}, f, indent=4)
-            self.log_status("Paramètres des voix sauvegardés.")
+            self.log_status("Voice settings saved successfully.")
         except IOError as e:
-            messagebox.showerror("Erreur de sauvegarde", f"Impossible de sauvegarder les paramètres:\n{e}")
-            self.logger.error(f"Erreur de sauvegarde des paramètres: {e}")
+            messagebox.showerror("Saving Error", f"Cannot save settings to file:\n{e}")
+            self.logger.error(f"Saving error for settings: {e}")
 
     def open_settings_window(self):
         """Ouvre la fenêtre de gestion des paramètres."""
@@ -236,8 +236,8 @@ class PodcastGeneratorApp:
     def load_script_from_file(self):
         """Ouvre une boîte de dialogue pour charger un fichier .txt dans la zone de script."""
         filepath = filedialog.askopenfilename(
-            title="Ouvrir un fichier script",
-            filetypes=(("Fichiers texte", "*.txt"), ("Tous les fichiers", "*.*"))
+            title="Open a script file",
+            filetypes=(("Text files", "*.txt"), ("All files", "*.*"))
         )
         if not filepath:
             return
@@ -246,32 +246,32 @@ class PodcastGeneratorApp:
             with open(filepath, 'r', encoding='utf-8') as f:
                 self.script_text.delete('1.0', tk.END)
                 self.script_text.insert('1.0', f.read())
-            self.log_status(f"Script chargé depuis : {os.path.basename(filepath)}")
+            self.log_status(f"Script loaded from: {os.path.basename(filepath)}")
         except Exception as e:
-            messagebox.showerror("Erreur de lecture", f"Impossible de lire le fichier :\n{e}")
-            self.logger.error(f"Erreur de lecture du script: {e}")
+            messagebox.showerror("Reading error", f"Cannot read the file:\n{e}")
+            self.logger.error(f"Error reading the script: {e}")
 
     def start_generation_thread(self):
         """Lance la génération dans un thread séparé pour ne pas geler l interface."""
         script_content = self.script_text.get("1.0", tk.END).strip()
         if not script_content:
-            messagebox.showwarning("Script vide", "Veuillez entrer ou charger un script avant de lancer la génération.")
+            messagebox.showwarning("Empty script", "Please enter or load a script before starting generation.")
             return
 
         # Demander à l'utilisateur où enregistrer le fichier de sortie
         output_filepath = filedialog.asksaveasfilename(
-            title="Enregistrer le podcast sous...",
+            title="Save podcast as...",
             defaultextension=".mp3",
             filetypes=(
                 ("MP3", "*.mp3"),
                 ("WAV", "*.wav"),
-                ("Tous", "*.*")
+                ("All files", "*.*")
             ),
             initialdir= os.path.expanduser("~/Downloads"),
         )
 
         if not output_filepath:
-            self.log_status("Génération annulée par l'utilisateur.")
+            self.log_status("Generation cancelled by user.")
             return
 
         # Désactiver les boutons pendant la génération
@@ -337,59 +337,59 @@ class PodcastGeneratorApp:
         self.log_text.config(state='disabled') # On désactive la zone de log à la toute fin
 
     def open_file_location(self):
-        """Ouvre le dossier contenant le dernier fichier généré et le sélectionne."""
+        """Opens the folder containing the last generated file and selects it."""
         if not self.last_generated_filepath or not os.path.exists(self.last_generated_filepath):
-            messagebox.showerror("Fichier introuvable", "Le fichier audio généré n'a pas été trouvé ou n'est plus accessible.")
+            messagebox.showerror("File not found", "The generated audio file was not found or is no longer accessible.")
             return
 
         try:
             if sys.platform == "darwin":  # macOS
-                # 'open -R' révèle le fichier dans le Finder
+                # 'open -R' reveals the file in Finder
                 subprocess.run(["open", "-R", self.last_generated_filepath], check=True)
             elif sys.platform == "win32":  # Windows
-                # 'explorer /select,' sélectionne le fichier dans l'Explorateur
+                # 'explorer /select,' selects the file in Explorer
                 subprocess.run(["explorer", "/select,", os.path.normpath(self.last_generated_filepath)], check=True)
-            else:  # Linux et autres (ouvre le dossier contenant)
+            else:  # Linux and others (opens the containing folder)
                 subprocess.run(["xdg-open", os.path.dirname(self.last_generated_filepath)], check=True)
         except (FileNotFoundError, subprocess.CalledProcessError) as e:
-            messagebox.showerror("Erreur", f"Impossible d'ouvrir le gestionnaire de fichiers.\n"
-                                           f"Vérifiez que les outils système sont accessibles.\n\nErreur : {e}")
+            messagebox.showerror("Error", f"Unable to open the file manager.\n"
+                                           f"Check that system tools are accessible.\n\nError: {e}")
 
     def play_last_generated_file(self):
-        """Joue ou arrête la lecture du dernier fichier audio généré."""
+        """Plays or stops the playback of the last generated audio file."""
         if self.playback_obj and self.playback_obj.poll() is None:
-            self.playback_obj.terminate() # Stoppe le processus ffplay s'il est en cours
+            self.playback_obj.terminate() # Stops the ffplay process if running
             return
 
         if not self.ffplay_path:
             messagebox.showerror(
-                "Lecteur audio introuvable",
-                "La commande 'ffplay' (qui fait partie de FFmpeg) est introuvable.\n\n"
-                "La lecture est désactivée. Veuillez vous assurer que FFmpeg est bien installé."
+                "Audio player not found",
+                "The 'ffplay' command (part of FFmpeg) was not found.\n\n"
+                "Playback is disabled. Please ensure FFmpeg is properly installed."
             )
             self.play_button.config(state='disabled')
             return
 
         if not self.last_generated_filepath or not os.path.exists(self.last_generated_filepath):
-            messagebox.showerror("Fichier introuvable", "Le fichier audio généré n'a pas été trouvé ou n'est plus accessible.")
+            messagebox.showerror("File not found", "The generated audio file was not found or is no longer accessible.")
             return
 
         threading.Thread(target=self._play_in_thread, daemon=True).start()
 
     def _play_in_thread(self):
-        """La fonction de lecture exécutée dans un thread séparé."""
+        """The playback function executed in a separate thread."""
         try:
-            self.log_queue.put(('UPDATE_PLAY_BUTTON', '⏹️ Stopper', 'normal'))
+            self.log_queue.put(('UPDATE_PLAY_BUTTON', '⏹️ Stop', 'normal'))
             command = [self.ffplay_path, "-nodisp", "-autoexit", self.last_generated_filepath]
             self.playback_obj = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.playback_obj.wait()
         except Exception as e:
-            self.logger.error(f"Erreur de lecture audio avec ffplay: {e}", exc_info=True)
-            self.log_status(f"Erreur de lecture audio : {e}")
+            self.logger.error(f"Audio playback error with ffplay: {e}", exc_info=True)
+            self.log_status(f"Audio playback error: {e}")
         finally:
             self.playback_obj = None
             if self.root.winfo_exists():
-                self.log_queue.put(('UPDATE_PLAY_BUTTON', '▶️ Lire', 'normal'))
+                self.log_queue.put(('UPDATE_PLAY_BUTTON', '▶️ Play', 'normal'))
 
     def on_settings_window_close(self):
         """Callback pour réactiver le menu lorsque la fenêtre des paramètres est fermée."""
@@ -398,7 +398,7 @@ class PodcastGeneratorApp:
 class AboutWindow(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
-        self.title("À propos de Créateur de Podcast")
+        self.title("About Podcast Generator")
         self.transient(parent)
         self.grab_set()
         self.resizable(False, False)
@@ -406,32 +406,32 @@ class AboutWindow(tk.Toplevel):
         main_frame = tk.Frame(self, padx=20, pady=15)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        tk.Label(main_frame, text=f"Créateur de Podcast v{get_app_version()}", font=('Helvetica', 12, 'bold')).pack(pady=(0, 5))
+        tk.Label(main_frame, text=f"Podcast Generator v{get_app_version()}", font=('Helvetica', 12, 'bold')).pack(pady=(0, 5))
         tk.Label(main_frame, text=f"Copyright (c) {datetime.now().year} Laurent FRANCOISE").pack()
         tk.Label(main_frame, text="Licence : MIT License").pack(pady=(0, 15))
 
-        support_frame = tk.LabelFrame(main_frame, text="Soutenir le projet", padx=10, pady=10)
+        support_frame = tk.LabelFrame(main_frame, text="Support the projet", padx=10, pady=10)
         support_frame.pack(fill=tk.X, pady=(0, 10))
 
-        tk.Label(support_frame, text="Si cette application vous est utile, vous pouvez soutenir son développement :").pack(pady=(0, 5))
+        tk.Label(support_frame, text="If this application is useful to you, you can support its development:").pack(pady=(0, 5))
 
-        coffee_link = tk.Label(support_frame, text="❤️ Offrir un café (Buy Me a Coffee)", fg="blue", cursor="hand2", font=('Helvetica', 10, 'bold'))
+        coffee_link = tk.Label(support_frame, text="❤️ Buy Me a Coffee", fg="blue", cursor="hand2", font=('Helvetica', 10, 'bold'))
         coffee_link.pack(pady=(0, 5))
         coffee_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://buymeacoffee.com/laurentftech"))
 
-        credits_frame = tk.LabelFrame(main_frame, text="Crédits et Remerciements", padx=10, pady=10)
+        credits_frame = tk.LabelFrame(main_frame, text="Credits and Acknowledgements", padx=10, pady=10)
         credits_frame.pack(fill=tk.X, pady=(0, 10))
 
         # Gemini API link
         gemini_frame = tk.Frame(credits_frame)
         gemini_frame.pack(fill=tk.X, pady=2)
-        tk.Label(gemini_frame, text="- API Google Gemini :").pack(side=tk.LEFT)
+        tk.Label(gemini_frame, text="- Google Gemini API:").pack(side=tk.LEFT)
         link_label = tk.Label(gemini_frame, text="ai.google.dev/gemini-api", fg="blue", cursor="hand2")
         link_label.pack(side=tk.LEFT, padx=5)
         link_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://ai.google.dev/gemini-api"))
 
-        tk.Label(credits_frame, text="- Tkinter pour l'interface graphique", anchor="w").pack(fill=tk.X, pady=2)
-        tk.Label(credits_frame, text="- Icône par Smashicons (www.flaticon.com)", anchor="w").pack(fill=tk.X, pady=2)
+        tk.Label(credits_frame, text="- Tkinter for the graphical interface", anchor="w").pack(fill=tk.X, pady=2)
+        tk.Label(credits_frame, text="- Icon by Smashicons (www.flaticon.com)", anchor="w").pack(fill=tk.X, pady=2)
 
         ok_button = tk.Button(main_frame, text="OK", command=self.destroy, width=10)
         ok_button.pack(pady=(10, 0))
@@ -445,7 +445,7 @@ class SettingsWindow(tk.Toplevel):
 
     def __init__(self, parent, current_settings, save_callback, close_callback, default_settings):
         super().__init__(parent)
-        self.title("Paramètres des voix")
+        self.title("Voice Settings")
         self.transient(parent)
         self.grab_set()
 
@@ -461,8 +461,8 @@ class SettingsWindow(tk.Toplevel):
 
         header_frame = tk.Frame(main_frame)
         header_frame.pack(fill=tk.X, pady=(0, 5))
-        tk.Label(header_frame, text="Nom du Speaker (dans le script)", font=('Helvetica', 10, 'bold')).pack(side=tk.LEFT, expand=True)
-        tk.Label(header_frame, text="Nom de la Voix (Gemini)", font=('Helvetica', 10, 'bold')).pack(side=tk.RIGHT, expand=True)
+        tk.Label(header_frame, text="Speaker name (in the script)", font=('Helvetica', 10, 'bold')).pack(side=tk.LEFT, expand=True)
+        tk.Label(header_frame, text="Voice name (Gemini)", font=('Helvetica', 10, 'bold')).pack(side=tk.RIGHT, expand=True)
 
         self.speaker_frame = tk.Frame(main_frame)
         self.speaker_frame.pack(fill=tk.BOTH, expand=True)
@@ -473,9 +473,9 @@ class SettingsWindow(tk.Toplevel):
         button_frame.pack(fill=tk.X, pady=(10, 0))
 
         tk.Button(button_frame, text="+", command=self.add_row).pack(side=tk.LEFT)
-        tk.Button(button_frame, text="Sauvegarder", command=self.save_and_close).pack(side=tk.RIGHT)
-        tk.Button(button_frame, text="Annuler", command=self.cancel_and_close).pack(side=tk.RIGHT, padx=(0, 5))
-        tk.Button(button_frame, text="Restaurer les défauts", command=self.restore_defaults).pack(side=tk.LEFT, padx=(10, 0))
+        tk.Button(button_frame, text="Save", command=self.save_and_close).pack(side=tk.RIGHT)
+        tk.Button(button_frame, text="Cancel", command=self.cancel_and_close).pack(side=tk.RIGHT, padx=(0, 5))
+        tk.Button(button_frame, text="Restore Defaults", command=self.restore_defaults).pack(side=tk.LEFT, padx=(10, 0))
 
     def populate_fields(self):
         for speaker, voice in self.current_settings.items():
@@ -563,27 +563,27 @@ def main():
         # __file__ n'est pas défini dans certains environnements interactifs
         pass
 
-    # --- Importation des dépendances ---
+    # --- Importing dependencies ---
     try:
         from generate_podcast import generate, PODCAST_SCRIPT, setup_logging, get_api_key, find_ffplay_path
     except ImportError as e:
         messagebox.showerror(
-            "Erreur d'importation",
-            f"Le fichier 'generate_podcast.py' est introuvable.\n\n"
-            f"Veuillez vous assurer qu'il se trouve dans le même dossier que gui.py.\n\n"
-            f"Détail de l'erreur : {e}"
+            "Import Error",
+            f"The file 'generate_podcast.py' was not found.\n\n"
+            f"Please ensure it is in the same folder as gui.py.\n\n"
+            f"Error details: {e}"
         , parent=root)
         root.destroy()
         return
-    
+
     # Initialise le logging avant toute autre chose
     logger = setup_logging()
 
     # --- Vérification de la clé API au démarrage ---
     api_key = get_api_key(lambda msg: logger.info(msg), logger, parent_window=root)
     if not api_key:
-        logger.info("Application fermée car aucune clé API n'a été fournie au démarrage.")
-        messagebox.showwarning("Clé API requise", "L'application ne peut pas démarrer sans clé API.", parent=root)
+        logger.info("Application closed because no API key was provided at startup.")
+        messagebox.showwarning("API Key Required", "The application cannot start without an API key.", parent=root)
         root.destroy()
         return
     
