@@ -76,9 +76,9 @@ John (es): Hola a todos, bienvenidos a este nuevo episodio.
 
 ---
 
-# 📦 Installation
+## 📦 Installation
 
-## 1. External Dependency: FFmpeg (Required)
+### 1. External Dependency: FFmpeg (Required)
 
 For audio conversion and playback, this application requires FFmpeg to be installed on your system.
 
@@ -90,7 +90,7 @@ For audio conversion and playback, this application requires FFmpeg to be instal
 
 ---
 
-## 2. Installing the Application
+### 2. Installing the Application
 
 1. Go to the **"Releases"** or **"Tags"** tab.  
 2. Download the version corresponding to your operating system.  
@@ -99,7 +99,7 @@ For audio conversion and playback, this application requires FFmpeg to be instal
 
 ---
 
-## 💡 Note for macOS
+### 💡 Note for macOS
 
 When launching the application for the first time, macOS will block it because it comes from an unidentified developer (unsigned application).
 
@@ -113,7 +113,7 @@ When launching the application for the first time, macOS will block it because i
 
 ---
 
-## First Launch: API Key
+### First Launch: API Key
 
 On first launch, the application will request your **Google Gemini API key**.  
 It will be stored securely.
@@ -121,7 +121,7 @@ It will be stored securely.
 
 ⸻
 
-👨‍💻 For Developers
+## 👨‍💻 For Developers
 To contribute to the project, run the code, or create your own build, please refer to the full developer guide:
 ➡️ DEVELOPERS.md
 
