@@ -1,4 +1,3 @@
-
 # Podcast Generator
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=000000)](https://www.buymeacoffee.com/laurentftech)
 
@@ -82,47 +81,101 @@ John (es): Hola a todos, bienvenidos a este nuevo episodio.
 
 For audio conversion and playback, this application requires FFmpeg to be installed on your system.
 
-- **macOS**: The easiest way to install it is via Homebrew:  
-  ```bash
-  brew install ffmpeg
-  ```
-- **Windows / Linux**: Download it from the [official website](https://ffmpeg.org/download.html) and add it to your system's PATH.
+#### **macOS**
+Install via [Homebrew](https://brew.sh/):
+```bash
+brew install ffmpeg
+```
+
+#### **Linux**
+Most distributions provide FFmpeg in their package manager:
+```bash
+sudo apt install ffmpeg        # Debian/Ubuntu
+sudo dnf install ffmpeg        # Fedora
+sudo pacman -S ffmpeg          # Arch
+```
+
+#### **Windows (Detailed Guide)**
+
+1. **Download FFmpeg**  
+   Go to the official FFmpeg build page:  
+   👉 [https://www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/)  
+   Download the latest **"release full"** ZIP archive (e.g., `ffmpeg-release-full.7z` or `.zip`).
+
+2. **Extract the archive**  
+   - Right-click the downloaded ZIP file and choose **Extract All…**  
+   - You will get a folder named similar to `ffmpeg-2025-xx-xx-full_build`.
+
+3. **Move the folder**  
+   - Move the extracted `ffmpeg` folder to a location where it will stay permanently, for example:  
+     `C:\ffmpeg`
+
+4. **Add FFmpeg to the PATH**  
+   - Press **Windows + R**, type:
+     ```
+     sysdm.cpl
+     ```
+     and press **Enter**.
+   - In the **System Properties** window, go to **Advanced** → **Environment Variables**.
+   - Under **System variables**, find and select **Path**, then click **Edit**.
+   - Click **New** and add the path to FFmpeg’s `bin` folder, e.g.:
+     ```
+     C:\ffmpeg\bin
+     ```
+   - Click **OK** to close all dialogs.
+
+5. **Verify installation**  
+   - Open **Command Prompt** and type:
+     ```
+     ffmpeg -version
+     ```
+     You should see the version info, confirming FFmpeg is installed and accessible from anywhere.
 
 ---
 
 ### 2. Installing the Application
 
-1.  Go to the **Releases** page.
-2.  Download the latest archive for your system:
-    *   **macOS/Linux**: Download the `.tar.gz` file (`..._MacOS_arm64.tar.gz` for Apple Silicon, `..._MacOS_x86_64.tar.gz` for Intel, or `..._Linux.tar.gz` for Linux).
-    *   **Windows**: Download the `.zip` or `.tar.gz` file.
-3.  **Extract the archive**:
-    *   On macOS and Linux, double-clicking the `.tar.gz` file will extract the application. Then untar the .tar file using the command line:
-    ```bash
-    tar -xzf Podcast_Generator_MacOS_arm64.tar.gz
-    ``` 
-    or with finder use the archive utility.
-    *   On Windows, unzip the archive.
-4.  **Move the application**:
-    *   On macOS, drag `Podcast Generator.app` to your `Applications` folder.
-    *   On Windows, you can place the extracted folder anywhere you like.
-    *   On Linux, you can place the extracted folder in your home directory or any other location.
+1. Go to the **Releases** page.
+2. Download the latest archive for your system:
+    * **macOS/Linux**: Download the `.tar.gz` file (`..._MacOS_arm64.tar.gz` for Apple Silicon, `..._MacOS_x86_64.tar.gz` for Intel, or `..._Linux.tar.gz` for Linux).
+    * **Windows**: Download the `.zip` or `.tar.gz` file.
+3. **Extract the archive**:
+    * On macOS and Linux, double-click the `.tar.gz` file to extract the application, or use:
+      ```bash
+      tar -xzf Podcast_Generator_MacOS_arm64.tar.gz
+      ```
+    * On Windows, unzip the archive.
+4. **Move the application**:
+    * On macOS, drag `Podcast Generator.app` to your `Applications` folder.
+    * On Windows, place the extracted folder anywhere you like.
+    * On Linux, place it in your home directory or any preferred location.
 
 ---
 
 ### 💡 Note for macOS Users
 
-When you first run the application, macOS will show several security warnings because it's not from the App Store. This is perfectly normal and expected.
+When you first run the application, macOS will show several security warnings because it's not from the App Store. This is normal.
 
-1.  **"App downloaded from the internet"**: You might see a dialog asking if you're sure you want to open the app. Click **Open**.
-2.  **"Unidentified Developer"**: macOS will then likely block the app. An error message will appear. Click **OK** or **Cancel** on this dialog.
-3.  **Allow the App to Run**:
-    *   Go to **System Settings** → **Privacy & Security**.
-    *   Scroll down to the **Security** section.
-    *   You will see a message saying `"Podcast Generator.app" was blocked...`.
-    *   Click the **Open Anyway** button next to it and confirm.
+1. **"App downloaded from the internet"**: Click **Open**.
+2. **"Unidentified Developer"**: macOS may block the app. Click **OK**, then:
+    * Go to **System Settings** → **Privacy & Security**.
+    * Scroll to the **Security** section.
+    * Click **Open Anyway** and confirm.
 
-The application will now launch, and you won't need to do this again.
+---
+
+### 💡 Note for Windows Users (Windows 10 / 11)
+
+When you first run the application, **Windows SmartScreen** might block it because it’s not signed by Microsoft Store.
+
+1. When you double-click the executable, you might see a window saying:  
+   *"Windows protected your PC"*.
+
+2. Click on **More info**.
+
+3. Then click on **Run anyway**.
+
+After doing this once, Windows will remember your choice and won’t show the warning again.
 
 ---
 
@@ -131,13 +184,11 @@ The application will now launch, and you won't need to do this again.
 On first launch, the application will request your **Google Gemini API key**.  
 It will be stored securely.
 
-
-⸻
+---
 
 ## 👨‍💻 For Developers
 To contribute to the project, run the code, or create your own build, please refer to the full developer guide:
 ➡️ DEVELOPERS.md
-
 
 ---
 

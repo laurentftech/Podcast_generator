@@ -15,6 +15,7 @@ dependencies = [
     "google-genai",
     "python-dotenv",
     "keyring",
+    "setuptools-scm",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -24,6 +25,11 @@ classifiers = [
     "Environment :: Win32 (MS Windows)",
     "Environment :: MacOS X",
     "Framework :: Tkinter",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyinstaller"
 ]
 
 [project.urls]

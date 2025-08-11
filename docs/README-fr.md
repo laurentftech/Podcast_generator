@@ -1,11 +1,13 @@
 # Podcast Generator
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=000000)](https://www.buymeacoffee.com/laurentftech)
 
-If you enjoy this project and want to support my work, feel free to [buy me a coffee](https://www.buymeacoffee.com/laurentftech) ☕. Thank you for your support!
+Si vous appréciez ce projet et souhaitez soutenir mon travail, vous pouvez [m’offrir un café](https://www.buymeacoffee.com/laurentftech) ☕. Merci pour votre soutien !
 
 ---
 
-Une application de bureau simple mais puissante, développée en Python avec Tkinter, qui permet de créer un podcast audio multi-locuteurs à partir d'un script texte en utilisant l'API de synthèse vocale de Google Gemini, qui supporte plusieurs langues et accents pour un rendu naturel.
+## 📖 Présentation
+
+**Podcast Generator** est une application de bureau simple mais puissante, développée en Python avec Tkinter, qui permet de créer un podcast audio multi-locuteurs à partir d’un script texte, en utilisant l’API de synthèse vocale Google Gemini.
 
 ![Capture d'écran de l'application](../podcast_creator_screenshot.png)
 
@@ -13,58 +15,38 @@ Une application de bureau simple mais puissante, développée en Python avec Tki
 
 ## ✨ Fonctionnalités
 
-- **Génération Audio** : Créez des podcasts multi-locuteurs en utilisant les voix de haute qualité de l'API Google Gemini.
-- **Interface Simple** : Une interface graphique intuitive construite avec Tkinter.
-- **Formats Flexibles** : Exportez vos créations au format **MP3** (par défaut) ou **WAV**.
-- **Personnalisation** : Configurez et sauvegardez les voix pour chaque locuteur de vos scripts.
-- **Lecture Intégrée** : Écoutez et arrêtez la lecture de l'audio directement depuis l'application (nécessite FFmpeg).
-- **Gestion Sécurisée** : Votre clé API est demandée une seule fois et stockée de manière sécurisée dans le trousseau natif de votre système (`keyring`).
-- **Versioning Automatique** : La version de l'application est automatiquement synchronisée avec les tags Git du projet.
+- **Génération audio** : Créez des podcasts multi-locuteurs avec des voix de haute qualité grâce à l’API Google Gemini.
+- **Interface intuitive** : Interface graphique claire et simple à utiliser.
+- **Formats flexibles** : Export en **MP3** (par défaut) ou **WAV**.
+- **Personnalisation** : Sauvegarde des voix et paramètres pour chaque locuteur.
+- **Lecture intégrée** : Écoutez et arrêtez vos créations directement depuis l’application (**FFmpeg requis**).
+- **Stockage sécurisé de la clé API** : Votre clé API Google Gemini est demandée une seule fois et enregistrée de manière sécurisée dans le trousseau du système (`keyring`).
+- **Version automatique** : Synchronisation de la version de l’application avec les tags Git du projet.
 
 ---
 
-## 🌍 Support Multilingue
+## 🌍 Support multilingue
 
-Grâce à l'API Google Gemini, **Podcast Generator** prend en charge plusieurs langues et accents, ce qui vous permet de :
+Grâce à l’API Google Gemini, **Podcast Generator** permet :
 
-- Créer des podcasts multilingues avec des voix distinctes par langue.  
-- Produire du contenu pour un public international.  
-- Faciliter l'apprentissage des langues avec des dialogues réalistes.  
-- Améliorer l'accessibilité en adaptant la langue au public cible.
-
----
-
-## 💡 Cas d’usage
-
-- **Enseignement et formation**  
-  Transformez vos supports de cours ou tutoriels écrits en podcasts audio dynamiques avec plusieurs voix pour capter l’attention des apprenants.
-
-- **Création de contenu**  
-  Génération rapide de podcasts ou d’épisodes audio à partir de scripts, idéal pour les créateurs qui souhaitent automatiser une partie de leur production.
-
-- **Accessibilité**  
-  Rendez vos documents écrits accessibles aux personnes malvoyantes ou préférant le format audio.
-
-- **Pratique des langues**  
-   Profitez du support multilingue pour créer des dialogues ou podcasts dans plusieurs langues, parfaits pour les professeurs, formateurs et apprenants en langues étrangères.
+- De créer des podcasts multilingues avec des voix distinctes.
+- De produire du contenu pour un public international.
+- De faciliter l’apprentissage des langues avec des dialogues réalistes.
+- D’améliorer l’accessibilité grâce à l’audio.
 
 ---
 
 ## 💡 Exemples d’utilisation
 
-### Création de podcasts multi-voix à partir de scripts écrits
-
+### Script simple
 ```txt
 John: Bonjour à tous, bienvenue dans ce nouvel épisode.
 Samantha: Aujourd'hui, nous allons explorer les bases de l’intelligence artificielle.
 John: Restez avec nous pour en savoir plus !
-Samantha: N'oubliez surtout pas de vous abonner à notre podcast.
+Samantha: N'oubliez pas de vous abonner.
 ```
 
-### Exemple multilingue
-
-Voici un exemple de script pour illustrer la prise en charge multilingue :
-
+### Script multilingue
 ```txt
 John (fr): Bonjour à tous, bienvenue dans ce nouvel épisode.
 Samantha (en): Hello everyone, welcome to this new episode.
@@ -75,84 +57,121 @@ John (es): Hola a todos, bienvenidos a este nuevo episodio.
 
 ## 📦 Installation
 
-### 1. Dépendance Externe : FFmpeg (Requis)
+### 1. Dépendance externe : FFmpeg (obligatoire)
 
-Pour la conversion et la lecture audio, cette application nécessite que **FFmpeg** soit installé sur votre système.
+Pour la conversion et la lecture audio, **FFmpeg** doit être installé sur votre système.
 
-Sur macOS, le moyen le plus simple de l'installer est via Homebrew :
-```sh
+#### **macOS**
+Installer via [Homebrew](https://brew.sh/) :
+```bash
 brew install ffmpeg
 ```
-Windows / Linux : [Télécharger depuis le site officiel](https://ffmpeg.org/download.html) et ajouter au PATH.
+
+#### **Linux**
+Installer via le gestionnaire de paquets :
+```bash
+sudo apt install ffmpeg        # Debian/Ubuntu
+sudo dnf install ffmpeg        # Fedora
+sudo pacman -S ffmpeg          # Arch
+```
+
+#### **Windows (guide détaillé)**
+
+1. **Télécharger FFmpeg**  
+   Rendez-vous sur la page officielle des builds :  
+   👉 [https://www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/)  
+   Téléchargez l’archive **"release full"** (ex. `ffmpeg-release-full.7z` ou `.zip`).
+
+2. **Extraire l’archive**  
+   - Clic droit → **Extraire tout…**  
+   - Vous obtenez un dossier du type `ffmpeg-2025-xx-xx-full_build`.
+
+3. **Déplacer le dossier**  
+   - Déplacez le dossier `ffmpeg` dans un emplacement permanent, par exemple :  
+     `C:\ffmpeg`
+
+4. **Ajouter FFmpeg au PATH**  
+   - Appuyez sur **Windows + R**, tapez :
+     ```
+     sysdm.cpl
+     ```
+     puis **Entrée**.
+   - Onglet **Avancé** → **Variables d’environnement**.
+   - Dans **Variables système**, sélectionnez **Path** → **Modifier**.
+   - Cliquez sur **Nouveau** et ajoutez :
+     ```
+     C:\ffmpeg\bin
+     ```
+   - Validez avec **OK**.
+
+5. **Vérifier l’installation**  
+   - Ouvrez **Invite de commandes** et tapez :
+     ```
+     ffmpeg -version
+     ```
+     Vous devez voir la version installée.
 
 ---
 
-### 2. Installation de l'application 
+### 2. Installation de l’application
 
-1.  Allez dans l'onglet **"Releases"** ou **"Tags"**.
-2.  Téléchargez la version correspondant à votre OS.
-3.  Décompressez le `.zip`.
-4.  Placez l'application dans le dossier de votre choix.
+1. Rendez-vous sur la page **Releases** du projet.  
+2. Téléchargez l’archive adaptée à votre système :
+    - **macOS/Linux** : `.tar.gz`
+    - **Windows** : `.zip` ou `.tar.gz`
+3. **Extraire** l’archive :
+    - macOS/Linux : double-clic ou `tar -xzf fichier.tar.gz`
+    - Windows : clic droit → **Extraire tout…**
+4. **Placer** le dossier où vous le souhaitez.
 
-#### 💡 Note pour macOS
+---
 
-Au premier lancement, macOS bloquera l’ouverture de l’application car elle provient d’un développeur non identifié (application non signée).
+### 💡 Note pour macOS
 
-##### Procédure recommandée (macOS récents)
+Au premier lancement, macOS affichera un avertissement de sécurité car l’application n’est pas signée.
 
-	1.	Double-cliquez sur l’icône de l’application (un message d’erreur indiquera que l’ouverture est impossible).
-	2.	Ouvrez **Réglages Système → Confidentialité et sécurité.**
-	3.	Dans la section **Sécurité**, cliquez sur **Ouvrir quand même**.
-	4.	Confirmez l’ouverture.
+1. Double-cliquez sur l’application (un message bloquera l’ouverture).  
+2. Ouvrez **Réglages Système → Confidentialité et sécurité**.  
+3. Cliquez sur **Ouvrir quand même**.  
+4. Confirmez.
 
-ℹ️ Sur certaines anciennes versions de macOS, il était parfois possible de contourner l’avertissement par un clic droit → Ouvrir, mais cette méthode ne fonctionne plus de manière fiable sur les versions récentes.
+---
 
+### 💡 Note pour Windows (Windows 10 / 11)
 
-#### Premier Lancement : Clé API
-L’application demandera votre clé API Google Gemini lors du premier lancement. Elle sera sauvegardée de manière sécurisée.
+Lors du premier lancement, **Windows SmartScreen** peut bloquer l’application.
+
+1. Message *"Windows a protégé votre ordinateur"*.
+2. Cliquez sur **Informations complémentaires**.
+3. Cliquez sur **Exécuter quand même**.
+
+Une fois validé, Windows ne vous le demandera plus.
+
+---
+
+### Premier lancement : clé API
+
+Lors du premier démarrage, l’application vous demandera votre **clé API Google Gemini**.  
+Elle sera stockée de manière sécurisée.
 
 ---
 
 ## 👨‍💻 Pour les développeurs
 
-Pour contribuer au projet, lancer le code ou créer votre propre version, veuillez consulter le guide complet pour les développeurs :
-
-**➡️ `DEVELOPERS.md`**
-
----
-
-## 💡 Exemple d’utilisation
-
-Script texte :
-```
-Locuteur_1: Bonjour et bienvenue dans notre podcast !
-Locuteur_2: Aujourd'hui, nous allons parler d'intelligence artificielle.
-```
-Résultat : un fichier MP3 ou WAV avec deux voix distinctes, configurées dans **Options → Paramètres de voix**.
-
----
-
-## 🛠 Compatibilité
-
-- macOS (testé)
-- Windows (prévoir FFplay dans le PATH pour lecture intégrée)
-- Linux (mêmes dépendances que macOS)
+Voir **DEVELOPERS-fr.md** pour exécuter le code ou contribuer au projet.
 
 ---
 
 ## 📜 Licence
 
-Projet distribué sous licence MIT — voir le fichier `LICENSE`.
+Ce projet est sous licence MIT — voir le fichier `LICENSE`.
 
 ---
 
-## 🐞 Bugs connus / Limitations
-- Connexion Internet obligatoire
-- Pas encore de support pour la synthèse hors ligne
+## 🤝 Contributions
+
+Les contributions sont les bienvenues ! Consultez le fichier [DEVELOPERS](docs/DEVELOPERS.md) pour les règles de contribution.
 
 ---
 
-## 👤 Auteur
-
-**Laurent FRANCOISE**  
-📧 laurent.f.tech@icloud.com  
+Merci d’utiliser **Podcast Generator** ! ☕

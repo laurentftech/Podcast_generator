@@ -1,113 +1,104 @@
-#  Podcast Generator - Guide pour les développeurs
+# Podcast Generator - Developer Guide
 
-Ce document décrit les étapes nécessaires pour contribuer, tester, builder et publier une nouvelle version de Podcast Generator.
+This document describes the steps to contribute, test, and prepare a new version of Podcast Generator.
 
-## 📋 Prérequis
+⚠️ **Important**: The generation of executables (macOS, Windows, Linux) and their publication in the releases **is fully automated** through the GitHub Actions workflow `release.yml`.  
+Only the repository owner (Laurent) can trigger this generation and officially publish a release.
 
-- Python 3.9+ (3.11 ou 3.12 recommandé)
+---
+
+## 📋 Prerequisites
+
+- Python 3.9+ (3.11 or 3.12 recommended)
 - Git
-- FFmpeg installé et accessible dans le PATH
-- PyInstaller pour la génération d'exécutables
-- Accès au dépôt Git (droits de push pour la publication)
+- FFmpeg installed and available in the PATH
+- Access to the Git repository (push rights required to prepare a release)
 
-## ⚙️ Installation de l'environnement de développement
+---
+
+## ⚙️ Setting up the development environment
 
 ```sh
-# 1. Cloner le dépôt
+# 1. Clone the repository
 git clone https://github.com/laurentftech/Podcast_generator.git
 cd Podcast_generator
 
-# 2. Créer et activer un environnement virtuel
+# 2. Create and activate a virtual environment
 python -m venv .venv
 source .venv/bin/activate  # macOS/Linux
 # .\.venv\Scripts\activate  # Windows
 
-# 3. Installer les dépendances
+# 3. Install dependencies
 pip install -r requirements.txt
-pip install -e .  # installe la version taguée en mode développement
+pip install -e .  # install in development mode
 
-# 4. Lancer l'application
+# 4. Run the application
 python gui.py
 ```
 
-## 🧪 Tests
-Pour le moment, il n'y a pas de suite de tests automatisés.
-Les tests se font manuellement en lançant l'application et en vérifiant le comportement des fonctionnalités.
+---
 
-## 🚀 Workflow complet pour créer une nouvelle version
+## 🧪 Testing
 
-### 1. Préparer la version
-    Mettre à jour le changelog (CHANGELOG.md)
-    Vérifier que toutes les fonctionnalités sont testées et fonctionnelles
-    ⚠️Attention : le répertoire de travail doit être absolument "propre" (sans fichier non commité ou non exclus via .gitignore) pour assurer un numéro de version stable dans l'application générée.
+Currently, there is no automated test suite.  
+Testing is performed manually by running the application and verifying all functionalities.
 
-    
-### 2. Taguer la version
+---
 
+## 🚀 Preparing a new version
+
+### Step 1: Prepare the Release
+- - **Update the Changelog**: Manually edit `CHANGELOG.md` to add the new version and list the changes.
+- **Final Tests**: Ensure all features are tested and functional.
+- **Clean Working Directory**: Make sure your working directory is clean (`git status` should show no uncommitted changes).
+
+Only Laurent can **publish an official release**, but anyone with write access can prepare the code.
+
+### Step 2: Commit, Tag, and Push (**Laurent's Responsibility**)
 ```sh
 git add .
-git commit -m "Préparation version vX.Y.Z"
+git commit -m "Prepare version vX.Y.Z"
 git tag -a vX.Y.Z -m "Version X.Y.Z"
 git push origin main
 git push origin vX.Y.Z
-pip install -e .
 ```
 
-### 3. Générer l'exécutable
-#### Créer l'icône .icns depuis un PNG (macOS uniquement)
-```sh
-sips -s format icns podcast.png --out podcast.icns
-```
+Once the `vX.Y.Z` tag is pushed, the GitHub Actions workflow `release.yml` will automatically build the application for all platforms, create a new GitHub Release, and upload all the .tar.gz archives.
 
-#### Installer PyInstaller si besoin
-```sh
-pip install pyinstaller
-```
+No manual build is required.
 
-#### Générer l'exécutable
-```sh
-pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
-```
+---
 
-### 4. Tester l'exécutable
+## 🤝 Contributing
 
-- macOS : open dist/Podcast\ Generator.app
-- Windows : double-cliquer sur dist/Podcast Generator.exe
-- Linux : ./dist/Podcast\ Generator
+- Fork the repository  
+- Create a branch:  
+  ```sh
+  git checkout -b feature/my-feature
+  ```
+- Develop and test your changes  
+- Commit:  
+  ```sh
+  git commit -m "Added my feature"
+  ```
+- Push:  
+  ```sh
+  git push origin feature/my-feature
+  ```
+- Open a Pull Request
 
-### 5. Nettoyer les fichiers temporaires
-```sh
-rm -rf build dist __pycache__ *.spec podcast.icns
-```
+---
 
-### 6. Créer un zip de distribution
-```sh
-zip -r Podcast_Generator_vX.Y.Z.zip dist/Podcast\ Generator.app
-# ou version Windows
-zip -r Podcast_Generator_vX.Y.Z.zip dist/Podcast\ Generator.exe
-```
+## 🛠 Development tips
 
-### 7. Publier sur Github
-- Aller dans Releases
-- Sélectionner le tag vX.Y.Z
-- Ajouter le fichier ZIP généré
-- Renseigner la description de la release
+- Follow the existing code structure and style
+- Use explicit variable names
+- Document new functions with docstrings
+- Make commits clear and atomic
+- Test compatibility on macOS, Windows, and Linux
 
+---
 
-# 🤝 Contribution
-- Fork du dépôt 
-- Créer une branche : git checkout -b feature/ma-fonctionnalite 
-- Développer et tester les changements 
-- Commit : git commit -m "Ajout de ma fonctionnalité"
-- Push : git push origin feature/ma-fonctionnalite 
-- Ouvrir une Pull Request
+## 📜 License
 
-# 🛠 Conseils de développement
-- Respecter la structure du code existant
-- Utiliser des noms de variables explicites
-- Documenter les nouvelles fonctions avec des docstrings
-- Faire des commits atomiques et clairs
-- Tester la compatibilité sur macOS, Windows et Linux
-
-# 📜 Licence
-Les contributions sont acceptées sous licence MIT.
+Contributions are accepted under the MIT license. See the [LICENSE](LICENSE) file for details.
