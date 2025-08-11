@@ -1,17 +1,19 @@
-name: Release Multi-Arch macOS
+name: Release Multi-Platform
 
 permissions:
-  contents: write  # Nécessaire pour créer la release et uploader les assets
+  contents: write
 
 on:
   push:
     tags:
-      - 'v*.*.*'  # Se déclenche sur tags comme v1.4.5
+      - 'v*.*.*'
 
 jobs:
   build-arm64:
-    name: Build ARM64 macOS
-    runs-on: macos-latest  # Runner Apple Silicon actuel
+    name: Build macOS ARM64
+    runs-on: macos-latest
+    outputs:
+      zip: Podcast_Generator_${{ github.ref_name }}_arm64.zip
     steps:
       - uses: actions/checkout@v3
 
@@ -20,13 +22,13 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Install dependencies
+      - name: Install PyInstaller
         run: pip install pyinstaller
 
       - name: Convert PNG to ICNS
         run: sips -s format icns podcast.png --out podcast.icns
 
-      - name: Build ARM64 executable with PyInstaller
+      - name: Build executable ARM64
         run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
 
       - name: Package ARM64 zip
@@ -35,12 +37,44 @@ jobs:
       - name: Upload ARM64 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Podcast_Generator_arm64
+          name: arm64-zip
           path: Podcast_Generator_${{ github.ref_name }}_arm64.zip
 
   build-intel:
-    name: Build Intel macOS
-    runs-on: [self-hosted, macos, x64]
+    name: Build macOS Intel
+    runs-on: [ self-hosted, macos, x64 ]
+    needs: build-arm64
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Check Python version
+        run: python3 --version
+
+      - name: Install dependencies
+        run: pip3 install --user pyinstaller
+
+      - name: Convert PNG to ICNS
+        run: sips -s format icns podcast.png --out podcast.icns
+
+      - name: Build executable Intel
+        run: ~/.local/bin/pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
+
+      - name: Package Intel zip
+        run: zip -r Podcast_Generator_${{ github.ref_name }}_x86_64.zip dist/Podcast\ Generator.app
+
+      - name: Upload Intel zip to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! command -v gh &> /dev/null; then
+            brew install gh
+          fi
+          gh release upload ${{ github.ref_name }} Podcast_Generator_${{ github.ref_name }}_x86_64.zip --clobber
+  
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
     needs: build-arm64
     steps:
       - uses: actions/checkout@v3
@@ -50,39 +84,63 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Install dependencies
+      - name: Install PyInstaller
         run: pip install pyinstaller
 
-      - name: Convert PNG to ICNS
-        run: sips -s format icns podcast.png --out podcast.icns
+      - name: Build executable Windows
+        run: pyinstaller --name="Podcast Generator" --windowed gui.py
 
-      - name: Build Intel executable with PyInstaller
-        run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
+      - name: Package Windows zip
+        run: powershell Compress-Archive -Path "dist\Podcast Generator.exe" -DestinationPath Podcast_Generator_${{ github.ref_name }}_windows.zip
 
-      - name: Package Intel zip
-        run: zip -r Podcast_Generator_${{ github.ref_name }}_x86_64.zip dist/Podcast\ Generator.app
-
-      - name: Upload Intel zip to release
+      - name: Upload Windows zip to release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: Podcast_Generator_${{ github.ref_name }}_windows.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Installer GitHub CLI (nécessaire sur le runner self-hosted)
-          if ! command -v gh &> /dev/null; then
-            brew install gh
-          fi
-          gh release upload ${{ github.ref_name }} Podcast_Generator_${{ github.ref_name }}_x86_64.zip --clobber
+
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    needs: build-arm64
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build executable Linux
+        run: pyinstaller --name="Podcast Generator" --windowed gui.py
+
+      - name: Package Linux zip
+        run: zip -r Podcast_Generator_${{ github.ref_name }}_linux.zip dist/Podcast\ Generator
+
+      - name: Upload Linux zip to release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: Podcast_Generator_${{ github.ref_name }}_linux.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   release:
     name: Create GitHub Release & Upload ARM64
     runs-on: ubuntu-latest
-    needs: build-arm64
+    needs: [build-arm64]
     steps:
       - uses: actions/checkout@v3
 
       - name: Download ARM64 artifact
         uses: actions/download-artifact@v4
         with:
-          name: Podcast_Generator_arm64
+          name: arm64-zip
           path: .
 
       - name: Create GitHub Release & Upload ARM64 zip
