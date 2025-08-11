@@ -1,6 +1,6 @@
-# Créateur de Podcast - Guide pour les développeurs
+#  Podcast Generator - Guide pour les développeurs
 
-Ce document décrit les étapes nécessaires pour contribuer, tester, builder et publier une nouvelle version de Créateur de Podcast.
+Ce document décrit les étapes nécessaires pour contribuer, tester, builder et publier une nouvelle version de Podcast Generator.
 
 ## 📋 Prérequis
 
@@ -14,8 +14,8 @@ Ce document décrit les étapes nécessaires pour contribuer, tester, builder et
 
 ```sh
 # 1. Cloner le dépôt
-git clone https://gitea.gandulf78.synology.me/laurent/Podcast_creator.git
-cd Podcast_creator
+git clone https://github.com/laurentftech/Podcast_generator.git
+cd Podcast_generator
 
 # 2. Créer et activer un environnement virtuel
 python -m venv .venv
