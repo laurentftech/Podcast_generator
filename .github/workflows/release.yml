@@ -77,9 +77,10 @@ jobs:
 
       - name: Clean up Windows
         run: |
-          rmdir /s /q build
-          rmdir /s /q dist
-          del *.spec podcast.ico
+          Remove-Item -Recurse -Force build
+          Remove-Item -Recurse -Force dist
+          Remove-Item -Force *.spec
+          Remove-Item -Force podcast.ico
 
       - name: Upload Windows ZIP artifact
         uses: actions/upload-artifact@v4
