@@ -1,168 +1,95 @@
-name: Build and Release Multi-Platform
+name: Release Multi-Arch macOS
 
 permissions:
-  contents: write
-  packages: write
+  contents: write  # Nécessaire pour créer la release et uploader les assets
 
 on:
   push:
     tags:
-      - 'v*.*.*'
-  workflow_dispatch:
+      - 'v*.*.*'  # Se déclenche sur tags comme v1.4.5
 
 jobs:
-  build-macos:
-    runs-on: macos-latest
-    outputs:
-      zip-path: Podcast_Generator_${{ github.ref_name }}_macos.zip
+  build-arm64:
+    name: Build ARM64 macOS
+    runs-on: macos-latest  # Runner Apple Silicon actuel
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.13'
 
-      - name: Installer dépendances Python
-        run: |
-          pip install -e .
-          pip install pyinstaller
+      - name: Install dependencies
+        run: pip install pyinstaller
 
-      - name: Générer icône macOS (.icns)
+      - name: Convert PNG to ICNS
         run: sips -s format icns podcast.png --out podcast.icns
 
-      - name: Build macOS executable
+      - name: Build ARM64 executable with PyInstaller
         run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
 
-      - name: Package macOS ZIP
-        run: |
-          zip -r Podcast_Generator_${{ github.ref_name }}_macos.zip dist/Podcast\ Generator.app
+      - name: Package ARM64 zip
+        run: zip -r Podcast_Generator_${{ github.ref_name }}_arm64.zip dist/Podcast\ Generator.app
 
-      - name: Clean up macOS
-        run: rm -rf build dist __pycache__ *.spec podcast.icns
-
-      - name: Upload macOS ZIP artifact
+      - name: Upload ARM64 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Podcast_Generator_${{ github.ref_name }}_macos.zip
-          path: Podcast_Generator_${{ github.ref_name }}_macos.zip
+          name: Podcast_Generator_arm64
+          path: Podcast_Generator_${{ github.ref_name }}_arm64.zip
 
-  build-windows:
-    runs-on: windows-latest
-    outputs:
-      zip-path: Podcast_Generator_${{ github.ref_name }}_windows.zip
+  build-intel:
+    name: Build Intel macOS
+    runs-on: [self-hosted, macos, x64]
+    needs: build-arm64
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.13'
 
-      - name: Installer ImageMagick
-        run: choco install imagemagick -y
+      - name: Install dependencies
+        run: pip install pyinstaller
 
-      - name: Convertir podcast.png en podcast.ico
-        run: magick convert podcast.png -define icon:auto-resize=256,128,64,48,32,16 podcast.ico
+      - name: Convert PNG to ICNS
+        run: sips -s format icns podcast.png --out podcast.icns
 
-      - name: Installer dépendances Python
+      - name: Build Intel executable with PyInstaller
+        run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
+
+      - name: Package Intel zip
+        run: zip -r Podcast_Generator_${{ github.ref_name }}_x86_64.zip dist/Podcast\ Generator.app
+
+      - name: Upload Intel zip to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          pip install -e .
-          pip install pyinstaller
+          # Installer GitHub CLI (nécessaire sur le runner self-hosted)
+          if ! command -v gh &> /dev/null; then
+            brew install gh
+          fi
+          gh release upload ${{ github.ref_name }} Podcast_Generator_${{ github.ref_name }}_x86_64.zip --clobber
 
-      - name: Build Windows executable
-        run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.ico gui.py
-
-      - name: Debug lister dist
-        run: dir dist
-
-      - name: Package Windows ZIP
-        run: powershell -Command "Compress-Archive -Path 'dist\\Podcast Generator\\Podcast Generator.exe' -DestinationPath 'Podcast_Generator_${{ github.ref_name }}_windows.zip'"
-
-      - name: Clean up Windows
-        run: |
-          Remove-Item -Recurse -Force build
-          Remove-Item -Recurse -Force dist
-          Remove-Item -Force *.spec
-          Remove-Item -Force podcast.ico
-
-      - name: Upload Windows ZIP artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Podcast_Generator_${{ github.ref_name }}_windows.zip
-          path: Podcast_Generator_${{ github.ref_name }}_windows.zip
-
-  build-linux:
+  release:
+    name: Create GitHub Release & Upload ARM64
     runs-on: ubuntu-latest
-    outputs:
-      zip-path: Podcast_Generator_${{ github.ref_name }}_linux.zip
+    needs: build-arm64
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-
-      - name: Installer dépendances Python
-        run: |
-          pip install -e .
-          pip install pyinstaller
-
-      - name: Build Linux executable
-        run: pyinstaller --name="Podcast Generator" --windowed gui.py
-
-      - name: Package Linux ZIP
-        run: zip -r Podcast_Generator_${{ github.ref_name }}_linux.zip dist/Podcast\ Generator
-
-      - name: Clean up Linux
-        run: rm -rf build dist __pycache__ *.spec
-
-      - name: Upload Linux ZIP artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Podcast_Generator_${{ github.ref_name }}_linux.zip
-          path: Podcast_Generator_${{ github.ref_name }}_linux.zip
-
-  create-release:
-    needs: [build-macos, build-windows, build-linux]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Télécharger artefact macOS
+      - name: Download ARM64 artifact
         uses: actions/download-artifact@v4
         with:
-          name: Podcast_Generator_${{ github.ref_name }}_macos.zip
-          path: ./artifacts
+          name: Podcast_Generator_arm64
+          path: .
 
-      - name: Télécharger artefact Windows
-        uses: actions/download-artifact@v4
-        with:
-          name: Podcast_Generator_${{ github.ref_name }}_windows.zip
-          path: ./artifacts
-
-      - name: Télécharger artefact Linux
-        uses: actions/download-artifact@v4
-        with:
-          name: Podcast_Generator_${{ github.ref_name }}_linux.zip
-          path: ./artifacts
-
-      - name: Créer la release GitHub
-        id: create_release
+      - name: Create GitHub Release & Upload ARM64 zip
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
-          body: "Release multi-plateforme générée automatiquement."
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Uploader les assets
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: |
-            ./artifacts/Podcast_Generator_${{ github.ref_name }}_macos.zip
-            ./artifacts/Podcast_Generator_${{ github.ref_name }}_windows.zip
-            ./artifacts/Podcast_Generator_${{ github.ref_name }}_linux.zip
+          files: Podcast_Generator_${{ github.ref_name }}_arm64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
