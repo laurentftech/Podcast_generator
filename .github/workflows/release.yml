@@ -69,6 +69,9 @@ jobs:
       - name: Build Windows executable
         run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.ico gui.py
 
+      - name: Debug lister dist
+        run: dir dist
+
       - name: Package Windows ZIP
         run: powershell -Command "Compress-Archive -Path 'dist\\Podcast Generator.exe' -DestinationPath 'Podcast_Generator_${{ github.ref_name }}_windows.zip'"
 
