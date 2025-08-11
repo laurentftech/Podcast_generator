@@ -10,6 +10,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 - Ajout d'un écran de démarrage (splash screen) pour améliorer l'expérience au lancement.
 - Ajout d'un fichier `CHANGELOG.md` pour suivre l'historique des versions.
 - Ajout d'un lien de soutien "Buy Me a Coffee" dans la fenêtre "À propos".
+- Amélioration README.md en Anglais et README-fr.md en Français
 
 ## [1.4.4] - 2024-08-10
 
