@@ -170,7 +170,7 @@ Ce projet est sous licence MIT — voir le fichier `LICENSE`.
 
 ## 🤝 Contributions
 
-Les contributions sont les bienvenues ! Consultez le fichier [DEVELOPERS](docs/DEVELOPERS-fr.md) pour les règles de contribution.
+Les contributions sont les bienvenues ! Consultez le fichier [DEVELOPERS-fr.md](DEVELOPERS-fr.md) pour les règles de contribution.
 
 ---
 
