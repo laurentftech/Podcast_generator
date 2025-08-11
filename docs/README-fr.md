@@ -1,4 +1,4 @@
-# Créateur de Podcast
+# Podcast Generator
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=000000)](https://www.buymeacoffee.com/laurentftech)
 
 If you enjoy this project and want to support my work, feel free to [buy me a coffee](https://www.buymeacoffee.com/laurentftech) ☕. Thank you for your support!
@@ -25,7 +25,7 @@ Une application de bureau simple mais puissante, développée en Python avec Tki
 
 ## 🌍 Support Multilingue
 
-Grâce à l'API Google Gemini, **Créateur de Podcast** prend en charge plusieurs langues et accents, ce qui vous permet de :
+Grâce à l'API Google Gemini, **Podcast Generator** prend en charge plusieurs langues et accents, ce qui vous permet de :
 
 - Créer des podcasts multilingues avec des voix distinctes par langue.  
 - Produire du contenu pour un public international.  
