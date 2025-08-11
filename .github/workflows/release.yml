@@ -32,7 +32,7 @@ jobs:
         run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
 
       - name: Package ARM64 zip
-        run: zip -r Podcast_Generator_${{ github.ref_name }}_arm64.zip dist/Podcast\ Generator.app
+        run: zip -r Podcast_Generator_${{ github.ref_name }}_MacOS_arm64.zip dist/Podcast\ Generator.app
 
       - name: Upload ARM64 artifact
         uses: actions/upload-artifact@v4
@@ -61,7 +61,7 @@ jobs:
         run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
 
       - name: Package Intel zip
-        run: zip -r Podcast_Generator_${{ github.ref_name }}_x86_64.zip dist/Podcast\ Generator.app
+        run: zip -r Podcast_Generator_${{ github.ref_name }}_MacOS_x86_64.zip dist/Podcast\ Generator.app
 
       - name: Upload Intel artifact
         uses: actions/upload-artifact@v4
