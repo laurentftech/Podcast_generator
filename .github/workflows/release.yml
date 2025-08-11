@@ -33,17 +33,17 @@ jobs:
 
       - name: Restore code signing certificate
         run: |
-          echo "${{ secrets.CERT_P12_BASE64 }}" | base64 -d > cert.p12
-          security create-keychain -p ""   
+          echo "${{ secrets.CERT_P12_BASE64 }}" | base64 --decode > cert.p12
+          security create-keychain -p "" build.keychain
           security import cert.p12 -k build.keychain -P "" -T /usr/bin/codesign
-          security list-keychains -s build.keychain
+          security list-keychains -d user -s build.keychain
           security unlock-keychain -p "" build.keychain
           security default-keychain -s build.keychain
           security set-keychain-settings -t 3600 -u build.keychain
           
       - name: Sign the app
         run: |
-          codesign --deep --force --sign "LaurentFTech Self-Signed" --timestamp --options runtime dist/Podcast\ Generator.app
+          codesign -vvv --deep --force --sign "LaurentFTech Self-Signed" --timestamp --options runtime dist/Podcast\ Generator.app
           xattr -dr com.apple.quarantine dist/Podcast\ Generator.app
 
       - name: Package ARM64 zip
@@ -77,17 +77,17 @@ jobs:
 
       - name: Restore code signing certificate
         run: |
-          echo "${{ secrets.CERT_P12_BASE64 }}" | base64 -d > cert.p12
-          security create-keychain -p ""   
+          echo "${{ secrets.CERT_P12_BASE64 }}" | base64 --decode > cert.p12
+          security create-keychain -p "" build.keychain
           security import cert.p12 -k build.keychain -P "" -T /usr/bin/codesign
-          security list-keychains -s build.keychain
+          security list-keychains -d user -s build.keychain
           security unlock-keychain -p "" build.keychain
           security default-keychain -s build.keychain
           security set-keychain-settings -t 3600 -u build.keychain
 
       - name: Sign the app
         run: |
-          codesign --deep --force --sign "LaurentFTech Self-Signed" --timestamp --options runtime dist/Podcast\ Generator.app
+          codesign -vvv --deep --force --sign "LaurentFTech Self-Signed" --timestamp --options runtime dist/Podcast\ Generator.app
           xattr -dr com.apple.quarantine dist/Podcast\ Generator.app
 
       - name: Package Intel zip
@@ -125,7 +125,7 @@ jobs:
         run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.ico gui.py
 
       - name: Package Windows build
-        run: powershell -Command "Compress-Archive -Path 'dist/Podcast Generator/Podcast Generator.exe' -DestinationPath 'Podcast_Generator_${{ github.ref_name }}_windows.zip'"
+        run: powershell -Command "Compress-Archive -Path 'dist/Podcast Generator' -DestinationPath 'Podcast_Generator_${{ github.ref_name }}_windows.zip'"
 
       - name: Upload Windows ZIP artifact
         uses: actions/upload-artifact@v4
