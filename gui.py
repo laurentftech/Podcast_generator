@@ -198,7 +198,7 @@ class PodcastGeneratorApp:
         
     def open_documentation(self):
         """Ouvre le lien vers la documentation ou le dépôt."""
-        webbrowser.open_new_tab("https://github.com/laurentftech/Podcast_creator")
+        webbrowser.open_new_tab("https://github.com/laurentftech/Podcast_generator")
 
     def log_status(self, message: str):
         self.log_queue.put(message)
