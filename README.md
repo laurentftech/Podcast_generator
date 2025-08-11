@@ -92,24 +92,37 @@ For audio conversion and playback, this application requires FFmpeg to be instal
 
 ### 2. Installing the Application
 
-1. Go to the **"Releases"** or **"Tags"** tab.  
-2. Download the version corresponding to your operating system.  
-3. Unzip the `.zip` file.  
-4. Place the application in the folder of your choice.  
+1.  Go to the **Releases** page.
+2.  Download the latest archive for your system:
+    *   **macOS/Linux**: Download the `.tar.gz` file (`..._MacOS_arm64.tar.gz` for Apple Silicon, `..._MacOS_x86_64.tar.gz` for Intel, or `..._Linux.tar.gz` for Linux).
+    *   **Windows**: Download the `.zip` or `.tar.gz` file.
+3.  **Extract the archive**:
+    *   On macOS and Linux, double-clicking the `.tar.gz` file will extract the application. Then untar the .tar file using the command line:
+    ```bash
+    tar -xzf Podcast_Generator_MacOS_arm64.tar.gz
+    ``` 
+    or with finder use the archive utility.
+    *   On Windows, unzip the archive.
+4.  **Move the application**:
+    *   On macOS, drag `Podcast Generator.app` to your `Applications` folder.
+    *   On Windows, you can place the extracted folder anywhere you like.
+    *   On Linux, you can place the extracted folder in your home directory or any other location.
 
 ---
 
-### 💡 Note for macOS
+### 💡 Note for macOS Users
 
-When launching the application for the first time, macOS will block it because it comes from an unidentified developer (unsigned application).
+When you first run the application, macOS will show several security warnings because it's not from the App Store. This is perfectly normal and expected.
 
-**Recommended procedure (Recent macOS versions)**  
-1. Double-click the application icon (an error message will appear saying it cannot be opened).  
-2. Open **System Settings → Privacy & Security**.  
-3. In the **Security** section, click **Open Anyway**.  
-4. Confirm the opening.  
+1.  **"App downloaded from the internet"**: You might see a dialog asking if you're sure you want to open the app. Click **Open**.
+2.  **"Unidentified Developer"**: macOS will then likely block the app. An error message will appear. Click **OK** or **Cancel** on this dialog.
+3.  **Allow the App to Run**:
+    *   Go to **System Settings** → **Privacy & Security**.
+    *   Scroll down to the **Security** section.
+    *   You will see a message saying `"Podcast Generator.app" was blocked...`.
+    *   Click the **Open Anyway** button next to it and confirm.
 
-ℹ️ On some older versions of macOS, it was sometimes possible to bypass the warning by right-clicking → **Open**, but this method is no longer reliable on recent versions.
+The application will now launch, and you won't need to do this again.
 
 ---
 
