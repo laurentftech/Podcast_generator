@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Podcast_generator"
+# The version is managed by setuptools-scm and will be read from git tags
+dynamic = ["version"]
+description = "A simple desktop application to create multi-speaker audio podcasts from a text script using the Google Gemini API."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Laurent FRANCOISE", email = "laurent.f.tech@icloud.com" }]
+dependencies = [
+    "google-genai",
+    "python-dotenv",
+    "keyring",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: MacOS X",
+    "Framework :: Tkinter",
+]
+
+[project.urls]
+Homepage = "https://github.com/laurentftech/Podcast_generator"
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["docs*", ".github*", "tests*"]
+
+[tool.setuptools_scm]
+# This tool will automatically discover the version from git tags.
