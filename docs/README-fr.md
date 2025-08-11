@@ -164,7 +164,7 @@ Voir **DEVELOPERS-fr.md** pour exécuter le code ou contribuer au projet.
 
 ## 📜 Licence
 
-Ce projet est sous licence MIT — voir le fichier `LICENSE`.
+Ce projet est sous licence MIT — voir le fichier [LICENSE](../LICENSE) pour plus de détails.
 
 ---
 
