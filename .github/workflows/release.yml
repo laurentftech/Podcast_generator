@@ -34,13 +34,16 @@ jobs:
       - name: Create self-signed certificate
         run: |
           CERT_NAME="LaurentFTech Self-Signed"
+          openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -subj "/CN=$CERT_NAME" \
+            -keyout key.pem -out cert.pem
           security create-keychain -p "" temp.keychain
           security default-keychain -s temp.keychain
           security unlock-keychain -p "" temp.keychain
           security set-keychain-settings -t 3600 -u temp.keychain
-          security add-trusted-cert -d -r trustRoot -k temp.keychain <(openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=$CERT_NAME")
-          security import key.pem -k temp.keychain -T /usr/bin/codesign
           security import cert.pem -k temp.keychain -T /usr/bin/codesign
+          security import key.pem -k temp.keychain -T /usr/bin/codesign
+          security add-trusted-cert -d -r trustRoot -k temp.keychain cert.pem
 
       - name: Sign the app
         run: |
@@ -58,7 +61,7 @@ jobs:
 
   build-intel:
     name: Build macOS Intel
-    runs-on: [ self-hosted, macos, x64 ]
+    runs-on: [self-hosted, macos, x64]
     steps:
       - uses: actions/checkout@v3
 
@@ -79,13 +82,16 @@ jobs:
       - name: Create self-signed certificate
         run: |
           CERT_NAME="LaurentFTech Self-Signed"
+          openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -subj "/CN=$CERT_NAME" \
+            -keyout key.pem -out cert.pem
           security create-keychain -p "" temp.keychain
           security default-keychain -s temp.keychain
           security unlock-keychain -p "" temp.keychain
           security set-keychain-settings -t 3600 -u temp.keychain
-          security add-trusted-cert -d -r trustRoot -k temp.keychain <(openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=$CERT_NAME")
-          security import key.pem -k temp.keychain -T /usr/bin/codesign
           security import cert.pem -k temp.keychain -T /usr/bin/codesign
+          security import key.pem -k temp.keychain -T /usr/bin/codesign
+          security add-trusted-cert -d -r trustRoot -k temp.keychain cert.pem
 
       - name: Sign the app
         run: |
@@ -127,7 +133,7 @@ jobs:
         run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.ico gui.py
 
       - name: Package Windows build
-        run: powershell -Command "Compress-Archive -Path 'dist/Podcast Generator' -DestinationPath 'Podcast_Generator_${{ github.ref_name }}_windows.zip'"
+        run: powershell -Command "Compress-Archive -Path 'dist/Podcast Generator/Podcast Generator.exe' -DestinationPath 'Podcast_Generator_${{ github.ref_name }}_windows.zip'"
 
       - name: Upload Windows ZIP artifact
         uses: actions/upload-artifact@v4
