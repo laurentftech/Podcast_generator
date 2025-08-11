@@ -44,7 +44,7 @@ AVAILABLE_VOICES = {
 }
 
 def get_app_version() -> str:
-    """Récupère la version de l'application depuis les métadonnées du paquet."""
+    """Gets the application version from the package metadata."""
     try:
         # Fonctionne lorsque le paquet est installé (même en mode éditable)
         return metadata.version("Podcast_generator")
@@ -85,7 +85,7 @@ class PodcastGeneratorApp:
                 # In case of format error, continue without icon
                 pass
 
-        # --- Définition des chemins de configuration ---
+        # --- Define configuration paths ---
         from generate_podcast import get_app_data_dir, find_ffplay_path # Importation locale
         self.app_data_dir = get_app_data_dir()
         self.settings_filepath = os.path.join(self.app_data_dir, "settings.json")
@@ -94,13 +94,13 @@ class PodcastGeneratorApp:
         self.logger = logger
         self.api_key = api_key
         self.log_queue = queue.Queue()
-        self.playback_obj = None # Pour garder une référence au processus de lecture
+        self.playback_obj = None # To keep a reference to the playback process
         self.last_generated_filepath = None
         self.ffplay_path = find_ffplay_path()
         
         self.speaker_settings = self.load_settings()
 
-        # --- Barre de menu ---
+        # --- Menu Bar ---
         self.menubar = tk.Menu(self.root)
         self.root.config(menu=self.menubar)
 
@@ -110,7 +110,7 @@ class PodcastGeneratorApp:
         options_menu.add_separator()
         options_menu.add_command(label="Quit Podcast Generator", command=self.root.quit)
 
-        # Menu Aide
+        # Help Menu
         help_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="Documentation (Github)...", command=self.open_documentation)
@@ -119,11 +119,11 @@ class PodcastGeneratorApp:
 
         self.poll_log_queue()
 
-        # --- Cadre principal ---
+        # --- Main Frame ---
         main_frame = tk.Frame(root, padx=10, pady=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # --- Zone de texte pour le script ---
+        # --- Script Text Area ---
         script_frame = tk.LabelFrame(main_frame, text="Script to read", padx=5, pady=5)
         script_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
 
@@ -131,31 +131,31 @@ class PodcastGeneratorApp:
         self.script_text.pack(fill=tk.BOTH, expand=True)
         self.script_text.insert(tk.END, default_script)
 
-        # --- Zone pour les logs/status ---
+        # --- Log/Status Area ---
         log_frame = tk.LabelFrame(main_frame, text="Generation status", padx=5, pady=5)
         log_frame.pack(fill=tk.BOTH, expand=True)
 
         self.log_text = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, height=10, state='disabled')
         self.log_text.pack(fill=tk.BOTH, expand=True)
 
-        # --- Barre de progression (initialement cachée) ---
+        # --- Progress Bar (initially hidden) ---
         self.progress_bar = ttk.Progressbar(main_frame, mode='indeterminate')
 
-        # --- Cadre pour les boutons ---
+        # --- Button Frame ---
         self.button_frame = tk.Frame(main_frame)
         self.button_frame.pack(fill=tk.X, pady=(10, 0))
 
-        # Définir une largeur commune pour l'uniformité visuelle
+        # Define a common width for visual consistency
         common_button_width = 22
 
-        # --- Boutons alignés à gauche ---
+        # --- Left-aligned buttons ---
         self.load_button = tk.Button(self.button_frame, text="Load a script (.txt)", command=self.load_script_from_file, width=common_button_width)
         self.load_button.pack(side=tk.LEFT, padx=(0, 5))
 
         self.generate_button = tk.Button(self.button_frame, text="Start generation", command=self.start_generation_thread, width=common_button_width)
         self.generate_button.pack(side=tk.LEFT)
 
-        # --- Boutons alignés à droite (packés en ordre inverse pour le bon affichage) ---
+        # --- Right-aligned buttons (packed in reverse order for correct display) ---
         self.show_button = tk.Button(self.button_frame, text="Open file location", command=self.open_file_location, state='disabled', width=common_button_width)
         self.show_button.pack(side=tk.RIGHT, padx=(5, 0))
 
@@ -164,11 +164,11 @@ class PodcastGeneratorApp:
 
 
     def load_settings(self):
-        """Charge les paramètres depuis le fichier JSON."""
+        """Loads settings from the JSON file."""
         try:
             with open(self.settings_filepath, 'r') as f:
                 settings = json.load(f)
-                # On vérifie que la clé existe, sinon on retourne les défauts
+                # Check
                 return settings.get("speaker_voices", self.DEFAULT_SPEAKER_SETTINGS.copy())
         except (FileNotFoundError, json.JSONDecodeError):
             # Retourne une copie des valeurs par défaut si le fichier n'existe pas ou est corrompu
@@ -292,11 +292,11 @@ class PodcastGeneratorApp:
         thread.start()
 
     def run_generation(self, script_content, output_filepath, speaker_mapping, api_key):
-        """La fonction exécutée par le thread."""
+        """The function executed by the thread."""
         generated_filepath = None
         try:
-            self.logger.info("Démarrage du thread de génération.")
-            self.log_status(f"Lancement de la génération vers '{os.path.basename(output_filepath)}'...")
+            self.logger.info("Starting generation thread.")
+            self.log_status(f"Starting generation to '{os.path.basename(output_filepath)}'...")
             generated_filepath = self.generate_func(
                 script_text=script_content,
                 speaker_mapping=speaker_mapping,
@@ -306,18 +306,18 @@ class PodcastGeneratorApp:
             )
             if generated_filepath:
                 self.last_generated_filepath = generated_filepath
-                self.logger.info(f"Génération terminée avec succès. Fichier: {generated_filepath}")
-                self.log_status(f"\n--- Génération terminée avec succès ! Fichier : {os.path.basename(generated_filepath)} ---")
+                self.logger.info(f"Generation completed successfully. File: {generated_filepath}")
+                self.log_status(f"\n--- Generation completed successfully! File: {os.path.basename(generated_filepath)} ---")
             else:
-                self.logger.warning("La fonction de génération s'est terminée sans retourner de chemin de fichier.")
-                self.log_status("\n--- La génération a échoué. Veuillez vérifier les logs. ---")
+                self.logger.warning("Generation function completed without returning a file path.")
+                self.log_status("\n--- Generation failed. Please check the logs. ---")
         except Exception as e:
-            self.logger.error(f"Erreur non interceptée dans le thread de génération: {e}", exc_info=True)
-            self.log_status(f"Une erreur critique est survenue dans le thread : {e}")
-            generated_filepath = None # S'assurer que le statut est bien 'échec'
+            self.logger.error(f"Unhandled error in generation thread: {e}", exc_info=True)
+            self.log_status(f"A critical error occurred in the thread: {e}")
+            generated_filepath = None # Ensure the status is 'failure'
         finally:
-            # On utilise la queue, notre canal de communication fiable,
-            # pour signaler la fin de la génération et son statut (succès/échec).
+            # Use the queue, our reliable communication channel,
+            # to signal the end of generation and its status (success/failure).
             success = bool(generated_filepath)
             self.log_queue.put(('GENERATION_COMPLETE', success))
 

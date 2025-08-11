@@ -12,21 +12,21 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import errors, types
 
-import keyring
-# On importe les outils pour la boîte de dialogue
+import keyring # For secure credential storage
+# Import tools for dialog boxes
 import tkinter as tk
 from tkinter import simpledialog, messagebox
 
-# Le script du podcast est maintenant une constante pour être utilisé par le mode console.
+# The podcast script is now a constant to be used by the console mode.
 PODCAST_SCRIPT = """Read aloud in a warm, welcoming tone
 John: Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs – my dogs' names are corgis! Who am I?
 Samantha: [amused] Queen Elizabeth II!
 """
 
 def setup_logging() -> logging.Logger:
-    """Configure le logging pour écrire dans un fichier dans le dossier de l'application."""
-    logger = logging.getLogger("PodcastCreator")
-    if logger.hasHandlers(): # Évite d'ajouter des handlers en double
+    """Configures logging to write to a file in the application's data directory."""
+    logger = logging.getLogger("PodcastGenerator")
+    if logger.hasHandlers(): # Avoids adding duplicate handlers
         return logger
 
     log_dir = get_app_data_dir()
@@ -41,13 +41,13 @@ def setup_logging() -> logging.Logger:
     return logger
 
 def get_app_data_dir() -> str:
-    """Retourne le chemin du dossier de configuration standard pour l'application."""
-    app_name = "PodcastCreator"
-    if sys.platform == "darwin": # macOS
+    """Returns the standard application data directory path for the current OS."""
+    app_name = "PodcastGenerator"
+    if sys.platform == "darwin":  # macOS
         return os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', app_name)
-    elif sys.platform == "win32": # Windows
+    elif sys.platform == "win32":  # Windows
         return os.path.join(os.environ['APPDATA'], app_name)
-    else: # Linux et autres
+    else:  # Linux and others
         return os.path.join(os.path.expanduser('~'), '.config', app_name)
 
 def _find_command_path(command: str) -> str | None:
@@ -55,77 +55,77 @@ def _find_command_path(command: str) -> str | None:
     Finds the path to an executable.
     Searches the system PATH first, then common Homebrew locations.
     """
-    # 1. Chercher dans le PATH système (ce qui fonctionnera si le PATH est bien configuré)
+    # 1. Search in the system PATH (which will work if the PATH is correctly configured)
     path = shutil.which(command)
     if path:
         return path
-    # 2. Si non trouvé, chercher dans les emplacements Homebrew connus
+    # 2. If not found, search in known Homebrew locations
     for brew_path in [f"/opt/homebrew/bin/{command}", f"/usr/local/bin/{command}"]:
         if os.path.exists(brew_path):
             return brew_path
     return None
 
 def find_ffmpeg_path() -> str | None:
-    """Trouve le chemin de l'exécutable FFmpeg."""
+    """Finds the path to the FFmpeg executable."""
     return _find_command_path("ffmpeg")
 
 def find_ffplay_path() -> str | None:
-    """Trouve le chemin de l'exécutable ffplay."""
+    """Finds the path to the ffplay executable."""
     return _find_command_path("ffplay")
 
 def get_api_key(status_callback, logger: logging.Logger, parent_window=None) -> str | None:
     """
-    Trouve la clé API de manière sécurisée.
-    1. (Développeur) Cherche un fichier .env local.
-    2. (Utilisateur) Cherche la clé dans le trousseau système.
-    3. (Migration) Cherche un ancien fichier .env non sécurisé et le migre vers le trousseau.
-    4. (Premier lancement) Demande la clé à l'utilisateur et la sauvegarde dans le trousseau.
+    Finds the API key securely.
+    1. (Developer) Looks for a local .env file.
+    2. (User) Looks for the key in the system keychain.
+    3. (Migration) Looks for an old, insecure .env file and migrates it to the keychain.
+    4. (First launch) Asks the user for the key and saves it to the keychain.
     """
-    SERVICE_NAME = "PodcastCreator"
+    SERVICE_NAME = "PodcastGenerator"
     ACCOUNT_NAME = "gemini_api_key"
     logger.info("="*20)
-    logger.info("Début de la recherche de la clé API...")
+    logger.info("Starting API key search...")
 
-    # --- 1. Pour les développeurs : priorité au fichier .env local ---
+    # --- 1. For developers: priority to local .env file ---
     if not getattr(sys, 'frozen', False):
         dev_dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
         if os.path.exists(dev_dotenv_path):
-            logger.info(f"Fichier .env de développement trouvé. Utilisation de cette clé.")
+            logger.info(f"Development .env file found. Using this key.")
             load_dotenv(dotenv_path=dev_dotenv_path)
             dev_key = os.environ.get("GEMINI_API_KEY")
             if dev_key:
                 return dev_key
 
-    # --- 2. Pour les utilisateurs : on cherche dans le trousseau sécurisé ---
+    # --- 2. For users: search in the secure keychain ---
     api_key = keyring.get_password(SERVICE_NAME, ACCOUNT_NAME)
     if api_key:
-        logger.info("Clé API trouvée dans le trousseau système sécurisé.")
+        logger.info("API key found in the secure system keychain.")
         return api_key
 
-    # --- 3. Migration depuis un ancien fichier .env non sécurisé ---
+    # --- 3. Migration from an old, insecure .env file ---
     app_data_dir = get_app_data_dir()
     old_dotenv_path = os.path.join(app_data_dir, '.env')
     if os.path.exists(old_dotenv_path):
-        logger.info(f"Ancien fichier .env trouvé à {old_dotenv_path}. Tentative de migration.")
+        logger.info(f"Old .env file found at {old_dotenv_path}. Attempting migration.")
         load_dotenv(dotenv_path=old_dotenv_path)
         old_key = os.environ.get("GEMINI_API_KEY")
         if old_key:
-            logger.info("Clé trouvée dans l'ancien .env. Sauvegarde dans le trousseau et suppression de l'ancien fichier.")
+            logger.info("Key found in old .env. Saving to keychain and deleting the old file.")
             keyring.set_password(SERVICE_NAME, ACCOUNT_NAME, old_key)
             try:
                 os.remove(old_dotenv_path)
-                logger.info(f"Ancien fichier .env non sécurisé supprimé.")
+                logger.info(f"Old insecure .env file deleted.")
             except OSError as e:
-                logger.error(f"Impossible de supprimer l'ancien fichier .env : {e}")
+                logger.error(f"Could not delete old .env file: {e}")
             return old_key
 
-    # --- 4. Si la clé n'est toujours pas trouvée, on la demande à l'utilisateur ---
+    # --- 4. If the key is still not found, ask the user ---
     if not api_key:
-        logger.info("Clé API non trouvée, ouverture de la boîte de dialogue pour l'utilisateur.")
-        status_callback("Clé API non trouvée ou invalide. Ouverture de la boîte de dialogue...")
+        logger.info("API key not found, opening dialog for user.")
+        status_callback("API key not found or invalid. Opening dialog...")
 
-        # Gère la fenêtre parente pour les boîtes de dialogue.
-        # Si aucune n'est fournie (mode CLI), on en crée une temporaire.
+        # Manages the parent window for dialogs.
+        # If none is provided (CLI mode), a temporary one is created.
         dialog_parent = parent_window
         we_created_root = False
         if dialog_parent is None:
@@ -134,17 +134,17 @@ def get_api_key(status_callback, logger: logging.Logger, parent_window=None) -> 
             we_created_root = True
 
         messagebox.showinfo(
-            "Bienvenue !",
-            "Bienvenue dans le Créateur de Podcast !\n\n"
-            "Pour fonctionner, l'application a besoin de votre clé API Google Gemini.\n\n"
-            "Vous pouvez en obtenir une gratuitement à l'adresse suivante :\n"
+            "Welcome!",
+            "Welcome to Podcast Generator!\n\n"
+            "To execute, the application needs your Google Gemini API key.\n\n"
+            "You can obtain one for free at:\n"
             "https://ai.google.dev/gemini-api",
             parent=dialog_parent
         )
         
         api_key_input = simpledialog.askstring(
-            "Clé API requise",
-            "Veuillez coller votre clé API Google Gemini :",
+            "API Key Required",
+            "Please paste your Google Gemini API key:",
             parent=dialog_parent
         )
 
@@ -152,31 +152,31 @@ def get_api_key(status_callback, logger: logging.Logger, parent_window=None) -> 
             dialog_parent.destroy()
 
         if api_key_input:
-            logger.info("L'utilisateur a fourni une clé API.")
+            logger.info("User provided an API key.")
             api_key = api_key_input
             keyring.set_password(SERVICE_NAME, ACCOUNT_NAME, api_key_input)
-            logger.info(f"Nouvelle clé sauvegardée dans le trousseau système sécurisé.")
-            status_callback("Clé API sauvegardée de manière sécurisée pour les futurs lancements.")
+            logger.info(f"New key saved to the secure system keychain.")
+            status_callback("API key saved securely for future launches.")
         else:
-            logger.info("L'utilisateur a annulé la saisie de la clé API.")
-            status_callback("Aucune clé API fournie. Annulation.")
+            logger.info("User cancelled API key entry.")
+            status_callback("No API key provided. Cancelling.")
             return None
 
-    logger.info("Recherche de la clé API terminée.")
+    logger.info("API key search finished.")
     return api_key
 
 def generate(script_text: str, speaker_mapping: dict, api_key: str, output_filepath: str, status_callback=print) -> str | None:
-    """Génère l'audio à partir d'un script en utilisant Gemini, avec un fallback de modèle."""
-    logger = logging.getLogger("PodcastCreator")
-    logger.info("Démarrage de la fonction de génération.")
-    status_callback("Démarrage de la génération du podcast...")
+    """Generates audio from a script using Gemini, with a model fallback."""
+    logger = logging.getLogger("PodcastGenerator")
+    logger.info("Starting generation function.")
+    status_callback("Starting podcast generation...")
 
     ffmpeg_path = find_ffmpeg_path()
     if not ffmpeg_path:
-        status_callback("--- ERREUR CRITIQUE ---")
-        status_callback("L'exécutable FFmpeg est introuvable sur ce système.")
-        status_callback("Veuillez l'installer (par ex. avec 'brew install ffmpeg') et réessayer.")
-        logger.error("FFmpeg n'a pas été trouvé dans le PATH ou les emplacements Homebrew.")
+        status_callback("--- CRITICAL ERROR ---")
+        status_callback("The FFmpeg executable was not found on this system.")
+        status_callback("Please install it (e.g., with 'brew install ffmpeg') and try again.")
+        logger.error("FFmpeg was not found in the PATH or Homebrew locations.")
         return None
     if not api_key:
         return None
@@ -218,7 +218,7 @@ def generate(script_text: str, speaker_mapping: dict, api_key: str, output_filep
 
     generated_successfully = False
     for model_name in models_to_try:
-        status_callback(f"\nTentative de génération avec le modèle : {model_name}...")
+        status_callback(f"\nAttempting generation with model: {model_name}...")
         try:
             audio_chunks = []
             final_mime_type = ""
@@ -237,68 +237,68 @@ def generate(script_text: str, speaker_mapping: dict, api_key: str, output_filep
                 part = chunk.candidates[0].content.parts[0]
                 if part.inline_data and part.inline_data.data:
                     audio_chunks.append(part.inline_data.data)
-                    if not final_mime_type:  # On ne stocke le mime_type qu'une seule fois
+                    if not final_mime_type:  # Store the mime_type only once
                         final_mime_type = part.inline_data.mime_type
                 else:
                     status_callback(chunk.text)
 
             if not audio_chunks:
-                raise errors.GoogleAPICallError("Aucune donnée audio n'a été générée par le modèle.")
+                raise errors.GoogleAPICallError("No audio data was generated by the model.")
 
-            # --- Conversion avec FFmpeg ---
+            # --- Conversion with FFmpeg ---
             full_audio_data = b"".join(audio_chunks)
             output_format = os.path.splitext(output_filepath)[1].lower().strip('.')
             if output_format not in ["wav", "mp3"]:
-                status_callback(f"Format de fichier non supporté : {output_format}. Utilisation de 'mp3' par défaut.")
+                status_callback(f"Unsupported file format: {output_format}. Defaulting to 'mp3'.")
                 output_format = "mp3"
                 output_filepath = f"{os.path.splitext(output_filepath)[0]}.mp3"
 
             parameters = parse_audio_mime_type(final_mime_type)
-            ffmpeg_format = "s16le" # PCM 16-bit signed little-endian, standard pour L16
+            ffmpeg_format = "s16le" # PCM 16-bit signed little-endian, standard for L16
 
             command = [
                 ffmpeg_path,
-                "-y",  # Écrase le fichier de sortie sans demander
+                "-y",  # Overwrite output file without asking
                 "-f", ffmpeg_format,
                 "-ar", str(parameters["rate"]),
                 "-ac", "1",  # Mono
-                "-i", "pipe:0",  # Lit les données depuis l'entrée standard (stdin)
+                "-i", "pipe:0",  # Read data from standard input (stdin)
                 output_filepath,
             ]
 
-            status_callback(f"Conversion avec FFmpeg en {os.path.basename(output_filepath)}...")
+            status_callback(f"Converting with FFmpeg to {os.path.basename(output_filepath)}...")
             process = subprocess.run(command, input=full_audio_data, capture_output=True, check=False)
 
             if process.returncode != 0:
                 ffmpeg_error = process.stderr.decode('utf-8', errors='ignore')
-                logger.error(f"Erreur FFmpeg:\n{ffmpeg_error}")
-                status_callback("--- ERREUR LORS DE LA CONVERSION AUDIO ---")
-                status_callback("Veuillez vérifier que FFmpeg est correctement installé et accessible dans le PATH.")
-                status_callback(f"Détail de l'erreur FFmpeg : {ffmpeg_error.strip().splitlines()[-1]}")
+                logger.error(f"FFmpeg error:\n{ffmpeg_error}")
+                status_callback("--- ERROR DURING AUDIO CONVERSION ---")
+                status_callback("Please check that FFmpeg is correctly installed and accessible in the PATH.")
+                status_callback(f"FFmpeg error detail: {ffmpeg_error.strip().splitlines()[-1]}")
                 generated_successfully = False
-                break # Erreur critique, inutile d'essayer d'autres modèles
+                break # Critical error, no need to try other models
 
-            status_callback(f"Fichier sauvegardé avec succès : {output_filepath}")
+            status_callback(f"File saved successfully: {output_filepath}")
 
-            status_callback(f"Audio généré avec succès via {model_name}.")
+            status_callback(f"Audio generated successfully via {model_name}.")
             generated_successfully = True
             break  # Exit the model-selection loop on success
         except errors.APIError as e:
-            # Erreur attendue de l'API (ex: modèle non dispo, quota dépassé). C'est normal de continuer.
-            status_callback(f"Erreur API avec le modèle '{model_name}'")
-            status_callback("Tentative avec le modèle suivant...")
-            logger.warning(f"Erreur API avec le modèle '{model_name}': {e}")
+            # Expected API error (e.g., model unavailable, quota exceeded). It's normal to continue.
+            status_callback(f"API error with model '{model_name}'")
+            status_callback("Trying next model...")
+            logger.warning(f"API error with model '{model_name}': {e}")
         except Exception as e:
-            # Erreur inattendue et potentiellement critique (réseau, logique, etc.).
-            # On doit arrêter le processus et afficher un maximum d'informations.
-            status_callback(f"Une erreur critique inattendue est survenue : {e}")
+            # Unexpected and potentially critical error (network, logic, etc.).
+            # We must stop the process and display as much information as possible.
+            status_callback(f"An unexpected critical error occurred: {e}")
             status_callback(traceback.format_exc())
-            logger.error(f"Erreur critique inattendue: {e}\n{traceback.format_exc()}")
+            logger.error(f"Unexpected critical error: {e}\n{traceback.format_exc()}")
             generated_successfully = False
-            break # Inutile de continuer avec d'autres modèles, l'erreur est grave.
+            break # No need to continue with other models, the error is serious.
 
     if not generated_successfully:
-        status_callback("\nÉchec de la génération audio avec tous les modèles disponibles.")
+        status_callback("\nFailed to generate audio with all available models.")
         return None
     return output_filepath
 
@@ -314,23 +314,23 @@ def parse_audio_mime_type(mime_type: str) -> dict[str, int | None]:
         A dictionary with "bits_per_sample" and "rate" keys. Values will be
         integers if found, otherwise None.
     """
-    # Valeurs par défaut
+    # Default values
     bits_per_sample = 16
     rate = 24000
 
-    # Sépare le type principal (ex: "audio/L16") des paramètres (ex: "rate=24000")
+    # Separates the main type (e.g., "audio/L16") from parameters (e.g., "rate=24000")
     parts = [p.strip() for p in mime_type.split(';')]
     main_type = parts[0]
     params = parts[1:]
 
-    # Extrait les bits par sample depuis le type principal
+    # Extracts bits per sample from the main type
     if main_type.lower().startswith("audio/l"):
         try:
             bits_per_sample = int(main_type.split('L', 1)[1])
         except (ValueError, IndexError):
-            pass  # Garde la valeur par défaut si l'analyse échoue
+            pass  # Keep the default value if parsing fails
 
-    # Extrait la fréquence (rate) depuis les paramètres
+    # Extracts the rate from the parameters
     for param in params:
         if param.lower().startswith("rate="):
             try:
