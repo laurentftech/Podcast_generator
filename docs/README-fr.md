@@ -94,16 +94,19 @@ Windows / Linux : [Télécharger depuis le site officiel](https://ffmpeg.org/dow
 3.  Décompressez le `.zip`.
 4.  Placez l'application dans le dossier de votre choix.
 
-#### Note macOS
+#### 💡 Note pour macOS
 
-macOS affichera un avertissement au premier lancement (application non signée).  
+Au premier lancement, macOS bloquera l’ouverture de l’application car elle provient d’un développeur non identifié (application non signée).
 
-**Méthode rapide** :
-1. Clic droit sur l'icône → **Ouvrir** → **Ouvrir**.
+##### Procédure recommandée (macOS récents)
 
-**Méthode via réglages** :
-1. Double-clic (message d’erreur).
-2. **Réglages Système → Confidentialité et sécurité** → **Ouvrir quand même**.
+	1.	Double-cliquez sur l’icône de l’application (un message d’erreur indiquera que l’ouverture est impossible).
+	2.	Ouvrez **Réglages Système → Confidentialité et sécurité.**
+	3.	Dans la section **Sécurité**, cliquez sur **Ouvrir quand même**.
+	4.	Confirmez l’ouverture.
+
+ℹ️ Sur certaines anciennes versions de macOS, il était parfois possible de contourner l’avertissement par un clic droit → Ouvrir, mais cette méthode ne fonctionne plus de manière fiable sur les versions récentes.
+
 
 #### Premier Lancement : Clé API
 L’application demandera votre clé API Google Gemini lors du premier lancement. Elle sera sauvegardée de manière sécurisée.
