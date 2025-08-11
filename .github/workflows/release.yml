@@ -57,7 +57,7 @@ jobs:
         run: sips -s format icns podcast.png --out podcast.icns
 
       - name: Build executable Intel
-        run: ~/.local/bin/pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
+        run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
 
       - name: Package Intel zip
         run: zip -r Podcast_Generator_${{ github.ref_name }}_x86_64.zip dist/Podcast\ Generator.app
