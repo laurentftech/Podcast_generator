@@ -197,7 +197,7 @@ class PodcastGeneratorApp:
         AboutWindow(self.root)
         
     def open_documentation(self):
-        """Ouvre le lien vers la documentation ou le dépôt."""
+        """Opens the link to the documentation or the repository."""
         webbrowser.open_new_tab("https://github.com/laurentftech/Podcast_generator")
 
     def log_status(self, message: str):
@@ -347,8 +347,8 @@ class PodcastGeneratorApp:
                 # 'open -R' reveals the file in Finder
                 subprocess.run(["open", "-R", self.last_generated_filepath], check=True)
             elif sys.platform == "win32":  # Windows
-                # 'explorer /select,' selects the file in Explorer
-                subprocess.run(["explorer", "/select,", os.path.normpath(self.last_generated_filepath)], check=True)
+                # 'explorer /select,' selects the file. The path must be part of the same argument.
+                subprocess.run(["explorer", f"/select,{os.path.normpath(self.last_generated_filepath)}"], check=True)
             else:  # Linux and others (opens the containing folder)
                 subprocess.run(["xdg-open", os.path.dirname(self.last_generated_filepath)], check=True)
         except (FileNotFoundError, subprocess.CalledProcessError) as e:
