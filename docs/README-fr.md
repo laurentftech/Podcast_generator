@@ -87,7 +87,7 @@ Windows / Linux : [Télécharger depuis le site officiel](https://ffmpeg.org/dow
 
 ---
 
-### 2. Pour les utilisateurs (Application prête à l'emploi)
+### 2. Installation de l'application 
 
 1.  Allez dans l'onglet **"Releases"** ou **"Tags"**.
 2.  Téléchargez la version correspondant à votre OS.
