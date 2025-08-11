@@ -140,4 +140,4 @@ Contributions are welcome! Please see the [DEVELOPERS](docs/DEVELOPERS.md) file 
 
 ---
 
-Thank you for exploring **Podcast Creator**! Feel free to support this project with a coffee ☕.
+Thank you for exploring **Podcast Generator**! Feel free to support this project with a coffee ☕.
