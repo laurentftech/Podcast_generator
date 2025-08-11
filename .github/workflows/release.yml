@@ -38,7 +38,7 @@ jobs:
         run: rm -rf build dist __pycache__ *.spec podcast.icns
 
       - name: Upload macOS ZIP artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Podcast_Generator_${{ github.ref_name }}_macos.zip
           path: Podcast_Generator_${{ github.ref_name }}_macos.zip
@@ -79,7 +79,7 @@ jobs:
           del *.spec podcast.ico
 
       - name: Upload Windows ZIP artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Podcast_Generator_${{ github.ref_name }}_windows.zip
           path: Podcast_Generator_${{ github.ref_name }}_windows.zip
@@ -111,7 +111,7 @@ jobs:
         run: rm -rf build dist __pycache__ *.spec
 
       - name: Upload Linux ZIP artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Podcast_Generator_${{ github.ref_name }}_linux.zip
           path: Podcast_Generator_${{ github.ref_name }}_linux.zip
@@ -121,19 +121,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Télécharger artefacts macOS, Windows, Linux
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: Podcast_Generator_${{ github.ref_name }}_macos.zip
           path: ./artifacts
 
       - name: Télécharger artefact Windows
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: Podcast_Generator_${{ github.ref_name }}_windows.zip
           path: ./artifacts
 
       - name: Télécharger artefact Linux
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: Podcast_Generator_${{ github.ref_name }}_linux.zip
           path: ./artifacts
