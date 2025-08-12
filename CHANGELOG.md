@@ -33,15 +33,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 - **GUI and UX**:
-  - Fixed a bug where the welcome dialog would not appear on first launch.
-  - Fixed an issue where a blank "tk" window would appear in the background during startup.
   - Removed the visual focus outline on buttons in dialog windows for a cleaner look.
 - **CLI**:
   - Fixed a crash that occurred in CLI mode when the output file was in the root directory.
 - **Cross-Platform**:
   - Improved the reliability of the "Open file location" feature on Windows, especially for paths with spaces.
-- **Project Files**:
-  - Corrected the copyright year in the `LICENSE` file.
 
 ## [1.4.4] - 2024-08-10
 
