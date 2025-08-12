@@ -188,7 +188,7 @@ It will be stored securely.
 
 ## 👨‍💻 For Developers
 To contribute to the project, run the code, or create your own build, please refer to the full developer guide:
-➡️ DEVELOPERS.md
+➡️ [DEVELOPERS](docs/DEVELOPERS.md)
 
 ---
 
