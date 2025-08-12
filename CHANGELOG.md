@@ -6,15 +6,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.5.0] - 2024-08-12
+
 ### Added
-- Added a splash screen to improve user experience on startup.
-- Added a `CHANGELOG.md` file to track version history.
-- Added a "Buy Me a Coffee" support link in the "About" window.
-- Improved `README.md` in English and `README-fr.md` in French.
+- **Command-Line Interface (CLI) Overhaul**:
+  - The application can now be fully controlled from the command line.
+  - Added the ability to pass a script file as a required argument.
+  - Added an optional `-o` / `--output` flag to specify the output file or directory.
+  - By default, the output is now saved in the same directory as the input script.
+  - The CLI now intelligently handles directory paths, creating the output file with the correct name inside.
+- **GUI Enhancements**:
+  - Added a splash screen to improve user experience on startup.
+  - Added a "Buy Me a Coffee" support link in the "About" window.
+  - Added a clickable link to the Gemini API page in the welcome dialog to simplify key retrieval.
+  - Added a clickable link to Flaticon in the "About" window for proper attribution.
+
+### Changed
+- **Dependency Management**:
+  - Centralized all project dependencies in `pyproject.toml` and removed the redundant `requirements.txt` file.
+- **Developer Workflow**:
+  - Simplified the development setup to a single command: `pip install -e .[dev]`.
+  - Completely rewrote `DEVELOPERS.md` and `DEVELOPERS-fr.md` to reflect the new, simpler process for contribution and release.
+  - Improved the `release.yml` GitHub Actions workflow for better clarity and reliability.
+- **Documentation**:
+  - Improved `README.md` in English and `README-fr.md` in French.
+
+### Fixed
+- **GUI and UX**:
+  - Fixed a bug where the welcome dialog would not appear on first launch.
+  - Fixed an issue where a blank "tk" window would appear in the background during startup.
+  - Removed the visual focus outline on buttons in dialog windows for a cleaner look.
+- **CLI**:
+  - Fixed a crash that occurred in CLI mode when the output file was in the root directory.
+- **Cross-Platform**:
+  - Improved the reliability of the "Open file location" feature on Windows, especially for paths with spaces.
+- **Project Files**:
+  - Corrected the copyright year in the `LICENSE` file.
 
 ## [1.4.4] - 2024-08-10
 
-### Fixed
 - Fixed a bug that displayed a development version (e.g., `.dev0+g...`) even after creating a Git tag, by adding a `.gitignore` file to ignore build artifacts.
 
 ## [1.4.3] - 2024-08-09
