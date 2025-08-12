@@ -347,9 +347,12 @@ class PodcastGeneratorApp:
                 # 'open -R' reveals the file in Finder
                 subprocess.run(["open", "-R", self.last_generated_filepath], check=True)
             elif sys.platform == "win32":  # Windows
-                # For explorer.exe, it's more reliable to use shell=True.
-                # The path must be properly quoted to handle spaces.
-                subprocess.run(f'explorer /select,"{os.path.normpath(self.last_generated_filepath)}"', shell=True, check=True)
+                # The /select argument must be combined with the path.
+                # We do not use check=True because explorer.exe can return a non-zero
+                # exit code (like 1) even when it succeeds, which would falsely
+                # trigger an error in the application.
+                filepath = os.path.normpath(self.last_generated_filepath)
+                subprocess.run(['explorer', f'/select,{filepath}'])
             else:  # Linux and others (opens the containing folder)
                 subprocess.run(["xdg-open", os.path.dirname(self.last_generated_filepath)], check=True)
         except (FileNotFoundError, subprocess.CalledProcessError) as e:
