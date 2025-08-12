@@ -14,8 +14,7 @@ authors = [{ name = "Laurent FRANCOISE", email = "laurent.f.tech@icloud.com" }]
 dependencies = [
     "google-genai",
     "python-dotenv",
-    "keyring",
-    "setuptools-scm",
+    "keyring"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

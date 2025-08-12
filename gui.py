@@ -347,12 +347,10 @@ class PodcastGeneratorApp:
                 # 'open -R' reveals the file in Finder
                 subprocess.run(["open", "-R", self.last_generated_filepath], check=True)
             elif sys.platform == "win32":  # Windows
-                # The /select argument must be combined with the path.
-                # We do not use check=True because explorer.exe can return a non-zero
-                # exit code (like 1) even when it succeeds, which would falsely
-                # trigger an error in the application.
+                # For explorer.exe, it's more reliable to use shell=True and pass
+                # the command as a string, with the path properly quoted.
                 filepath = os.path.normpath(self.last_generated_filepath)
-                subprocess.run(['explorer', f'/select,{filepath}'])
+                subprocess.run(f'explorer /select,"{filepath}"', shell=True)
             else:  # Linux and others (opens the containing folder)
                 subprocess.run(["xdg-open", os.path.dirname(self.last_generated_filepath)], check=True)
         except (FileNotFoundError, subprocess.CalledProcessError) as e:
@@ -439,11 +437,17 @@ class AboutWindow(tk.Toplevel):
         link_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://ai.google.dev/gemini-api"))
 
         tk.Label(credits_frame, text="- Tkinter for the graphical interface", anchor="w").pack(fill=tk.X, pady=2)
-        tk.Label(credits_frame, text="- Icon by Smashicons (www.flaticon.com)", anchor="w").pack(fill=tk.X, pady=2)
+
+        # Flaticon link
+        flaticon_frame = tk.Frame(credits_frame)
+        flaticon_frame.pack(fill=tk.X, pady=2)
+        tk.Label(flaticon_frame, text="- Icon by Smashicons from").pack(side=tk.LEFT)
+        flaticon_link = tk.Label(flaticon_frame, text="flaticon.com", fg="blue", cursor="hand2")
+        flaticon_link.pack(side=tk.LEFT, padx=5)
+        flaticon_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://www.flaticon.com"))
 
         ok_button = tk.Button(main_frame, text="OK", command=self.destroy, width=10)
         ok_button.pack(pady=(10, 0))
-        ok_button.focus_set()
         
         self.bind('<Return>', lambda event: ok_button.invoke())
         self.protocol("WM_DELETE_WINDOW", self.destroy)
@@ -587,16 +591,21 @@ def main():
     # Initializes logging before anything else
     logger = setup_logging()
 
+    # Create the app instance first, which populates the root window with widgets.
+    # The window remains hidden for now. We pass a placeholder for the api_key.
+    app = PodcastGeneratorApp(root, generate_func=generate, logger=logger, api_key="", default_script=PODCAST_SCRIPT)
+
     # --- API key check at startup ---
-    api_key = get_api_key(lambda msg: logger.info(msg), logger, parent_window=root)
+    # Now, when get_api_key shows dialogs, the parent window is fully rendered.
+    api_key = get_api_key(app.log_status, logger, parent_window=root)
     if not api_key:
         logger.info("Application closed because no API key was provided at startup.")
         messagebox.showwarning("API Key Required", "The application cannot start without an API key.", parent=root)
         root.destroy()
         return
     
-    # If everything is correct, we build the interface and display the window
-    app = PodcastGeneratorApp(root, generate_func=generate, logger=logger, api_key=api_key, default_script=PODCAST_SCRIPT)
+    # Now that we have the key, assign it to the app and show the main window.
+    app.api_key = api_key
     root.deiconify()
     root.mainloop()
 

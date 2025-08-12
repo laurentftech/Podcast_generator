@@ -1,59 +1,59 @@
 # Changelog
 
-Toutes les modifications notables de ce projet seront documentées dans ce fichier.
+All notable changes to this project will be documented in this file.
 
-Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
 ### Added
-- Ajout d'un écran de démarrage (splash screen) pour améliorer l'expérience au lancement.
-- Ajout d'un fichier `CHANGELOG.md` pour suivre l'historique des versions.
-- Ajout d'un lien de soutien "Buy Me a Coffee" dans la fenêtre "À propos".
-- Amélioration README.md en Anglais et README-fr.md en Français
+- Added a splash screen to improve user experience on startup.
+- Added a `CHANGELOG.md` file to track version history.
+- Added a "Buy Me a Coffee" support link in the "About" window.
+- Improved `README.md` in English and `README-fr.md` in French.
 
 ## [1.4.4] - 2024-08-10
 
 ### Fixed
-- Correction d'un bug qui affichait une version de développement (ex: `.dev0+g...`) même après la création d'un tag Git, en ajoutant un fichier `.gitignore` pour ignorer les fichiers de build.
+- Fixed a bug that displayed a development version (e.g., `.dev0+g...`) even after creating a Git tag, by adding a `.gitignore` file to ignore build artifacts.
 
 ## [1.4.3] - 2024-08-09
 
 ### Added
-- Mise en place d'un système de versioning automatique basé sur les tags Git avec `setuptools-scm`.
-- La version de l'application s'affiche désormais dans le titre de la fenêtre et dans la boîte de dialogue "À propos".
+- Implemented an automatic versioning system based on Git tags using `setuptools-scm`.
+- The application version is now displayed in the window title and the "About" dialog.
 
 ## [1.4.0] - 2024-08-09
 
 ### Added
-- Ajout de la lecture audio intégrée via `ffplay` directement depuis l'interface.
-- Ajout d'un bouton "Ouvrir le dossier" pour révéler le fichier généré dans le gestionnaire de fichiers du système.
-- Ajout d'une barre de progression visuelle pendant la génération audio.
-- Ajout d'une fenêtre "À propos" et d'un lien vers la documentation dans le menu.
+- Added integrated audio playback via `ffplay` directly from the interface.
+- Added an "Open file location" button to reveal the generated file in the system's file manager.
+- Added a visual progress bar during audio generation.
+- Added an "About" window and a link to the documentation in the menu.
 ### Changed
-- Amélioration de la robustesse de la génération audio avec une tentative de fallback sur un modèle secondaire en cas d'échec du modèle principal.
+- Improved audio generation robustness with a fallback to a secondary model in case the primary one fails.
 
 ## [1.3.0] - 2024-08-09
 
 ### Added
-- Mise en place d'un système de gestion de clé API sécurisé utilisant le trousseau natif du système (`keyring`).
-- La clé API n'est demandée qu'une seule fois et est stockée de manière sécurisée.
+- Implemented a secure API key management system using the native system keychain (`keyring`).
+- The API key is requested only once and stored securely.
 ### Changed
-- Le fichier `.env` à la racine du projet est maintenant réservé uniquement au développement local.
+- The `.env` file at the project root is now reserved for local development only.
 
 ## [1.2.0] - 2024-08-09
 
 ### Added
-- Ajout d'une fenêtre de "Paramètres des voix" permettant aux utilisateurs de définir et de sauvegarder leurs propres paires locuteur/voix.
-- Les paramètres sont sauvegardés dans un fichier `settings.json` dans le dossier de l'application.
-- Ajout d'un bouton pour restaurer les paramètres par défaut.
+- Added a "Voice Settings" window allowing users to define and save their own speaker/voice pairs.
+- Settings are saved to a `settings.json` file in the application's data directory.
+- Added a button to restore default settings.
 
 ## [1.0.0] - 2024-08-09
 
 ### Added
-- Version initiale du Créateur de Podcast.
-- Interface graphique simple construite avec Tkinter.
-- Génération de podcast multi-locuteurs via l'API Google Gemini.
-- Exportation des fichiers audio aux formats MP3 et WAV.
-- Affichage des logs de génération dans l'interface.
-- Possibilité de charger un script depuis un fichier texte.
+- Initial version of Podcast Generator.
+- Simple graphical interface built with Tkinter.
+- Multi-speaker podcast generation via the Google Gemini API.
+- Audio file export in MP3 and WAV formats.
+- Display of generation logs in the interface.
+- Ability to load a script from a text file.

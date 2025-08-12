@@ -29,8 +29,8 @@ source .venv/bin/activate  # macOS/Linux
 # .\.venv\Scripts\activate  # Windows
 
 # 3. Install dependencies
-pip install -r requirements.txt
-pip install -e .  # install in development mode
+# The '-e' flag installs the project in "editable" mode.
+pip install -e .[dev]
 
 # 4. Run the application
 python gui.py

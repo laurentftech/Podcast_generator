@@ -23,9 +23,7 @@ jobs:
           python-version: '3.13'
 
       - name: Install dependencies
-        run: |
-          pip install -e .
-          pip install pyinstaller
+        run: pip install .[dev]
 
       - name: Convert PNG to ICNS
         run: sips -s format icns podcast.png --out podcast.icns
@@ -39,7 +37,7 @@ jobs:
       - name: Upload ARM64 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: arm64-zip
+          name: dist-macos-arm64
           path: Podcast_Generator_${{ github.ref_name }}_MacOS_arm64.tar.gz
 
   build-intel:
@@ -54,9 +52,7 @@ jobs:
         run: python3 --version
 
       - name: Install dependencies
-        run: |
-          pip3 install -e .
-          pip3 install --user pyinstaller
+        run: pip3 install .[dev]
 
       - name: Convert PNG to ICNS
         run: sips -s format icns podcast.png --out podcast.icns
@@ -70,7 +66,7 @@ jobs:
       - name: Upload Intel artifact
         uses: actions/upload-artifact@v4
         with:
-          name: intel-zip
+          name: dist-macos-intel
           path: Podcast_Generator_${{ github.ref_name }}_MacOS_x86_64.tar.gz
 
   build-windows:
@@ -93,9 +89,7 @@ jobs:
         run: magick convert podcast.png -define icon:auto-resize=256,128,64,48,32,16 podcast.ico
 
       - name: Install Python dependencies
-        run: |
-          pip install -e .
-          pip install pyinstaller
+        run: pip install .[dev]
 
       - name: Build Windows executable
         run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.ico gui.py
@@ -106,7 +100,7 @@ jobs:
       - name: Upload Windows ZIP artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-zip
+          name: dist-windows
           path: Podcast_Generator_${{ github.ref_name }}_windows.tar.gz
 
   build-linux:
@@ -123,9 +117,7 @@ jobs:
           python-version: '3.13'
 
       - name: Install dependencies
-        run: |
-          pip install -e .
-          pip install pyinstaller
+        run: pip install .[dev]
 
       - name: Build executable Linux
         run: pyinstaller --name="Podcast Generator" --windowed gui.py
@@ -136,7 +128,7 @@ jobs:
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
-          name: linux-zip
+          name: dist-linux
           path: Podcast_Generator_${{ github.ref_name }}_linux.tar.gz
 
   release:
@@ -155,9 +147,9 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           files: |
-            artifacts/arm64-zip/*.tar.gz
-            artifacts/intel-zip/*.tar.gz
-            artifacts/windows-zip/*.tar.gz
-            artifacts/linux-zip/*.tar.gz
+            artifacts/dist-macos-arm64/*.tar.gz
+            artifacts/dist-macos-intel/*.tar.gz
+            artifacts/dist-windows/*.tar.gz
+            artifacts/dist-linux/*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -3,8 +3,10 @@
 
 import logging
 import mimetypes
+import argparse
 import os
 import subprocess
+import webbrowser
 import shutil
 import sys
 import traceback
@@ -22,6 +24,34 @@ PODCAST_SCRIPT = """Read aloud in a warm, welcoming tone
 John: Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs – my dogs' names are corgis! Who am I?
 Samantha: [amused] Queen Elizabeth II!
 """
+
+class WelcomeDialog(tk.Toplevel):
+    """A custom dialog window to welcome the user and provide a clickable link."""
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("Welcome!")
+        self.transient(parent)
+        self.grab_set()
+        self.resizable(False, False)
+
+        main_frame = tk.Frame(self, padx=20, pady=15)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(main_frame, text="Welcome to Podcast Generator!", font=('Helvetica', 12, 'bold')).pack(pady=(0, 10))
+        tk.Label(main_frame, text="To get started, the application needs your Google Gemini API key.").pack(pady=(0, 10))
+
+        link_frame = tk.Frame(main_frame)
+        link_frame.pack(pady=(0, 15))
+        tk.Label(link_frame, text="You can get a free key at:").pack(side=tk.LEFT)
+        link_label = tk.Label(link_frame, text="ai.google.dev/gemini-api", fg="blue", cursor="hand2")
+        link_label.pack(side=tk.LEFT, padx=5)
+        link_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://ai.google.dev/gemini-api"))
+
+        ok_button = tk.Button(main_frame, text="OK", command=self.destroy, width=10)
+        ok_button.pack(pady=(10, 0))
+
+        self.bind('<Return>', lambda event: ok_button.invoke())
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
 
 def setup_logging() -> logging.Logger:
     """Configures logging to write to a file in the application's data directory."""
@@ -133,20 +163,25 @@ def get_api_key(status_callback, logger: logging.Logger, parent_window=None) -> 
             dialog_parent.withdraw()
             we_created_root = True
 
-        messagebox.showinfo(
-            "Welcome!",
-            "Welcome to Podcast Generator!\n\n"
-            "To execute, the application needs your Google Gemini API key.\n\n"
-            "You can obtain one for free at:\n"
-            "https://ai.google.dev/gemini-api",
-            parent=dialog_parent
-        )
-        
+        # Temporarily de-iconify the parent if it exists and is withdrawn,
+        # to ensure our dialogs are visible.
+        parent_was_withdrawn = False
+        if parent_window and parent_window.winfo_exists() and parent_window.state() == 'withdrawn':
+            parent_window.deiconify()
+            parent_was_withdrawn = True
+
+        welcome_dialog = WelcomeDialog(dialog_parent)
+        dialog_parent.wait_window(welcome_dialog)
+
         api_key_input = simpledialog.askstring(
             "API Key Required",
             "Please paste your Google Gemini API key:",
             parent=dialog_parent
         )
+
+        # Re-withdraw the parent if we temporarily showed it
+        if parent_was_withdrawn:
+            parent_window.withdraw()
 
         if we_created_root:
             dialog_parent.destroy()
@@ -182,7 +217,9 @@ def generate(script_text: str, speaker_mapping: dict, api_key: str, output_filep
         return None # Should not happen if get_api_key is called first, but as a safeguard.
 
     # Ensure the output directory exists
-    os.makedirs(os.path.dirname(output_filepath), exist_ok=True)
+    output_dir = os.path.dirname(output_filepath)
+    if output_dir: # Only create directories if a path is specified
+        os.makedirs(output_dir, exist_ok=True)
 
     client = genai.Client(api_key=api_key)
 
@@ -347,12 +384,67 @@ def parse_audio_mime_type(mime_type: str) -> dict[str, int | None]:
 
 
 if __name__ == "__main__":
-    # For command-line execution, we use a default mapping.
     logger = setup_logging()
+
+    # --- Argument Parsing for CLI mode ---
+    parser = argparse.ArgumentParser(
+        description="Generate a podcast from a script file using the Gemini API.",
+        formatter_class=argparse.RawTextHelpFormatter,
+        epilog="""
+Example usage:
+  python generate_podcast.py path/to/your/script.txt
+  python generate_podcast.py path/to/your/script.txt -o path/to/your/output.mp3
+"""
+    )
+    parser.add_argument(
+        "script_filepath",
+        help="Path to the text file containing the podcast script."
+    )
+    parser.add_argument(
+        "-o", "--output",
+        dest="output_filepath",
+        help="Path to save the output audio file. Can be a directory or a full path. Defaults to the same directory as the input script."
+    )
+    args = parser.parse_args()
+
+    # --- Read Script File ---
+    try:
+        with open(args.script_filepath, 'r', encoding='utf-8') as f:
+            script_text = f.read()
+    except FileNotFoundError:
+        print(f"Error: The script file was not found at '{args.script_filepath}'")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: Could not read the script file: {e}")
+        sys.exit(1)
+
+    # --- Determine Output Path ---
+    output_filepath = args.output_filepath
+    base_script_name = os.path.splitext(os.path.basename(args.script_filepath))[0]
+
+    if output_filepath:
+        # If the provided path is a directory, create the filename inside it
+        if os.path.isdir(output_filepath):
+            output_filepath = os.path.join(output_filepath, f"{base_script_name}.mp3")
+            print(f"Output directory specified. Saving to: {output_filepath}")
+    else:
+        # Default to the same directory as the input script
+        script_dir = os.path.dirname(os.path.abspath(args.script_filepath))
+        output_filepath = os.path.join(script_dir, f"{base_script_name}.mp3")
+        print(f"No output path specified. Defaulting to: {output_filepath}")
+
+    # --- Get API Key and Generate ---
     api_key = get_api_key(print, logger)
-    if api_key:
-        default_speaker_mapping = {"John": "Schedar", "Samantha": "Zephyr"}
-        generate(script_text=PODCAST_SCRIPT, 
-                 speaker_mapping=default_speaker_mapping, 
-                 api_key=api_key,
-                 output_filepath="royal_family_quiz.mp3")
+    if not api_key:
+        print("API key is required to proceed. Exiting.")
+        sys.exit(1)
+
+    # For command-line execution, we use a default mapping.
+    default_speaker_mapping = {"John": "Schedar", "Samantha": "Zephyr"}
+    print(f"\nGenerating audio from '{os.path.basename(args.script_filepath)}'...")
+    generate(
+        script_text=script_text,
+        speaker_mapping=default_speaker_mapping,
+        api_key=api_key,
+        output_filepath=output_filepath
+    )
