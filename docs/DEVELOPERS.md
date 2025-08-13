@@ -38,17 +38,33 @@ python gui.py
 
 ---
 
-## 🧪 Testing
+## 📦 Building the Application Locally
 
-Currently, there is no automated test suite.  
-Testing is performed manually by running the application and verifying all functionalities.
+The project uses a `Podcast Generator.spec` file to control the build process. This ensures consistency across all platforms and automates version injection.
+
+### Build Steps
+
+1.  **Cleanup (Recommended)**: Before building, it's a good practice to remove old build artifacts  to avoid caching issues.
+    ```sh
+    rm -rf build/ dist/ _version.py
+    ```
+
+2.  **Install Dependencies**: This step also generates the `_version.py` file needed for the build.
+    ```sh
+     pip install -e .[dev]
+    ```
+
+3.  **Run PyInstaller**: Use the `.spec` file to build the application.
+    ```sh
+    python -m PyInstaller "Podcast Generator.spec"
+    ```
+
+The final  executable will be located in the `dist` folder.
 
 ---
 
 ## 🚀 Preparing a new version
 
-### Step 1: Prepare the Release
-- - **Update the Changelog**: Manually edit `CHANGELOG.md` to add the new version and list the changes.
 - **Final Tests**: Ensure all features are tested and functional.
 - **Clean Working Directory**: Make sure your working directory is clean (`git status` should show no uncommitted changes).
 

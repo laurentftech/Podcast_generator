@@ -29,7 +29,7 @@ jobs:
         run: sips -s format icns podcast.png --out podcast.icns
 
       - name: Build executable ARM64
-        run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
+        run: python -m PyInstaller "Podcast Generator.spec"
 
       - name: Package ARM64 tar.gz
         run: tar -czvf Podcast_Generator_${{ github.ref_name }}_MacOS_arm64.tar.gz -C dist "Podcast Generator.app"
@@ -58,7 +58,7 @@ jobs:
         run: sips -s format icns podcast.png --out podcast.icns
 
       - name: Build executable Intel
-        run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.icns gui.py
+        run: python3 -m PyInstaller "Podcast Generator.spec"
 
       - name: Package Intel tar.gz
         run: tar -czvf Podcast_Generator_${{ github.ref_name }}_MacOS_x86_64.tar.gz -C dist "Podcast Generator.app"
@@ -92,7 +92,7 @@ jobs:
         run: pip install .[dev]
 
       - name: Build Windows executable
-        run: pyinstaller --name="Podcast Generator" --windowed --icon=podcast.ico gui.py
+        run: python -m PyInstaller "Podcast Generator.spec"
 
       - name: Package Windows tar.gz
         run: tar -czvf Podcast_Generator_${{ github.ref_name }}_windows.tar.gz -C dist "Podcast Generator"
@@ -120,7 +120,7 @@ jobs:
         run: pip install .[dev]
 
       - name: Build executable Linux
-        run: pyinstaller --name="Podcast Generator" --windowed gui.py
+        run: python -m PyInstaller "Podcast Generator.spec"
 
       - name: Package Linux tar.gz
         run: tar -czvf Podcast_Generator_${{ github.ref_name }}_linux.tar.gz -C dist "Podcast Generator"

@@ -46,6 +46,8 @@ John: Restez avec nous pour en savoir plus !
 Samantha: N'oubliez pas de vous abonner.
 ```
 
+⚠️ Important : Les noms des locuteurs dans votre script (ex: John:, Samantha:) doivent correspondre exactement aux noms définis dans la fenêtre "Réglages des voix". L'application n'effectue aucune vérification, et une non-concordance entraînera une erreur de génération ou une mauvaise attribution des voix.
+
 ### Script multilingue
 ```txt
 John (fr): Bonjour à tous, bienvenue dans ce nouvel épisode.

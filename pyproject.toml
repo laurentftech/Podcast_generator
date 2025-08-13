@@ -34,9 +34,9 @@ dev = [
 [project.urls]
 Homepage = "https://github.com/laurentftech/Podcast_generator"
 
-[tool.setuptools.packages.find]
-where = ["."]
-exclude = ["docs*", ".github*", "tests*"]
+[tool.setuptools]
+py-modules = ["gui", "generate_podcast"]
 
 [tool.setuptools_scm]
 # This tool will automatically discover the version from git tags.
+write_to = "_version.py"

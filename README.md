@@ -65,6 +65,8 @@ John: Stay with us to learn more!
 Samantha: Don't forget to subscribe to our podcast.
 ```
 
+⚠️ Important: The speaker names in your script (e.g., John:, Samantha:) must **exactly** match the names defined in the "Voice Settings" window. The application does not perform any checks, and a mismatch will result in a generation error or incorrect voice assignment.
+
 ### Here's an example of a script for a multilingual podcast:
 
 ```txt
