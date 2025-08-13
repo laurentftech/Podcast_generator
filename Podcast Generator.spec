@@ -64,9 +64,9 @@ exe = EXE(
     icon=os.path.join(SPEC_DIR, 'podcast.ico')  # Icon for Windows
 )
 
-# --- macOS App Bundle ---
-# This section is specific to macOS and creates the .app bundle.
+# --- Platform-specific output ---
 if sys.platform == 'darwin':
+    # On macOS, we create a .app bundle.
     coll = COLLECT(exe, a.binaries, a.zipfiles, a.datas, strip=False, upx=True, upx_exclude=[], name='Podcast Generator')
     app = BUNDLE(
         coll,
@@ -80,4 +80,16 @@ if sys.platform == 'darwin':
             'CFBundleVersion': version_str,
             'NSHighResolutionCapable': 'True'
         }
+    )
+else:
+    # On Windows and Linux, we collect the files into a simple directory.
+    coll = COLLECT(
+        exe,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        name='Podcast Generator'
     )
