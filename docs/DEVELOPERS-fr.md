@@ -38,16 +38,30 @@ python gui.py
 
 ---
 
-## 🧪 Tests
+## 📦 Compiler l'application localement
 
-Pour l’instant, il n’y a pas de suite de tests automatisés.  
-Les tests se font manuellement en lançant l'application et en vérifiant que toutes les fonctionnalités fonctionnent.
+Le projet utilise un fichier `Podcast Generator.spec` pour contrôler le processus de compilation. Cela garantit la cohérence sur toutes les plateformes et automatise l'injection de la version.
+
+### Étapes de compilation
+
+1.  **Nettoyage (Recommandé)** : Avant de compiler, il est bon de supprimer les anciens artefacts de build pour éviter les problèmes de cache.
+    ```sh
+    rm -rf build/ dist/ _version.py
+    ```
+
+2.  **Installer les dépendances**: Cette étape génère également le fichier `_version.py` nécessaire à la compilation.
+    ```sh
+     pip install -e .[dev]
+    ```
+
+3.  **Lancer PyInstaller**: Utilisez le fichier `.spec` pour compiler l'application.
+    ```sh
+    python -m PyInstaller "Podcast Generator.spec"
+    ```
+
+L'exécutable final se trouvera dans le dossier `dist`.
 
 ---
-
-## 🚀 Préparation d'une nouvelle version
-
-Seul Laurent peut publier une release officielle, mais toute personne ayant accès en écriture peut préparer le code.
 
 ### Étape 1. Préparer la version
 
