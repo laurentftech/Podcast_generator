@@ -6,12 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.4.8] - 2024-08-14
+
 ### Changed
 - **Build System**: Finalized the build configuration by adding the auto-generated `_version.py` file to `.gitignore`. This prevents the version file, which changes with each commit, from being tracked in version control.
 - **Documentation**: Added a warning in the README files (English and French) to emphasize that speaker names in the script must exactly match those in the voice settings.
 - **macOS**: Fixing about dialog on macOS to ensure it displays correctly.
-
-## [1.4.8] - 2024-08-13
 
 ### Fixed
 - **macOS**: Fixed a startup crash on systems with an older version of the Tcl/Tk library (common with pyenv) by providing a fallback for native menu roles.
