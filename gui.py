@@ -688,7 +688,7 @@ class PodcastGeneratorApp:
 class APIKeysWindow(tk.Toplevel):
     def __init__(self, parent, close_callback):
         super().__init__(parent)
-        self.title("API Keys Management")
+        self.title("Welcome to Podcast Generator!")
         self.transient(parent)
         self.grab_set()
         self.resizable(False, False)
@@ -701,8 +701,10 @@ class APIKeysWindow(tk.Toplevel):
         tk.Label(main_frame, text="Manage API Keys", font=('Helvetica', 12, 'bold')).pack(pady=(0, 15))
         # Message de bienvenue (en anglais) pour guider l’utilisateur
         welcome_text = (
-            "Welcome! To use Podcast Generator, you need to configure at least one API key.\n"
-            "You can set your Google Gemini or ElevenLabs API key below."
+            "Welcome!\n"
+            "Podcast Generator is a tool that generates podcasts using AI.\n"
+            "To use it, you need to configure at least one API key for TTS (Text-to-Speech).\n"
+            "You can set your Google Gemini or ElevenLabs API key below. They will be stored securely in your system.\n"
         )
         tk.Label(
             main_frame,
@@ -715,12 +717,12 @@ class APIKeysWindow(tk.Toplevel):
         gemini_frame = tk.LabelFrame(main_frame, text="Google Gemini API", padx=10, pady=10)
         gemini_frame.pack(fill=tk.X, pady=(0, 10))
 
-        self.gemini_status_label = tk.Label(gemini_frame, text="", fg="green")
-        self.gemini_status_label.pack(anchor="w", pady=(0, 5))
         # Lien cliquable vers la page pour obtenir la clé Gemini
         gemini_link = tk.Label(gemini_frame, text="Get a Gemini API key", fg="blue", cursor="hand2")
         gemini_link.pack(anchor="w", pady=(0, 6))
         gemini_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://aistudio.google.com/app/apikey"))
+        self.gemini_status_label = tk.Label(gemini_frame, text="", fg="green")
+        self.gemini_status_label.pack(anchor="w", pady=(0, 5))
 
         gemini_button_frame = tk.Frame(gemini_frame)
         gemini_button_frame.pack(fill=tk.X)
@@ -735,12 +737,24 @@ class APIKeysWindow(tk.Toplevel):
         elevenlabs_frame = tk.LabelFrame(main_frame, text="ElevenLabs API", padx=10, pady=10)
         elevenlabs_frame.pack(fill=tk.X, pady=(0, 10))
 
-        self.elevenlabs_status_label = tk.Label(elevenlabs_frame, text="", fg="green")
-        self.elevenlabs_status_label.pack(anchor="w", pady=(0, 5))
+        # Note sur les permissions minimales requises
+        tk.Label(
+            elevenlabs_frame,
+            text="Minimum required permissions in ElevenLabs API settings:\n"
+                 "• Text to Speech: Has access\n"
+                 "• User: Read only\n"
+                 "• Voices: Read only",
+            justify="left",
+            wraplength=520,
+            fg="gray25"
+        ).pack(anchor="w", pady=(0, 6))
         # Lien cliquable vers la page pour obtenir la clé ElevenLabs
         elevenlabs_link = tk.Label(elevenlabs_frame, text="Get an ElevenLabs API key", fg="blue", cursor="hand2")
         elevenlabs_link.pack(anchor="w", pady=(0, 6))
         elevenlabs_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://elevenlabs.io/app/subscription"))
+
+        self.elevenlabs_status_label = tk.Label(elevenlabs_frame, text="", fg="green")
+        self.elevenlabs_status_label.pack(anchor="w", pady=(0, 5))
 
         elevenlabs_button_frame = tk.Frame(elevenlabs_frame)
         elevenlabs_button_frame.pack(fill=tk.X)
@@ -836,7 +850,7 @@ class APIKeysWindow(tk.Toplevel):
                 if response.status_code == 200:
                     user_data = response.json()
                     subscription = user_data.get('subscription', {}).get('tier', 'Unknown')
-                    messagebox.showinfo("Success", f"ElevenLabs API key is valid!\nSubscription: {subscription}", parent=self)
+                    messagebox.showinfo("Success", f"ElevenLabs API key is valid!\n\nSubscription: {subscription}.\n Usage: {user_data.get('subscription', {}).get('character_count', 'Unknown')} / {user_data.get('subscription', {}).get('character_limit', 'Unknown')} characters.", parent=self)
                 elif response.status_code == 401:
                     try:
                         error_detail = response.json().get('detail', {})
@@ -881,7 +895,7 @@ class APIKeysWindow(tk.Toplevel):
                 # Simple test request
                 models = list(client.models.list())
                 if models:
-                    messagebox.showinfo("Success", f"Gemini API key is valid!\nFound {len(models)} available models.", parent=self)
+                    messagebox.showinfo("Success", f"Gemini API key is valid!", parent=self)
                 else:
                     messagebox.showwarning("Warning", "Gemini API key appears valid but no models accessible.", parent=self)
             except Exception as e:
