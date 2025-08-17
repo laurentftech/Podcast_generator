@@ -1,3 +1,4 @@
+import logging
 import tkinter as tk
 from tkinter import ttk
 import threading
@@ -50,9 +51,6 @@ class SettingsWindow(tk.Toplevel):
         self.gemini_api_configured = bool(keyring.get_password("PodcastGenerator", "gemini_api_key"))
         self.elevenlabs_api_configured = bool(keyring.get_password("PodcastGenerator", "elevenlabs_api_key"))
 
-        print(f"=== DEBUG __init__ SettingsWindow ===")
-        print(f"current_settings reçu: {current_settings}")
-
         self.default_settings = default_settings
         self.current_settings = dict(current_settings)  # Crée une copie
         self.save_callback = save_callback
@@ -68,7 +66,6 @@ class SettingsWindow(tk.Toplevel):
 
         # Si un cache est fourni par le parent, l'utiliser immédiatement
         if isinstance(preloaded_elevenlabs_voices, list) and preloaded_elevenlabs_voices:
-            print(f"Préchargement de {len(preloaded_elevenlabs_voices)} voix ElevenLabs depuis le cache")
             self.elevenlabs_voices = list(preloaded_elevenlabs_voices)
             self.elevenlabs_voices_loaded = True
             self._voices_need_update = True
@@ -77,7 +74,6 @@ class SettingsWindow(tk.Toplevel):
         self.create_interface()
 
         # FORCER le chargement immédiat des paramètres existants
-        print("Chargement immédiat des paramètres existants...")
         self.populate_fields()
 
         # Puis charger les voix ElevenLabs en arrière-plan après un délai
@@ -91,7 +87,6 @@ class SettingsWindow(tk.Toplevel):
     def check_voices_update(self):
         """Vérifie périodiquement si les voix ont besoin d'être mises à jour."""
         if self._voices_need_update and self.elevenlabs_voices_loaded:
-            print("=== Détection que les voix ont besoin d'être mises à jour ===")
             self._voices_need_update = False
             self.update_elevenlabs_comboboxes()
 
@@ -103,37 +98,31 @@ class SettingsWindow(tk.Toplevel):
         main_frame = tk.Frame(self, padx=10, pady=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Provider selection (supprimé car doublon avec le menu principal)
-        # provider_frame = tk.Frame(main_frame)
-        # provider_frame.pack(fill=tk.X, pady=(0, 10))
-        # tk.Label(provider_frame, text="TTS Provider:", font=('Helvetica', 10, 'bold')).pack(side=tk.LEFT)
-        # self.provider_var = tk.StringVar(value=self.current_settings.get("tts_provider", "gemini"))
-        # provider_combo = ttk.Combobox(provider_frame, textvariable=self.provider_var,
-        #                               values=["gemini", "elevenlabs"], width=15, state="readonly")
-        # provider_combo.pack(side=tk.LEFT, padx=(10, 0))
-
         # Headers
         header_frame = tk.Frame(main_frame)
         header_frame.pack(fill=tk.X, pady=(0, 5))
         tk.Label(header_frame, text="Speaker name (in the script)",
-                 font=('Helvetica', 10, 'bold')).grid(row=0, column=0, sticky="w")
+                 font=('Helvetica', 10, 'bold')).grid(row=0, column=0, sticky="w", pady=(2, 2))
 
         next_column = 1
 
         # Conditionally create Gemini header
         if self.gemini_api_configured:
-            tk.Label(header_frame, text="Voice (Gemini)",
-                     font=('Helvetica', 10, 'bold')).grid(row=0, column=next_column, sticky="w", padx=(10, 0))
+            tk.Label(
+                header_frame,
+                text="Voice (Gemini)",
+                font=('Helvetica', 10, 'bold')
+            ).grid(row=0, column=next_column, sticky="w", pady=(2, 2))
             header_frame.columnconfigure(next_column, weight=1)
             next_column += 1
 
         # Conditionally create ElevenLabs header
         if self.elevenlabs_api_configured:
-            el_header_frame = tk.Frame(header_frame)
-            el_header_frame.grid(row=0, column=next_column, sticky="w", padx=(10, 0))
-            tk.Label(el_header_frame, text="Voice (ElevenLabs)",
-                     font=('Helvetica', 10, 'bold')).pack(side=tk.LEFT)
-            # (Bouton de rafraîchissement supprimé)
+            tk.Label(
+                header_frame,
+                text="Voice (ElevenLabs)",
+                font=('Helvetica', 10, 'bold')
+            ).grid(row=0, column=next_column, sticky="w", pady=(2, 2))
             header_frame.columnconfigure(next_column, weight=1)
 
         self.speaker_frame = tk.Frame(main_frame)
@@ -163,10 +152,8 @@ class SettingsWindow(tk.Toplevel):
 
     def load_elevenlabs_voices(self):
         """Charge la liste des voix ElevenLabs depuis l'API."""
-        print("=== DEBUG load_elevenlabs_voices appelé ===")
 
         if self._loading_voices:
-            print("Déjà en cours de chargement, abandon")
             return
 
         self._loading_voices = True
@@ -179,7 +166,6 @@ class SettingsWindow(tk.Toplevel):
                 try:
                     self.winfo_class()
                 except tk.TclError:
-                    print("Fenêtre détruite, abandon")
                     return
 
                 self.after(0, lambda: self.safe_update_button('disabled', '⏳'))
@@ -246,8 +232,6 @@ class SettingsWindow(tk.Toplevel):
             except requests.exceptions.Timeout:
                 self.elevenlabs_voices = []
                 self.elevenlabs_voices_loaded = False
-                print("Timeout lors du chargement des voix ElevenLabs")
-                print("Programmation de populate_fields_delayed après timeout...")
                 self.after(100, self.populate_fields_delayed)
             except requests.exceptions.RequestException as e:
                 self.elevenlabs_voices = []
@@ -268,9 +252,6 @@ class SettingsWindow(tk.Toplevel):
 
     def populate_fields_delayed(self):
         """Populate les champs après que les voix ElevenLabs aient été chargées (ou échoué)."""
-        print(f"=== DEBUG populate_fields_delayed ===")
-        print(f"self.entries avant: {len(self.entries)} entrées")
-        print(f"Contenu de self.entries: {[row.get('speaker', 'NO_SPEAKER') for row in self.entries]}")
         self.populate_fields()
 
     def update_elevenlabs_comboboxes(self):
@@ -279,7 +260,6 @@ class SettingsWindow(tk.Toplevel):
             if not self.elevenlabs_voices_loaded or not self.elevenlabs_voices:
                 return
             self.winfo_class()
-            print(f"Mise à jour des comboboxes avec {len(self.elevenlabs_voices)} voix")
             elevenlabs_values = [voice['display_name'] for voice in self.elevenlabs_voices]
             for row in self.entries:
                 if 'elevenlabs_voice' in row and row['elevenlabs_voice']:
@@ -290,7 +270,6 @@ class SettingsWindow(tk.Toplevel):
                             row['elevenlabs_voice'].set(current_value)
                     except tk.TclError:
                         continue
-            print("Mise à jour des comboboxes terminée avec succès")
         except (tk.TclError, AttributeError):
             pass
         except Exception as e:
@@ -304,7 +283,6 @@ class SettingsWindow(tk.Toplevel):
 
     def save_and_close(self):
         """Sauvegarde les paramètres et ferme la fenêtre."""
-        print("=== DEBUG save_and_close ===")
 
         new_settings = json.loads(json.dumps(self.current_settings))
 
@@ -338,9 +316,6 @@ class SettingsWindow(tk.Toplevel):
                     'display_name': elevenlabs_voice_display
                 }
 
-        # Ne plus enregistrer tts_provider ici (géré par le menu principal)
-
-        print(f"new_settings à sauvegarder: {new_settings}")
 
         if self.save_callback:
             self.save_callback(new_settings)
@@ -351,35 +326,31 @@ class SettingsWindow(tk.Toplevel):
 
     def populate_fields(self):
         """Remplit les champs avec les paramètres actuels."""
-        print("=== DEBUG populate_fields ===")
-        print(f"current_settings reçu: {self.current_settings}")
 
         speaker_voices = self.current_settings.get('speaker_voices', {})
         speaker_voices_elevenlabs = self.current_settings.get('speaker_voices_elevenlabs', {})
 
-        print(f"speaker_voices: {speaker_voices}")
-        print(f"speaker_voices_elevenlabs: {speaker_voices_elevenlabs}")
-
         voice_settings = self.current_settings.get('voice_settings', {})
-        print(f"voice_settings: {voice_settings}")
 
         if voice_settings:
-            print("Utilisation du nouveau format voice_settings")
             for speaker_name, voices in voice_settings.items():
-                print(f"Ajout ligne: {speaker_name} -> {voices}")
                 self.add_row(
                     speaker_name=speaker_name,
                     gemini_voice=voices.get('gemini_voice', ''),
                     elevenlabs_voice=voices.get('elevenlabs_voice', '')
                 )
         elif speaker_voices:
-            print("Utilisation de l'ancien format speaker_voices")
             all_speakers = set(speaker_voices.keys()) | set(speaker_voices_elevenlabs.keys())
-            print(f"All speakers: {all_speakers}")
 
             for speaker_name in all_speakers:
                 gemini_voice = speaker_voices.get(speaker_name, '')
                 elevenlabs_data = speaker_voices_elevenlabs.get(speaker_name, '')
+
+                # Normaliser le libellé Gemini pour l'affichage: "Name" -> "Name - Desc" si possible
+                gemini_display = gemini_voice
+                if isinstance(gemini_voice, str) and ' - ' not in gemini_voice and gemini_voice in AVAILABLE_VOICES:
+                    desc = AVAILABLE_VOICES.get(gemini_voice, '').strip()
+                    gemini_display = f"{gemini_voice} - {desc}" if desc else gemini_voice
 
                 elevenlabs_voice_display = ""
 
@@ -395,15 +366,12 @@ class SettingsWindow(tk.Toplevel):
                                     elevenlabs_voice_display = voice['display_name']
                                     break
 
-                print(
-                    f"Ajout ligne: {speaker_name} -> gemini='{gemini_voice}', elevenlabs_display='{elevenlabs_voice_display}'")
                 self.add_row(
                     speaker_name=speaker_name,
-                    gemini_voice=gemini_voice,
+                    gemini_voice=gemini_display,
                     elevenlabs_voice=elevenlabs_voice_display
                 )
         else:
-            print("Aucun paramètre trouvé, ajout d'une ligne vide")
             self.add_row()
 
     def add_row(self, speaker_name='', gemini_voice='', elevenlabs_voice=''):

@@ -71,10 +71,10 @@ def get_asset_path(filename: str) -> Optional[str]:
 
 
 class PodcastGeneratorApp:
-    DEFAULT_SPEAKER_SETTINGS = {"John": "Schedar", "Samantha": "Zephyr"}
+    DEFAULT_SPEAKER_SETTINGS = {"John": "Schedar - Even", "Samantha": "Zephyr - Bright"}
     DEFAULT_APP_SETTINGS = {
         "tts_provider": "gemini",
-        "speaker_voices": {"John": "Schedar", "Samantha": "Zephyr"},
+        "speaker_voices": {"John": "Schedar - Even", "Samantha": "Zephyr - Bright"},
         "speaker_voices_elevenlabs": {
             "John": {"id": "pqHfZKP75CvOlQylNhV4", "display_name": "Bill - Male, Old, american"},
             "Samantha": {"id": "Xb7hH8MSUJpSbSDYk0k2", "display_name": "Alice - Female, Middle_Aged, british"}
@@ -556,6 +556,18 @@ class PodcastGeneratorApp:
             "speaker_voices": app_settings.get("speaker_voices", {})
         }
         
+        # Nettoyage des voix Gemini: convertir "Name - Desc" -> "Name"
+        gemini_clean = {}
+        try:
+            for speaker, voice in app_settings_clean.get("speaker_voices", {}).items():
+                if isinstance(voice, str) and " - " in voice:
+                    gemini_clean[speaker] = voice.split(" - ", 1)[0].strip()
+                else:
+                    gemini_clean[speaker] = voice
+        except Exception:
+            gemini_clean = app_settings_clean.get("speaker_voices", {})
+        app_settings_clean["speaker_voices"] = gemini_clean
+
         elevenlabs_mapping_clean = {}
         elevenlabs_mapping_raw = app_settings.get("speaker_voices_elevenlabs", {})
         for speaker, data in elevenlabs_mapping_raw.items():
