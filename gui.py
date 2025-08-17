@@ -76,8 +76,8 @@ class PodcastGeneratorApp:
         "tts_provider": "gemini",
         "speaker_voices": {"John": "Schedar - Even", "Samantha": "Zephyr - Bright"},
         "speaker_voices_elevenlabs": {
-            "John": {"id": "pqHfZKP75CvOlQylNhV4", "display_name": "Bill - Male, Old, american"},
-            "Samantha": {"id": "Xb7hH8MSUJpSbSDYk0k2", "display_name": "Alice - Female, Middle_Aged, british"}
+            "John": {"id": "nPczCjzI2devNBz1zQrb", "display_name": "Brian - Male, Middle_Aged, american"},
+            "Samantha": {"id": "XB0fDUnXU5powFXDhCwa", "display_name": "Charlotte - Female, Young, swedish"}
         }
     }
 
@@ -186,13 +186,22 @@ class PodcastGeneratorApp:
         status_frame.pack(fill=tk.X, pady=(0, 5))
 
         current_provider = self.app_settings.get("tts_provider", "gemini").title()
+        # Couleur adaptative selon le mode sombre macOS
+        self._is_dark_mode = self._is_macos_dark_mode()
+        text_color = "white" if self._is_dark_mode else "blue"
         self.provider_label = tk.Label(status_frame, text=f"TTS Provider: {current_provider}", font=('Helvetica', 9),
-                                       fg="blue")
+                                       fg=text_color)
         self.provider_label.pack(side=tk.LEFT, padx=5, pady=2)
+        # Déclenche le rafraîchissement du quota immédiatement si ElevenLabs est actif
+        if self.app_settings.get("tts_provider", "gemini").lower() == "elevenlabs":
+            self.update_elevenlabs_quota_in_status()
+        # Lance le watcher de thème (actualise la couleur s'il y a bascule sombre/clair)
+        self._start_theme_watcher()
 
         # --- Script Text Area ---
         script_frame = tk.LabelFrame(main_frame, text="Script to read", padx=5, pady=5)
         script_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+
 
         self.script_text = scrolledtext.ScrolledText(script_frame, wrap=tk.WORD, height=15, width=80)
         self.script_text.pack(fill=tk.BOTH, expand=True)
@@ -238,6 +247,46 @@ class PodcastGeneratorApp:
         # Force un rafraîchissement différé du label pour laisser le temps au quota d'arriver
         if self.app_settings.get("tts_provider", "gemini").lower() == "elevenlabs":
             self._schedule_provider_label_refresh(delay_ms=2000, retries=5)
+
+    def _is_macos_dark_mode(self) -> bool:
+        """Retourne True si macOS est en mode sombre, False sinon (ou si indétectable)."""
+        try:
+            if sys.platform != "darwin":
+                return False
+            # AppleInterfaceStyle existe seulement en mode sombre
+            proc = subprocess.run(
+                ["defaults", "read", "-g", "AppleInterfaceStyle"],
+                capture_output=True, text=True
+            )
+            if proc.returncode != 0:
+                return False
+            return proc.stdout.strip().lower() == "dark"
+        except Exception:
+            return False
+
+    def _apply_provider_label_theme(self):
+        """Applique la bonne couleur au provider_label selon le mode sombre."""
+        if not hasattr(self, 'provider_label'):
+            return
+        # Blanc en mode sombre, bleu sinon
+        self.provider_label.config(fg=("white" if self._is_dark_mode else "blue"))
+
+    def _start_theme_watcher(self, interval_ms: int = 2000):
+        """Surveille le mode sombre macOS et met à jour la couleur du provider_label si l'état change."""
+        def _tick():
+            try:
+                current = self._is_macos_dark_mode()
+                if current != self._is_dark_mode:
+                    self._is_dark_mode = current
+                    self._apply_provider_label_theme()
+            finally:
+                # Replanifie la prochaine vérification
+                if self.root and self.root.winfo_exists():
+                    self.root.after(interval_ms, _tick)
+        # Premier tick après interval_ms
+        if self.root and self.root.winfo_exists():
+            self.root.after(interval_ms, _tick)
+
 
     def on_provider_selected(self):
         """Handles selection from the TTS Provider radio button menu."""
@@ -882,8 +931,7 @@ class APIKeysWindow(tk.Toplevel):
                  "• User: Read only\n"
                  "• Voices: Read only",
             justify="left",
-            wraplength=520,
-            fg="gray25"
+            wraplength=520
         ).pack(anchor="w", pady=(0, 6))
         # Lien cliquable vers la page pour obtenir la clé ElevenLabs
         elevenlabs_link = tk.Label(elevenlabs_frame, text="Get an ElevenLabs API key", fg="blue", cursor="hand2")
