@@ -78,7 +78,8 @@ class PodcastGeneratorApp:
         "speaker_voices_elevenlabs": {
             "John": {"id": "nPczCjzI2devNBz1zQrb", "display_name": "Brian - Male, Middle_Aged, american"},
             "Samantha": {"id": "XB0fDUnXU5powFXDhCwa", "display_name": "Charlotte - Female, Young, swedish"}
-        }
+        },
+        "elevenlabs_quota_cache": None
     }
 
     def __init__(self, root: tk.Tk, generate_func, logger, api_key: str, default_script: str = ""):
@@ -194,6 +195,11 @@ class PodcastGeneratorApp:
         self.provider_label.pack(side=tk.LEFT, padx=5, pady=2)
         # Déclenche le rafraîchissement du quota immédiatement si ElevenLabs est actif
         if self.app_settings.get("tts_provider", "gemini").lower() == "elevenlabs":
+            cached = self.app_settings.get("elevenlabs_quota_cache") or {}
+            cached_text = cached.get("text")
+            if cached_text:
+                self.elevenlabs_quota_text = cached_text
+                self._update_provider_label()
             self.update_elevenlabs_quota_in_status()
         # Lance le watcher de thème (actualise la couleur s'il y a bascule sombre/clair)
         self._start_theme_watcher()
@@ -458,11 +464,13 @@ class PodcastGeneratorApp:
                 tts_provider = settings.get("tts_provider", self.DEFAULT_APP_SETTINGS["tts_provider"])
                 speaker_voices = settings.get("speaker_voices", self.DEFAULT_APP_SETTINGS["speaker_voices"].copy())
                 speaker_voices_elevenlabs = settings.get("speaker_voices_elevenlabs", self.DEFAULT_APP_SETTINGS["speaker_voices_elevenlabs"].copy())
+                elevenlabs_quota_cache = settings.get("elevenlabs_quota_cache", None)
                 
                 return {
                     "tts_provider": tts_provider,
                     "speaker_voices": speaker_voices,
-                    "speaker_voices_elevenlabs": speaker_voices_elevenlabs
+                    "speaker_voices_elevenlabs": speaker_voices_elevenlabs,
+                    "elevenlabs_quota_cache": elevenlabs_quota_cache
                 }
         except (FileNotFoundError, json.JSONDecodeError):
             # Returns default app settings if the file does not exist or is corrupt
@@ -475,7 +483,7 @@ class PodcastGeneratorApp:
             os.makedirs(self.app_data_dir, exist_ok=True)  # Ensures the directory exists
             with open(self.settings_filepath, 'w') as f:
                 json.dump(self.app_settings, f, indent=4)
-            self.log_status("Settings saved successfully.")
+            #self.log_status("Settings saved successfully.")
         except IOError as e:
             messagebox.showerror("Saving Error", f"Cannot save settings to file:\n{e}", parent=self.root)
             self.logger.error(f"Saving error for settings: {e}")
@@ -486,17 +494,13 @@ class PodcastGeneratorApp:
         import threading
         import requests
 
-        # 1) Clé depuis le keyring
         key = keyring.get_password("PodcastGenerator", "elevenlabs_api_key")
-
-        # 2) Fallback : si pas dans le keyring mais provider=ElevenLabs et self.api_key est définie,
-        #    on utilise la clé en mémoire.
-        if (not key) and self.app_settings.get("tts_provider", "").lower() == "elevenlabs":
-            key = getattr(self, "api_key", None)
-
         if not key:
             self.elevenlabs_quota_text = None
-            self.root.after(0, self._update_provider_label)
+            # Met à jour le cache (efface s'il n'y a pas de clé)
+            self.app_settings["elevenlabs_quota_cache"] = None
+            self.save_settings(self.app_settings)
+            self.root.after(0, self._update_provider_label) # Update UI to remove old quota
             return
 
         def _to_int(value):
@@ -509,45 +513,41 @@ class PodcastGeneratorApp:
                 return None
             return None
 
+        def _save_quota_cache(text: str):
+            try:
+                self.app_settings["elevenlabs_quota_cache"] = {
+                    "text": text,
+                    "timestamp": datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z")
+                }
+                self.save_settings(self.app_settings)
+            except Exception:
+                pass
+
         def fetch_and_update():
             try:
                 headers = {"xi-api-key": key}
-
-                # 1) Essai principal: /v1/user
                 resp = requests.get("https://api.elevenlabs.io/v1/user", headers=headers, timeout=10)
-                data = None
-                if resp.status_code == 200:
+                if resp.status_code != 200:
+                    self.elevenlabs_quota_text = "TTS Provider: ElevenLabs - Quota unavailable"
+                    self.logger.warning(f"Failed to get ElevenLabs quota, status: {resp.status_code}")
+                    _save_quota_cache(self.elevenlabs_quota_text)
+                else:
                     data = resp.json()
-                else:
-                    # 2) Fallback: /v1/user/subscription
-                    resp2 = requests.get("https://api.elevenlabs.io/v1/user/subscription", headers=headers, timeout=10)
-                    if resp2.status_code == 200:
-                        data = {"subscription": resp2.json()}
-
-                tier = used = limit = None
-                if data:
-                    sub = data.get("subscription") or data
-                    if isinstance(sub, dict):
-                        # Champs possibles selon versions de l’API
-                        tier = sub.get("tier") or sub.get("plan")
-                        used = _to_int(
-                            sub.get("character_count") or sub.get("characters_used") or sub.get("character_usage"))
-                        limit = _to_int(
-                            sub.get("character_limit") or sub.get("characters") or sub.get("character_allowance"))
-
-                if limit is not None and used is not None:
-                    remaining = max(0, limit - used)
-                    self.elevenlabs_quota_text = f"TTS Provider: ElevenLabs - Remaining: {remaining} / {limit} characters"
-                elif limit is not None:
-                    self.elevenlabs_quota_text = f"TTS Provider: ElevenLabs - Limit: {limit} characters (usage unknown)"
-                elif tier:
-                    self.elevenlabs_quota_text = f"TTS Provider: ElevenLabs - Subscription: {tier} (quota unknown)"
-                else:
-                    self.elevenlabs_quota_text = "TTS Provider: ElevenLabs - Quota info missing"
+                    sub = data.get("subscription", {})
+                    used = sub.get("character_count")
+                    limit = sub.get("character_limit")
+                    if isinstance(used, int) and isinstance(limit, int) and limit > 0:
+                        remaining = max(0, limit - used)
+                        self.elevenlabs_quota_text = f"TTS Provider: ElevenLabs - Remaining: {remaining} / {limit} characters"
+                    else:
+                        self.elevenlabs_quota_text = "TTS Provider: ElevenLabs - Quota info missing"
+                    _save_quota_cache(self.elevenlabs_quota_text)
             except Exception as e:
                 self.logger.error(f"Error fetching ElevenLabs quota: {e}", exc_info=True)
                 self.elevenlabs_quota_text = "TTS Provider: ElevenLabs - Network error"
+                _save_quota_cache(self.elevenlabs_quota_text)
             finally:
+                # Always schedule the UI update from the main thread
                 self.root.after(0, self._update_provider_label)
 
         threading.Thread(target=fetch_and_update, daemon=True).start()
