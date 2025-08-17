@@ -111,6 +111,9 @@ class PodcastGeneratorApp:
 
         self.app_settings = self.load_settings()
 
+        # --- Create a StringVar for the TTS Provider ---
+        self.provider_var = tk.StringVar(value=self.app_settings.get("tts_provider", "gemini"))
+
         # --- Menu Bar (Platform-specific) ---
         self.menubar = tk.Menu(self.root)
         self.root.config(menu=self.menubar)
@@ -154,15 +157,13 @@ class PodcastGeneratorApp:
         tts_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="TTS Provider", menu=tts_menu)
 
-        # Add current provider indicator
-        current_provider = self.app_settings.get("tts_provider", "gemini").title()
-        tts_menu.add_command(label=f"Current: {current_provider}", state="disabled")
-        tts_menu.add_separator()
+        tts_menu.add_radiobutton(label="Gemini", variable=self.provider_var, value="gemini",
+                                 command=self.on_provider_selected)
+        tts_menu.add_radiobutton(label="ElevenLabs", variable=self.provider_var, value="elevenlabs",
+                                 command=self.on_provider_selected)
 
-        tts_menu.add_command(label="Switch to Gemini", command=lambda: self.switch_tts_provider("gemini"))
-        tts_menu.add_command(label="Switch to ElevenLabs", command=lambda: self.switch_tts_provider("elevenlabs"))
         tts_menu.add_separator()
-        tts_menu.add_command(label="Manage API Keys...", command=self.open_api_keys_window)
+        tts_menu.add_command(label="Manage API Keys...", command=self.update_tts_menu)
 
         # Help Menu (common to all platforms)
         help_menu = tk.Menu(self.menubar, tearoff=0)
@@ -229,6 +230,14 @@ class PodcastGeneratorApp:
                                      state='disabled', width=common_button_width)
         self.play_button.pack(side=tk.RIGHT)
 
+    def on_provider_selected(self):
+        """Handles selection from the TTS Provider radio button menu."""
+        new_provider = self.provider_var.get()
+        # Prevent running the switch logic if the selection hasn't actually changed.
+        # This can happen if the user cancels the API key dialog.
+        if new_provider != self.app_settings.get("tts_provider"):
+            self.switch_tts_provider(new_provider)
+
     def switch_tts_provider(self, provider: str):
         """Switch TTS provider, update settings, and fetch the correct API key."""
         if provider not in ["gemini", "elevenlabs"]:
@@ -248,6 +257,8 @@ class PodcastGeneratorApp:
                 f"The provider has not been switched.",
                 parent=self.root
             )
+            # Revert the radio button to the previous setting
+            self.provider_var.set(self.app_settings.get("tts_provider"))
             self.log_status(f"API key acquisition for {provider_title} failed. Provider switch cancelled.")
             return
 
@@ -258,24 +269,11 @@ class PodcastGeneratorApp:
 
         # Update UI to reflect the change
         self.provider_label.config(text=f"TTS Provider: {provider_title}")
-        self.update_tts_menu()
         self.log_status(f"Successfully switched TTS provider to {provider_title}.")
 
     def update_tts_menu(self):
         """Update the TTS menu to show current provider."""
         # Find TTS menu and update it
-        for i in range(self.menubar.index('end') + 1):
-            try:
-                menu_label = self.menubar.entryconfig(i, 'label')[-1]
-                if menu_label == "TTS Provider":
-                    tts_menu = self.menubar.nametowidget(self.menubar.entryconfig(i, 'menu')[-1])
-                    current_provider = self.app_settings.get("tts_provider", "gemini").title()
-                    tts_menu.entryconfig(0, label=f"Current: {current_provider}")
-                    break
-            except tk.TclError:
-                continue
-
-    def open_api_keys_window(self):
         """Opens the API keys management window."""
         # Disable the TTS menu while the window is open
         self.menubar.entryconfig("TTS Provider", state="disabled")
@@ -584,7 +582,7 @@ class PodcastGeneratorApp:
         # Update provider label in case it changed
         current_provider = self.app_settings.get("tts_provider", "gemini").title()
         self.provider_label.config(text=f"TTS Provider: {current_provider}")
-        self.update_tts_menu()
+        self.provider_var.set(current_provider.lower())
 
 
 class APIKeysWindow(tk.Toplevel):
