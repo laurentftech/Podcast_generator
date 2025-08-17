@@ -28,8 +28,8 @@ import requests
 
 # The podcast script is now a constant to be used by the console mode.
 PODCAST_SCRIPT = """Read aloud in a warm, welcoming tone
-John: Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs – my dogs' names are corgis! Who am I?
-Samantha: [amused] Queen Elizabeth II!
+John: <playful> Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs – my dogs' names are corgis! Who am I?
+Samantha: <amused> Queen Elizabeth II!
 """
 
 class WelcomeDialog(tk.Toplevel):

@@ -85,7 +85,6 @@ class PodcastGeneratorApp:
         self.root = root
         self.root.title(f"Podcast Generator v{get_app_version()}")
         self.root.geometry("960x700")
-
         # --- Application Icon ---
         icon_path = get_asset_path("podcast.png")
         if icon_path:
@@ -113,6 +112,8 @@ class PodcastGeneratorApp:
 
         # --- Create a StringVar for the TTS Provider ---
         self.provider_var = tk.StringVar(value=self.app_settings.get("tts_provider", "gemini"))
+        # Cache des voix ElevenLabs préchargées
+        self.elevenlabs_voices_cache = []
 
         # --- Menu Bar (Platform-specific) ---
         self.menubar = tk.Menu(self.root)
@@ -140,30 +141,29 @@ class PodcastGeneratorApp:
             except tk.TclError:
                 # Fallback for older Tcl/Tk. Clear any partially created menu.
                 self.menubar.delete(0, 'end')
-                # Create a generic menu instead
-                options_menu = tk.Menu(self.menubar, tearoff=0)
-                self.menubar.add_cascade(label="Options", menu=options_menu)
-                options_menu.add_command(label="Voice settings...", command=self.open_settings_window)
-                options_menu.add_separator()
-                options_menu.add_command(label="Quit Podcast Generator", command=self.root.quit)
-        else:  # Windows / Linux
-            options_menu = tk.Menu(self.menubar, tearoff=0)
-            self.menubar.add_cascade(label="Options", menu=options_menu)
-            options_menu.add_command(label="Voice settings...", command=self.open_settings_window)
-            options_menu.add_separator()
-            options_menu.add_command(label="Quit Podcast Generator", command=self.root.quit)
+                # (Le menu Settings sera créé plus bas, commun à toutes les plateformes)
+        # Création du menu Settings (commun à toutes les plateformes)
+        self.settings_menu = tk.Menu(self.menubar, tearoff=0)
+        self.menubar.add_cascade(label="Settings", menu=self.settings_menu)
 
-        # TTS Provider Menu
-        tts_menu = tk.Menu(self.menubar, tearoff=0)
-        self.menubar.add_cascade(label="TTS Provider", menu=tts_menu)
+        # Entrées du menu Settings: Voice settings
+        self.settings_menu.add_command(label="Voice settings...", command=self.open_settings_window)
 
-        tts_menu.add_radiobutton(label="Gemini", variable=self.provider_var, value="gemini",
-                                 command=self.on_provider_selected)
-        tts_menu.add_radiobutton(label="ElevenLabs", variable=self.provider_var, value="elevenlabs",
-                                 command=self.on_provider_selected)
+        # Sélection du provider TTS (fusion de l'ancien menu "TTS Provider")
+        self.settings_menu.add_separator()
+        self.settings_menu.add_radiobutton(label="Gemini", variable=self.provider_var, value="gemini",
+                                           command=self.on_provider_selected)
+        self.settings_menu.add_radiobutton(label="ElevenLabs", variable=self.provider_var, value="elevenlabs",
+                                           command=self.on_provider_selected)
 
-        tts_menu.add_separator()
-        tts_menu.add_command(label="Manage API Keys...", command=self.update_tts_menu)
+        # Gestion des clés API
+        self.settings_menu.add_separator()
+        self.settings_menu.add_command(label="Manage API Keys...", command=self.open_api_keys_window)
+
+        # Quit (pour Windows/Linux; sur macOS l'app menu expose déjà Quit)
+        if sys.platform != "darwin":
+            self.settings_menu.add_separator()
+            self.settings_menu.add_command(label="Quit", command=self.root.quit)
 
         # Help Menu (common to all platforms)
         help_menu = tk.Menu(self.menubar, tearoff=0)
@@ -173,6 +173,7 @@ class PodcastGeneratorApp:
         self.logger.info("Main interface initialized.")
 
         self.poll_log_queue()
+        self.update_provider_menu_state()
 
         # --- Main Frame ---
         main_frame = tk.Frame(root, padx=10, pady=10)
@@ -271,17 +272,41 @@ class PodcastGeneratorApp:
         self.provider_label.config(text=f"TTS Provider: {provider_title}")
         self.log_status(f"Successfully switched TTS provider to {provider_title}.")
 
-    def update_tts_menu(self):
-        """Update the TTS menu to show current provider."""
-        # Find TTS menu and update it
+    def update_provider_menu_state(self):
+        """
+        Checks for available API keys and enables/disables the provider
+        menu options accordingly.
+        """
+        import keyring
+
+        gemini_key_exists = bool(keyring.get_password("PodcastGenerator", "gemini_api_key"))
+        elevenlabs_key_exists = bool(keyring.get_password("PodcastGenerator", "elevenlabs_api_key"))
+
+        # Adapter à Settings menu (au lieu de self.tts_menu)
+        self.settings_menu.entryconfig("Gemini", state='normal' if gemini_key_exists else 'disabled')
+        self.settings_menu.entryconfig("ElevenLabs", state='normal' if elevenlabs_key_exists else 'disabled')
+
+        # Edge case: if the current provider's key was removed, try to switch to the other one.
+        current_provider = self.provider_var.get()
+        if current_provider == "gemini" and not gemini_key_exists and elevenlabs_key_exists:
+            self.log_status("Gemini API key not found. Switching to ElevenLabs.")
+            self.provider_var.set("elevenlabs")
+            self.on_provider_selected()
+        elif current_provider == "elevenlabs" and not elevenlabs_key_exists and gemini_key_exists:
+            self.log_status("ElevenLabs API key not found. Switching to Gemini.")
+            self.provider_var.set("gemini")
+            self.on_provider_selected()
+
+    def open_api_keys_window(self):
         """Opens the API keys management window."""
-        # Disable the TTS menu while the window is open
-        self.menubar.entryconfig("TTS Provider", state="disabled")
+        # Désactiver le menu Settings pendant l'ouverture
+        self.menubar.entryconfig("Settings", state="disabled")
         APIKeysWindow(self.root, self.on_api_keys_window_close)
 
     def on_api_keys_window_close(self):
         """Callback to re-enable the TTS menu when API keys window is closed."""
-        self.menubar.entryconfig("TTS Provider", state="normal")
+        self.menubar.entryconfig("Settings", state="normal")
+        self.update_provider_menu_state()
 
     def load_settings(self):
         """Loads settings from the JSON file."""
@@ -318,14 +343,15 @@ class PodcastGeneratorApp:
     def open_settings_window(self):
         """Opens the settings management window."""
         # Disable the button while the window is open to avoid duplicates
-        self.menubar.entryconfig("Options", state="disabled")
+        self.menubar.entryconfig("Settings", state="disabled")
         from settings_window import SettingsWindow
         SettingsWindow(
             self.root,
             current_settings=self.app_settings,
             save_callback=self.save_settings,
             close_callback=self.on_settings_window_close,
-            default_settings=self.DEFAULT_APP_SETTINGS
+            default_settings=self.DEFAULT_APP_SETTINGS,
+            preloaded_elevenlabs_voices=self.elevenlabs_voices_cache  # <-- passe le cache
         )
 
     def show_about_window(self):
@@ -429,8 +455,7 @@ class PodcastGeneratorApp:
         self.load_button.config(state='disabled')
         self.play_button.config(state='disabled')
         self.show_button.config(state='disabled')
-        self.menubar.entryconfig("Options", state="disabled")
-        self.menubar.entryconfig("TTS Provider", state="disabled")
+        self.menubar.entryconfig("Settings", state="disabled")
 
         # Show and start the progress bar
         self.clear_log()
@@ -508,8 +533,7 @@ class PodcastGeneratorApp:
         self.progress_bar.stop()
         self.generate_button.config(state='normal')
         self.load_button.config(state='normal')
-        self.menubar.entryconfig("Options", state="normal")
-        self.menubar.entryconfig("TTS Provider", state="normal")
+        self.menubar.entryconfig("Settings", state="normal")
         if self.progress_bar.winfo_ismapped():
             self.progress_bar.pack_forget()
         self.log_text.config(state='disabled')  # Disable the log area at the very end
@@ -578,11 +602,12 @@ class PodcastGeneratorApp:
 
     def on_settings_window_close(self):
         """Callback to re-enable the menu when the settings window is closed."""
-        self.menubar.entryconfig("Options", state="normal")
+        self.menubar.entryconfig("Settings", state="normal")
         # Update provider label in case it changed
         current_provider = self.app_settings.get("tts_provider", "gemini").title()
         self.provider_label.config(text=f"TTS Provider: {current_provider}")
         self.provider_var.set(current_provider.lower())
+        self.update_provider_menu_state()
 
 
 class APIKeysWindow(tk.Toplevel):
@@ -839,17 +864,18 @@ class AboutWindow(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.destroy)
 
 def open_settings_window(self):
-    """Opens the settings management window."""
-    # Disable the button while the window is open to avoid duplicates
-    self.menubar.entryconfig("Options", state="disabled")
-    from settings_window import SettingsWindow
-    SettingsWindow(
-        self.root,
-        current_settings=self.app_settings,
-        save_callback=self.save_settings,
-        close_callback=self.on_settings_window_close,
-        default_settings=self.DEFAULT_APP_SETTINGS
-    )
+        """Opens the settings management window."""
+        # Disable the button while the window is open to avoid duplicates
+        self.menubar.entryconfig("Settings", state="disabled")
+        from settings_window import SettingsWindow
+        SettingsWindow(
+            self.root,
+            current_settings=self.app_settings,
+            save_callback=self.save_settings,
+            close_callback=self.on_settings_window_close,
+            default_settings=self.DEFAULT_APP_SETTINGS,
+            preloaded_elevenlabs_voices=self.elevenlabs_voices_cache  # <-- passe le cache
+        )
 
 def main():
     # Initializes the application and starts the main Tkinter loop
@@ -902,6 +928,51 @@ def main():
 
     # Now that we have the key, assign it to the app and show the main window.
     app.api_key = api_key
+
+    # Précharger les voix ElevenLabs au démarrage (si la clé est configurée)
+    def _prefetch_elevenlabs():
+        try:
+            import keyring, requests
+            key = keyring.get_password("PodcastGenerator", "elevenlabs_api_key")
+            if not key:
+                app.elevenlabs_voices_cache = []
+                return
+            headers = {"xi-api-key": key}
+            resp = requests.get("https://api.elevenlabs.io/v1/voices", headers=headers, timeout=15)
+            if resp.status_code != 200:
+                app.elevenlabs_voices_cache = []
+                return
+            data = resp.json()
+            voices = []
+            for voice in data.get('voices', []):
+                voice_id = voice.get('voice_id', '')
+                name = voice.get('name', 'Unknown')
+                category = voice.get('category', '')
+                labels = voice.get('labels', {}) if voice.get('labels') else {}
+                accent = labels.get('accent', '') if isinstance(labels, dict) else ''
+                age = labels.get('age', '') if isinstance(labels, dict) else ''
+                gender = labels.get('gender', '') if isinstance(labels, dict) else ''
+                desc_parts = []
+                if gender: desc_parts.append(str(gender).title())
+                if age: desc_parts.append(str(age).title())
+                if accent: desc_parts.append(str(accent))
+                description = ', '.join(desc_parts) if desc_parts else str(category).title()
+                display_name = f"{name} - {description}" if description else name
+                voices.append({
+                    'id': voice_id,
+                    'name': name,
+                    'display_name': display_name,
+                    'category': category,
+                    'labels': labels
+                })
+            voices.sort(key=lambda x: x.get('name', ''))
+            app.elevenlabs_voices_cache = voices
+        except Exception:
+            app.elevenlabs_voices_cache = []
+
+    import threading as _th
+    _th.Thread(target=_prefetch_elevenlabs, daemon=True).start()
+
     root.deiconify()
     root.mainloop()
 
