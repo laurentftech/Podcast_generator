@@ -414,13 +414,14 @@ class PodcastGeneratorApp:
             self.tts_submenu.add_radiobutton(label="ElevenLabs", variable=self.provider_var, value="elevenlabs",
                                              command=self.on_provider_selected)
             self.settings_menu.add_cascade(label="TTS provider", menu=self.tts_submenu)
+
+            # 4) Séparateur
+            self.settings_menu.add_separator()
         else:
             # Entrée simple désactivée (pas de flèche)
-            #self.settings_menu.add_command(label="TTS provider", state="disabled")
             self.tts_submenu = None
 
-        # 4) Séparateur
-        self.settings_menu.add_separator()
+
 
         # 5) Manage API Keys...
         self.settings_menu.add_command(label="Manage API Keys...", command=self.open_api_keys_window)
