@@ -230,22 +230,36 @@ class PodcastGeneratorApp:
         self.play_button.pack(side=tk.RIGHT)
 
     def switch_tts_provider(self, provider: str):
-        """Switch TTS provider and update settings."""
+        """Switch TTS provider, update settings, and fetch the correct API key."""
         if provider not in ["gemini", "elevenlabs"]:
             return
 
-        # Update settings
+        from generate_podcast import get_api_key  # Local import is safe
+        provider_title = provider.title()
+
+        # Attempt to get the new API key. This will prompt the user if the key is not found.
+        new_api_key = get_api_key(self.log_status, self.logger, parent_window=self.root, service=provider)
+
+        # If the user cancels the key entry dialog, abort the switch.
+        if not new_api_key:
+            messagebox.showwarning(
+                "API Key Required",
+                f"Could not set an API key for {provider_title}.\n\n"
+                f"The provider has not been switched.",
+                parent=self.root
+            )
+            self.log_status(f"API key acquisition for {provider_title} failed. Provider switch cancelled.")
+            return
+
+        # If successful, update the API key in memory and in the settings.
+        self.api_key = new_api_key
         self.app_settings["tts_provider"] = provider
         self.save_settings(self.app_settings)
 
-        # Update UI
-        provider_title = provider.title()
+        # Update UI to reflect the change
         self.provider_label.config(text=f"TTS Provider: {provider_title}")
-
-        # Update menu to reflect current provider
         self.update_tts_menu()
-
-        self.log_status(f"Switched TTS provider to {provider_title}")
+        self.log_status(f"Successfully switched TTS provider to {provider_title}.")
 
     def update_tts_menu(self):
         """Update the TTS menu to show current provider."""
