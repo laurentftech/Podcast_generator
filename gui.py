@@ -699,6 +699,17 @@ class APIKeysWindow(tk.Toplevel):
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         tk.Label(main_frame, text="Manage API Keys", font=('Helvetica', 12, 'bold')).pack(pady=(0, 15))
+        # Message de bienvenue (en anglais) pour guider l’utilisateur
+        welcome_text = (
+            "Welcome! To use Podcast Generator, you need to configure at least one API key.\n"
+            "You can set your Google Gemini or ElevenLabs API key below."
+        )
+        tk.Label(
+            main_frame,
+            text=welcome_text,
+            justify="left",
+            wraplength=520
+        ).pack(anchor="w", pady=(0, 12))
 
         # Gemini API Key section
         gemini_frame = tk.LabelFrame(main_frame, text="Google Gemini API", padx=10, pady=10)
@@ -706,6 +717,10 @@ class APIKeysWindow(tk.Toplevel):
 
         self.gemini_status_label = tk.Label(gemini_frame, text="", fg="green")
         self.gemini_status_label.pack(anchor="w", pady=(0, 5))
+        # Lien cliquable vers la page pour obtenir la clé Gemini
+        gemini_link = tk.Label(gemini_frame, text="Get a Gemini API key", fg="blue", cursor="hand2")
+        gemini_link.pack(anchor="w", pady=(0, 6))
+        gemini_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://aistudio.google.com/app/apikey"))
 
         gemini_button_frame = tk.Frame(gemini_frame)
         gemini_button_frame.pack(fill=tk.X)
@@ -722,6 +737,10 @@ class APIKeysWindow(tk.Toplevel):
 
         self.elevenlabs_status_label = tk.Label(elevenlabs_frame, text="", fg="green")
         self.elevenlabs_status_label.pack(anchor="w", pady=(0, 5))
+        # Lien cliquable vers la page pour obtenir la clé ElevenLabs
+        elevenlabs_link = tk.Label(elevenlabs_frame, text="Get an ElevenLabs API key", fg="blue", cursor="hand2")
+        elevenlabs_link.pack(anchor="w", pady=(0, 6))
+        elevenlabs_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://elevenlabs.io/app/subscription"))
 
         elevenlabs_button_frame = tk.Frame(elevenlabs_frame)
         elevenlabs_button_frame.pack(fill=tk.X)
