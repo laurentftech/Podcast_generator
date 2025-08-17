@@ -152,20 +152,22 @@ class PodcastGeneratorApp:
                 # Fallback for older Tcl/Tk. Clear any partially created menu.
                 self.menubar.delete(0, 'end')
                 # (Le menu Settings sera créé plus bas, commun à toutes les plateformes)
+
         # Création du menu Settings (commun à toutes les plateformes)
         self.settings_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Settings", menu=self.settings_menu)
 
-        # Entrées du menu Settings: Voice settings
-        self.settings_menu.add_command(label="Voice settings...", command=self.open_settings_window)
-
         # Sous-menu TTS provider (n’apparaît que si 2 clés sont présentes)
-        self.settings_menu.add_separator()
+
         self.tts_submenu = None
         self.rebuild_tts_provider_menu()
+        self.settings_menu.add_separator()
+
+        # Entrées du menu Settings: Voice settings
+        self.settings_menu.add_command(label="Voice settings...", command=self.open_settings_window)
+        self.settings_menu.add_separator()
 
         # Gestion des clés API
-        self.settings_menu.add_separator()
         self.settings_menu.add_command(label="Manage API Keys...", command=self.open_api_keys_window)
 
         # Quit (pour Windows/Linux; sur macOS l'app menu expose déjà Quit)
@@ -375,43 +377,58 @@ class PodcastGeneratorApp:
 
     def rebuild_tts_provider_menu(self):
         """
-        (Re)construit le sous-menu 'TTS provider' sous Settings uniquement si
-        plus d'une clé est configurée (donc Gemini ET ElevenLabs).
+        Reconstruit entièrement le menu 'Settings' dans l'ordre attendu.
+        - Voice settings... (activé si au moins une clé)
+        - Séparateur
+        - TTS provider (cascade si 2 clés, sinon simple entrée désactivée sans flèche)
+        - Séparateur
+        - Manage API Keys...
+        - (Windows/Linux uniquement) Séparateur + Quit
         """
-        import keyring
+        import keyring, sys
 
         gemini_key_exists = bool(keyring.get_password("PodcastGenerator", "gemini_api_key"))
         elevenlabs_key_exists = bool(keyring.get_password("PodcastGenerator", "elevenlabs_api_key"))
-        need_submenu = gemini_key_exists and elevenlabs_key_exists
+        both_keys = gemini_key_exists and elevenlabs_key_exists
+        has_any_key = gemini_key_exists or elevenlabs_key_exists
 
-        existing_index = self._find_menu_index_by_label(self.settings_menu, "TTS provider")
+        # Vider et reconstruire le menu Settings dans l'ordre
+        self.settings_menu.delete(0, 'end')
 
-        if need_submenu:
-            if existing_index is None:
-                # Créer le sous-menu et l'attacher
-                self.tts_submenu = tk.Menu(self.settings_menu, tearoff=0)
-                self.tts_submenu.add_radiobutton(label="Gemini", variable=self.provider_var, value="gemini",
-                                                 command=self.on_provider_selected)
-                self.tts_submenu.add_radiobutton(label="ElevenLabs", variable=self.provider_var, value="elevenlabs",
-                                                 command=self.on_provider_selected)
-                self.settings_menu.add_cascade(label="TTS provider", menu=self.tts_submenu)
-            else:
-                # Déjà présent: s'assurer que la référence existe
-                if self.tts_submenu is None:
-                    self.tts_submenu = tk.Menu(self.settings_menu, tearoff=0)
-                    self.tts_submenu.add_radiobutton(label="Gemini", variable=self.provider_var, value="gemini",
-                                                     command=self.on_provider_selected)
-                    self.tts_submenu.add_radiobutton(label="ElevenLabs", variable=self.provider_var, value="elevenlabs",
-                                                     command=self.on_provider_selected)
-                    self.settings_menu.delete(existing_index)
-                    self.settings_menu.insert_cascade(existing_index, label="TTS provider", menu=self.tts_submenu)
+        # 1) Voice settings...
+        self.settings_menu.add_command(
+            label="Voice settings...",
+            command=self.open_settings_window,
+            state=('normal' if has_any_key else 'disabled')
+        )
+
+        # 2) Séparateur
+        self.settings_menu.add_separator()
+
+        # 3) TTS provider
+        if both_keys:
+            # Cascade avec flèche
+            self.tts_submenu = tk.Menu(self.settings_menu, tearoff=0)
+            self.tts_submenu.add_radiobutton(label="Gemini", variable=self.provider_var, value="gemini",
+                                             command=self.on_provider_selected)
+            self.tts_submenu.add_radiobutton(label="ElevenLabs", variable=self.provider_var, value="elevenlabs",
+                                             command=self.on_provider_selected)
+            self.settings_menu.add_cascade(label="TTS provider", menu=self.tts_submenu)
         else:
-            if existing_index is not None:
-                try:
-                    self.settings_menu.delete(existing_index)
-                except tk.TclError:
-                    pass
+            # Entrée simple désactivée (pas de flèche)
+            #self.settings_menu.add_command(label="TTS provider", state="disabled")
             self.tts_submenu = None
+
+        # 4) Séparateur
+        self.settings_menu.add_separator()
+
+        # 5) Manage API Keys...
+        self.settings_menu.add_command(label="Manage API Keys...", command=self.open_api_keys_window)
+
+        # 6) Quit (Windows/Linux uniquement, macOS a déjà Quit dans le menu application)
+        if sys.platform != "darwin":
+            self.settings_menu.add_separator()
+            self.settings_menu.add_command(label="Quit", command=self.root.quit)
 
     def update_voice_settings_enabled(self):
         """Active 'Voice settings...' si au moins une clé API est configurée, sinon désactive."""
