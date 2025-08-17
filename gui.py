@@ -161,14 +161,6 @@ class PodcastGeneratorApp:
 
         self.tts_submenu = None
         self.rebuild_tts_provider_menu()
-        self.settings_menu.add_separator()
-
-        # Entrées du menu Settings: Voice settings
-        self.settings_menu.add_command(label="Voice settings...", command=self.open_settings_window)
-        self.settings_menu.add_separator()
-
-        # Gestion des clés API
-        self.settings_menu.add_command(label="Manage API Keys...", command=self.open_api_keys_window)
 
         # Quit (pour Windows/Linux; sur macOS l'app menu expose déjà Quit)
         if sys.platform != "darwin":
