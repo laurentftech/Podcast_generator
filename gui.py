@@ -107,11 +107,15 @@ class PodcastGeneratorApp:
         self.playback_obj = None  # To keep a reference to the playback process
         self.last_generated_filepath = None
         self.ffplay_path = find_ffplay_path()
+        self.elevenlabs_quota_text = None # New state variable
 
         self.app_settings = self.load_settings()
 
-        # --- Create a StringVar for the TTS Provider ---
-        self.provider_var = tk.StringVar(value=self.app_settings.get("tts_provider", "gemini"))
+        # Provider sélectionné
+        self.provider_var = tk.StringVar(value=self.app_settings.get("tts_provider", "gemini").lower())
+        if self.app_settings.get("tts_provider", "gemini").lower() == "elevenlabs":
+            self.update_elevenlabs_quota_in_status()
+
         # Cache des voix ElevenLabs préchargées
         self.elevenlabs_voices_cache = []
 
@@ -231,6 +235,9 @@ class PodcastGeneratorApp:
         # Après que tous les widgets (dont generate_button) sont créés, on peut mettre à jour les états.
         self.update_provider_menu_state()
         self.update_voice_settings_enabled()
+        # Force un rafraîchissement différé du label pour laisser le temps au quota d'arriver
+        if self.app_settings.get("tts_provider", "gemini").lower() == "elevenlabs":
+            self._schedule_provider_label_refresh(delay_ms=2000, retries=5)
 
     def on_provider_selected(self):
         """Handles selection from the TTS Provider radio button menu."""
@@ -244,6 +251,10 @@ class PodcastGeneratorApp:
         """Switch TTS provider, update settings, and fetch the correct API key."""
         if provider not in ["gemini", "elevenlabs"]:
             return
+
+        # --- NOUVEAU : déclenche quota si ElevenLabs ---
+        if provider.lower() == "elevenlabs":
+            self.update_elevenlabs_quota_in_status()
 
         from generate_podcast import get_api_key  # Local import is safe
         provider_title = provider.title()
@@ -270,8 +281,10 @@ class PodcastGeneratorApp:
         self.save_settings(self.app_settings)
 
         # Update UI to reflect the change
-        self.provider_label.config(text=f"TTS Provider: {provider_title}")
+        self._update_provider_label() # Update the label to its base state
         self.log_status(f"Successfully switched TTS provider to {provider_title}.")
+        if provider == "elevenlabs":
+            self.update_elevenlabs_quota_in_status()
 
     def update_provider_menu_state(self):
         """
@@ -382,6 +395,9 @@ class PodcastGeneratorApp:
         self.rebuild_tts_provider_menu()
         self.update_provider_menu_state()
         self.update_voice_settings_enabled()
+        # Si ElevenLabs est actif, rafraîchir le quota affiché
+        if self.app_settings.get("tts_provider", "gemini").lower() == "elevenlabs":
+            self.update_elevenlabs_quota_in_status()
 
     def load_settings(self):
         """Loads settings from the JSON file."""
@@ -412,8 +428,80 @@ class PodcastGeneratorApp:
                 json.dump(self.app_settings, f, indent=4)
             self.log_status("Settings saved successfully.")
         except IOError as e:
-            messagebox.showerror("Saving Error", f"Cannot save settings to file:\n{e}")
+            messagebox.showerror("Saving Error", f"Cannot save settings to file:\n{e}", parent=self.root)
             self.logger.error(f"Saving error for settings: {e}")
+
+    def update_elevenlabs_quota_in_status(self):
+        """Fetches ElevenLabs quota in a background thread and updates the status label."""
+        import keyring
+        import threading
+        import requests
+
+        # 1) Clé depuis le keyring
+        key = keyring.get_password("PodcastGenerator", "elevenlabs_api_key")
+
+        # 2) Fallback : si pas dans le keyring mais provider=ElevenLabs et self.api_key est définie,
+        #    on utilise la clé en mémoire.
+        if (not key) and self.app_settings.get("tts_provider", "").lower() == "elevenlabs":
+            key = getattr(self, "api_key", None)
+
+        if not key:
+            self.elevenlabs_quota_text = None
+            self.root.after(0, self._update_provider_label)
+            return
+
+        def _to_int(value):
+            try:
+                if isinstance(value, (int, float)):
+                    return int(value)
+                if isinstance(value, str):
+                    return int(float(value.strip()))
+            except Exception:
+                return None
+            return None
+
+        def fetch_and_update():
+            try:
+                headers = {"xi-api-key": key}
+
+                # 1) Essai principal: /v1/user
+                resp = requests.get("https://api.elevenlabs.io/v1/user", headers=headers, timeout=10)
+                data = None
+                if resp.status_code == 200:
+                    data = resp.json()
+                else:
+                    # 2) Fallback: /v1/user/subscription
+                    resp2 = requests.get("https://api.elevenlabs.io/v1/user/subscription", headers=headers, timeout=10)
+                    if resp2.status_code == 200:
+                        data = {"subscription": resp2.json()}
+
+                tier = used = limit = None
+                if data:
+                    sub = data.get("subscription") or data
+                    if isinstance(sub, dict):
+                        # Champs possibles selon versions de l’API
+                        tier = sub.get("tier") or sub.get("plan")
+                        used = _to_int(
+                            sub.get("character_count") or sub.get("characters_used") or sub.get("character_usage"))
+                        limit = _to_int(
+                            sub.get("character_limit") or sub.get("characters") or sub.get("character_allowance"))
+
+                if limit is not None and used is not None:
+                    remaining = max(0, limit - used)
+                    self.elevenlabs_quota_text = f"TTS Provider: ElevenLabs - Remaining: {remaining} / {limit} characters"
+                elif limit is not None:
+                    self.elevenlabs_quota_text = f"TTS Provider: ElevenLabs - Limit: {limit} characters (usage unknown)"
+                elif tier:
+                    self.elevenlabs_quota_text = f"TTS Provider: ElevenLabs - Subscription: {tier} (quota unknown)"
+                else:
+                    self.elevenlabs_quota_text = "TTS Provider: ElevenLabs - Quota info missing"
+            except Exception as e:
+                self.logger.error(f"Error fetching ElevenLabs quota: {e}", exc_info=True)
+                self.elevenlabs_quota_text = "TTS Provider: ElevenLabs - Network error"
+            finally:
+                self.root.after(0, self._update_provider_label)
+
+        threading.Thread(target=fetch_and_update, daemon=True).start()
 
     def open_settings_window(self):
         """Opens the settings management window."""
@@ -497,13 +585,21 @@ class PodcastGeneratorApp:
             return
 
         # --- Validate Speaker Voices ---
-        missing_speakers = validate_speakers(script_content, self.app_settings)
+        try:
+            missing_speakers, configured_speakers = validate_speakers(script_content, self.app_settings)
+        except ValueError as e:
+            # Règle Gemini: plus de 2 speakers -> erreur bloquante
+            messagebox.showerror("Configuration Error", str(e), parent=self.root)
+            return
+
         if missing_speakers:
             missing_speakers_str = ", ".join(missing_speakers)
+            configured_str = ", ".join(configured_speakers) if configured_speakers else "None"
             messagebox.showerror(
                 "Configuration Error",
                 f"The following speakers from the script do not have an assigned voice:\n\n"
-                f"{missing_speakers_str}\n\n"
+                f"Missing speakers: {missing_speakers_str}\n\n"
+                f"Configured speakers: {configured_str}\n\n"
                 f"Please configure their voices in 'Options -> Voice Settings' before continuing.",
                 parent=self.root
             )
@@ -616,6 +712,8 @@ class PodcastGeneratorApp:
             if self.ffplay_path:
                 self.show_button.config(state='normal')
                 self.play_button.config(state='normal')
+            if self.app_settings.get("tts_provider").lower() == "elevenlabs":
+                self.update_elevenlabs_quota_in_status()
 
         self.progress_bar.stop()
         self.generate_button.config(state='normal')
@@ -688,13 +786,40 @@ class PodcastGeneratorApp:
                 self.log_queue.put(('UPDATE_PLAY_BUTTON', '▶️ Play', 'normal'))
 
     def on_settings_window_close(self):
-        """Callback to re-enable the menu when the settings window is closed."""
         self.menubar.entryconfig("Settings", state="normal")
-        # Update provider label in case it changed
-        current_provider = self.app_settings.get("tts_provider", "gemini").title()
-        self.provider_label.config(text=f"TTS Provider: {current_provider}")
-        self.provider_var.set(current_provider.lower())
+        self._update_provider_label()
+        self.provider_var.set(self.app_settings.get("tts_provider", "gemini").lower())
         self.update_provider_menu_state()
+        if self.app_settings.get("tts_provider", "").lower() == "elevenlabs":
+            self.update_elevenlabs_quota_in_status()
+
+    def _update_provider_label(self):
+        """Updates the provider label based on the current provider and cached quota text."""
+        current_provider_raw = self.app_settings.get("tts_provider", "gemini")
+        current_provider_display = current_provider_raw.title()
+        text_to_display = f"TTS Provider: {current_provider_display}"
+        
+        # Si ElevenLabs est actif et qu’un quota est connu, afficher le quota
+        if current_provider_raw.lower() == "elevenlabs" and self.elevenlabs_quota_text:
+            text_to_display = self.elevenlabs_quota_text
+        
+        if hasattr(self, 'provider_label'):
+            self.provider_label.config(text=text_to_display)
+
+    def _schedule_provider_label_refresh(self, delay_ms=2000, retries=5):
+        """Planifie des rafraîchissements du provider_label après un délai, avec quelques tentatives."""
+        def _try_refresh(attempt=1):
+            # Met à jour le label avec l’info la plus récente disponible
+            self._update_provider_label()
+            # Si ElevenLabs est actif et que le quota n'est pas encore connu, retente plus tard
+            if (
+                attempt < retries
+                and self.app_settings.get("tts_provider", "gemini").lower() == "elevenlabs"
+                and not self.elevenlabs_quota_text
+            ):
+                self.root.after(delay_ms, lambda: _try_refresh(attempt + 1))
+        # Premier essai après delay_ms
+        self.root.after(delay_ms, _try_refresh)
 
 
 class APIKeysWindow(tk.Toplevel):

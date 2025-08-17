@@ -1,7 +1,3 @@
-
-# To run this code you need to install the following dependencies:
-# pip install google-genai python-dotenv requests
-
 import logging
 import mimetypes
 import argparse
@@ -24,6 +20,7 @@ from tkinter import simpledialog, messagebox
 import tempfile
 import json
 import re
+from typing import Any, Dict, List, Tuple
 import requests
 
 # The podcast script is now a constant to be used by the console mode.
@@ -532,33 +529,48 @@ def _ffmpeg_convert_inline_audio_chunks(audio_chunks: List[bytes], mime_type: st
 
     return output_filepath
 
-def validate_speakers(script_text: str, app_settings: Dict[str, Any]) -> List[str]:
+def validate_speakers(script_text: str, app_settings: Dict[str, Any]) -> Tuple[List[str], List[str]]:
     """
-    Checks if all speakers in the script have a defined voice in the settings.
+    Valide la configuration des locuteurs du script pour le provider TTS actif.
 
     Args:
-        script_text: The text of the podcast script.
-        app_settings: The application settings dictionary.
+        script_text: Le texte du script du podcast.
+        app_settings: Le dictionnaire des paramètres de l'application.
 
     Returns:
-        A list of speaker names that are missing from the settings.
-        Returns an empty list if all speakers are configured.
+        Un tuple (missing_speakers, configured_speakers) où:
+          - missing_speakers: liste triée des speakers présents dans le script mais non configurés.
+          - configured_speakers: liste triée des speakers présents dans le script et configurés.
+
+    Règles supplémentaires:
+        - Pour le provider 'gemini', il ne peut pas y avoir plus de 2 speakers dans le script.
+          Si plus de 2 sont détectés, une ValueError est levée avec un message explicite.
     """
-    # Find all unique speakers in the script (lines like "Name: text")
+    # Trouver tous les locuteurs uniques du script (lignes du style "Nom: texte")
     script_speakers = set(re.findall(r"^\s*(.+?)\s*:", script_text, re.MULTILINE))
 
     if not script_speakers:
-        return []  # No speakers found, no validation needed
+        return ([], [])  # Aucun speaker détecté
 
     provider_name = (app_settings or {}).get("tts_provider", "gemini").lower()
+
+    # Règle spécifique Gemini: au plus 2 speakers autorisés
+    if provider_name == "gemini" and len(script_speakers) > 2:
+        raise ValueError(
+            f"Gemini TTS supports at most 2 speakers, but {len(script_speakers)} were found: "
+            f"{', '.join(sorted(script_speakers))}.\n\n"
+            f"Please reduce the number of speakers or switch to ElevenLabs."
+        )
+
     if provider_name == "elevenlabs":
         defined_speakers = set((app_settings or {}).get("speaker_voices_elevenlabs", {}).keys())
     else:
         defined_speakers = set((app_settings or {}).get("speaker_voices", {}).keys())
 
-    missing_speakers = script_speakers - defined_speakers
+    missing_speakers = sorted(list(script_speakers - defined_speakers))
+    configured_speakers = sorted(list(script_speakers & defined_speakers))
 
-    return sorted(list(missing_speakers))
+    return (missing_speakers, configured_speakers)
 
 def generate(script_text: str, app_settings: dict, output_filepath: str, status_callback=print, api_key: Optional[str] = None) -> Optional[str]:
     """
