@@ -149,12 +149,10 @@ class PodcastGeneratorApp:
         # Entrées du menu Settings: Voice settings
         self.settings_menu.add_command(label="Voice settings...", command=self.open_settings_window)
 
-        # Sélection du provider TTS (fusion de l'ancien menu "TTS Provider")
+        # Sous-menu TTS provider (n’apparaît que si 2 clés sont présentes)
         self.settings_menu.add_separator()
-        self.settings_menu.add_radiobutton(label="Gemini", variable=self.provider_var, value="gemini",
-                                           command=self.on_provider_selected)
-        self.settings_menu.add_radiobutton(label="ElevenLabs", variable=self.provider_var, value="elevenlabs",
-                                           command=self.on_provider_selected)
+        self.tts_submenu = None
+        self.rebuild_tts_provider_menu()
 
         # Gestion des clés API
         self.settings_menu.add_separator()
@@ -173,7 +171,7 @@ class PodcastGeneratorApp:
         self.logger.info("Main interface initialized.")
 
         self.poll_log_queue()
-        self.update_provider_menu_state()
+        # car les boutons ne sont pas encore créés.
 
         # --- Main Frame ---
         main_frame = tk.Frame(root, padx=10, pady=10)
@@ -230,6 +228,9 @@ class PodcastGeneratorApp:
         self.play_button = tk.Button(self.button_frame, text="▶️ Play", command=self.play_last_generated_file,
                                      state='disabled', width=common_button_width)
         self.play_button.pack(side=tk.RIGHT)
+        # Après que tous les widgets (dont generate_button) sont créés, on peut mettre à jour les états.
+        self.update_provider_menu_state()
+        self.update_voice_settings_enabled()
 
     def on_provider_selected(self):
         """Handles selection from the TTS Provider radio button menu."""
@@ -274,19 +275,18 @@ class PodcastGeneratorApp:
 
     def update_provider_menu_state(self):
         """
-        Checks for available API keys and enables/disables the provider
-        menu options accordingly.
+        Met à jour la disponibilité du sous-menu TTS provider en fonction des clés API.
+        Le sous-menu n’apparaît que si les 2 clés sont configurées.
         """
         import keyring
 
         gemini_key_exists = bool(keyring.get_password("PodcastGenerator", "gemini_api_key"))
         elevenlabs_key_exists = bool(keyring.get_password("PodcastGenerator", "elevenlabs_api_key"))
 
-        # Adapter à Settings menu (au lieu de self.tts_menu)
-        self.settings_menu.entryconfig("Gemini", state='normal' if gemini_key_exists else 'disabled')
-        self.settings_menu.entryconfig("ElevenLabs", state='normal' if elevenlabs_key_exists else 'disabled')
+        # (Re)construit le sous-menu dynamiquement
+        self.rebuild_tts_provider_menu()
 
-        # Edge case: if the current provider's key was removed, try to switch to the other one.
+        # Cas limites: si la clé du provider courant a disparu, basculer vers l’autre si possible
         current_provider = self.provider_var.get()
         if current_provider == "gemini" and not gemini_key_exists and elevenlabs_key_exists:
             self.log_status("Gemini API key not found. Switching to ElevenLabs.")
@@ -297,16 +297,91 @@ class PodcastGeneratorApp:
             self.provider_var.set("gemini")
             self.on_provider_selected()
 
+        # Mettre à jour l'état de "Voice settings..." (activé si au moins une clé)
+        self.update_voice_settings_enabled()
+
+    def rebuild_tts_provider_menu(self):
+        """
+        (Re)construit le sous-menu 'TTS provider' sous Settings uniquement si
+        plus d'une clé est configurée (donc Gemini ET ElevenLabs).
+        """
+        import keyring
+
+        gemini_key_exists = bool(keyring.get_password("PodcastGenerator", "gemini_api_key"))
+        elevenlabs_key_exists = bool(keyring.get_password("PodcastGenerator", "elevenlabs_api_key"))
+        need_submenu = gemini_key_exists and elevenlabs_key_exists
+
+        existing_index = self._find_menu_index_by_label(self.settings_menu, "TTS provider")
+
+        if need_submenu:
+            if existing_index is None:
+                # Créer le sous-menu et l'attacher
+                self.tts_submenu = tk.Menu(self.settings_menu, tearoff=0)
+                self.tts_submenu.add_radiobutton(label="Gemini", variable=self.provider_var, value="gemini",
+                                                 command=self.on_provider_selected)
+                self.tts_submenu.add_radiobutton(label="ElevenLabs", variable=self.provider_var, value="elevenlabs",
+                                                 command=self.on_provider_selected)
+                self.settings_menu.add_cascade(label="TTS provider", menu=self.tts_submenu)
+            else:
+                # Déjà présent: s'assurer que la référence existe
+                if self.tts_submenu is None:
+                    self.tts_submenu = tk.Menu(self.settings_menu, tearoff=0)
+                    self.tts_submenu.add_radiobutton(label="Gemini", variable=self.provider_var, value="gemini",
+                                                     command=self.on_provider_selected)
+                    self.tts_submenu.add_radiobutton(label="ElevenLabs", variable=self.provider_var, value="elevenlabs",
+                                                     command=self.on_provider_selected)
+                    self.settings_menu.delete(existing_index)
+                    self.settings_menu.insert_cascade(existing_index, label="TTS provider", menu=self.tts_submenu)
+        else:
+            if existing_index is not None:
+                try:
+                    self.settings_menu.delete(existing_index)
+                except tk.TclError:
+                    pass
+            self.tts_submenu = None
+
+    def update_voice_settings_enabled(self):
+        """Active 'Voice settings...' si au moins une clé API est configurée, sinon désactive."""
+        import keyring
+        has_any_key = bool(keyring.get_password("PodcastGenerator", "gemini_api_key")) or \
+                      bool(keyring.get_password("PodcastGenerator", "elevenlabs_api_key"))
+        idx = self._find_menu_index_by_label(self.settings_menu, "Voice settings...")
+        if idx is not None:
+            self.settings_menu.entryconfig(idx, state='normal' if has_any_key else 'disabled')
+            # Protéger l'accès au bouton si l'initialisation n'est pas terminée.
+            if hasattr(self, "generate_button") and self.generate_button:
+                self.generate_button.config(state='normal' if has_any_key else 'disabled')
+        
+    def _find_menu_index_by_label(self, menu: tk.Menu, label: str):
+        """Retourne l'index d'une entrée de menu par son label, ou None si absent."""
+        try:
+            end_index = menu.index('end')
+            if end_index is None:
+                return None
+            for i in range(end_index + 1):
+                try:
+                    if menu.entrycget(i, 'label') == label:
+                        return i
+                except tk.TclError:
+                    continue
+        except tk.TclError:
+            return None
+        return None
+
     def open_api_keys_window(self):
         """Opens the API keys management window."""
         # Désactiver le menu Settings pendant l'ouverture
         self.menubar.entryconfig("Settings", state="disabled")
-        APIKeysWindow(self.root, self.on_api_keys_window_close)
+        win = APIKeysWindow(self.root, self.on_api_keys_window_close)
+        return win
 
     def on_api_keys_window_close(self):
         """Callback to re-enable the TTS menu when API keys window is closed."""
         self.menubar.entryconfig("Settings", state="normal")
+        # Reconstruit dynamiquement le sous-menu selon les clés et met à jour l'état de l'entrée Voice settings
+        self.rebuild_tts_provider_menu()
         self.update_provider_menu_state()
+        self.update_voice_settings_enabled()
 
     def load_settings(self):
         """Loads settings from the JSON file."""
@@ -898,7 +973,8 @@ def main():
 
     # --- Importing dependencies ---
     try:
-        from generate_podcast import generate, PODCAST_SCRIPT, setup_logging, get_api_key, find_ffplay_path
+        from generate_podcast import generate, PODCAST_SCRIPT, setup_logging, find_ffplay_path
+        # Note: on n'importe plus get_api_key ici pour remplacer la saisie par la fenêtre de gestion des clés.
     except ImportError as e:
         messagebox.showerror(
             "Import Error",
@@ -916,18 +992,31 @@ def main():
     # The window remains hidden for now. We pass a placeholder for the api_key.
     app = PodcastGeneratorApp(root, generate_func=generate, logger=logger, api_key="", default_script=PODCAST_SCRIPT)
 
-    # --- API key check at startup ---
-    # Fetch key for current provider (user can change provider later in settings)
+    # --- API key check at startup (remplace l'ancien get_api_key) ---
+    import keyring
     current_provider = app.app_settings.get("tts_provider", "gemini")
-    api_key = get_api_key(app.log_status, logger, parent_window=root, service=current_provider)
+    account_name = "elevenlabs_api_key" if current_provider == "elevenlabs" else "gemini_api_key"
+    api_key = keyring.get_password("PodcastGenerator", account_name)
+
     if not api_key:
-        logger.info("Application closed because no API key was provided at startup.")
-        messagebox.showwarning("API Key Required", "The application cannot start without an API key.", parent=root)
-        root.destroy()
-        return
+        # Ouvrir directement la fenêtre de gestion des clés et attendre sa fermeture
+        win = app.open_api_keys_window()
+        root.deiconify()  # s'assurer que la fenêtre parent est visible
+        root.wait_window(win)
+
+        # Re-vérifier la clé après fermeture
+        api_key = keyring.get_password("PodcastGenerator", account_name)
+        if not api_key:
+            logger.info("Application closed because no API key was provided at startup.")
+            messagebox.showwarning("API Key Required", "The application cannot start without an API key.", parent=root)
+            root.destroy()
+            return
 
     # Now that we have the key, assign it to the app and show the main window.
     app.api_key = api_key
+    # Met à jour immédiatement l'état des contrôles dépendants des clés
+    app.update_provider_menu_state()
+    app.update_voice_settings_enabled()
 
     # Précharger les voix ElevenLabs au démarrage (si la clé est configurée)
     def _prefetch_elevenlabs():

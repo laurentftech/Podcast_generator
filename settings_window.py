@@ -136,9 +136,6 @@ class SettingsWindow(tk.Toplevel):
             # (Bouton de rafraîchissement supprimé)
             header_frame.columnconfigure(next_column, weight=1)
 
-        # Configure grid weights for headers
-        header_frame.columnconfigure(0, weight=1)
-
         self.speaker_frame = tk.Frame(main_frame)
         self.speaker_frame.pack(fill=tk.BOTH, expand=True)
 
