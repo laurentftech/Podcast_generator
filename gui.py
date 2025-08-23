@@ -538,11 +538,11 @@ class PodcastGeneratorApp:
                     self.elevenlabs_quota_text = quota_text
                     _save_quota_cache(quota_text)
                 else:
-                    self.elevenlabs_quota_text = "TTS Provider: ElevenLabs - Quota unavailable"
+                    self.elevenlabs_quota_text = "TTS Provider: ElevenLabs v3 - Quota unavailable"
                     _save_quota_cache(self.elevenlabs_quota_text)
             except Exception as e:
                 self.logger.error(f"Error fetching ElevenLabs quota: {e}", exc_info=True)
-                self.elevenlabs_quota_text = "TTS Provider: ElevenLabs - Network error"
+                self.elevenlabs_quota_text = "TTS Provider: ElevenLabs v3 - Network error"
                 _save_quota_cache(self.elevenlabs_quota_text)
             finally:
                 # Always schedule the UI update from the main thread

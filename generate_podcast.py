@@ -454,13 +454,13 @@ def update_elevenlabs_quota(api_key: str, status_callback=print) -> Optional[str
         
         if isinstance(used, int) and isinstance(limit, int) and limit > 0:
             remaining = max(0, limit - used)
-            return f"TTS Provider: ElevenLabs - Remaining: {remaining} / {limit} characters"
+            return f"TTS Provider: ElevenLabs v3 - Remaining: {remaining} / {limit} characters"
         else:
-            return "TTS Provider: ElevenLabs - Quota info missing"
+            return "TTS Provider: ElevenLabs v3 - Quota info missing"
             
     except Exception as e:
         status_callback(f"Error fetching ElevenLabs quota: {e}")
-        return "TTS Provider: ElevenLabs - Network error"
+        return "TTS Provider: ElevenLabs v3 - Network error"
 
 def _ffmpeg_convert_inline_audio_chunks(audio_chunks: List[bytes], mime_type: str, output_filepath: str, status_callback=print) -> Optional[str]:
     """Convert inline PCM chunks to requested output via FFmpeg."""
