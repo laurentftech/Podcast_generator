@@ -80,11 +80,11 @@ def get_asset_path(filename: str) -> Optional[str]:
 class PodcastGeneratorApp:
     DEFAULT_SPEAKER_SETTINGS = {"John": "Schedar - Even", "Samantha": "Zephyr - Bright"}
     DEFAULT_APP_SETTINGS = {
-        "tts_provider": "gemini",
+        "tts_provider": "elevenlabs",
         "speaker_voices": {"John": "Schedar - Even", "Samantha": "Zephyr - Bright"},
         "speaker_voices_elevenlabs": {
             "John": {"id": "TX3LPaxmHKxFdv7VOQHJ", "display_name": "Liam"},
-            "Samantha": {"id": "XB0fDUnXU5powFXDhCwa", "display_name": "Charlotte"}
+            "Samantha": {"id": "cgSgspJ2msm6clMCkdW9", "display_name": "Jessica"}
         },
         "elevenlabs_quota_cache": None
     }
@@ -120,8 +120,8 @@ class PodcastGeneratorApp:
         self.app_settings = self.load_settings()
 
         # Provider sélectionné
-        self.provider_var = tk.StringVar(value=self.app_settings.get("tts_provider", "gemini").lower())
-        if self.app_settings.get("tts_provider", "gemini").lower() == "elevenlabs":
+        self.provider_var = tk.StringVar(value=self.app_settings.get("tts_provider", "elevenlabs").lower())
+        if self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs":
             self.update_elevenlabs_quota_in_status()
 
         # Cache des voix ElevenLabs préchargées
@@ -187,7 +187,7 @@ class PodcastGeneratorApp:
         status_frame = tk.Frame(main_frame, relief=tk.SUNKEN, bd=1)
         status_frame.pack(fill=tk.X, pady=(0, 5))
 
-        current_provider = self.app_settings.get("tts_provider", "gemini").title()
+        current_provider = self.app_settings.get("tts_provider", "elevenlabs").title()
         # Couleur adaptative selon le mode sombre macOS
         self._is_dark_mode = self._is_macos_dark_mode()
         text_color = "white" if self._is_dark_mode else "blue"
@@ -195,7 +195,7 @@ class PodcastGeneratorApp:
                                        fg=text_color)
         self.provider_label.pack(side=tk.LEFT, padx=5, pady=2)
         # Déclenche le rafraîchissement du quota immédiatement si ElevenLabs est actif
-        if self.app_settings.get("tts_provider", "gemini").lower() == "elevenlabs":
+        if self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs":
             cached = self.app_settings.get("elevenlabs_quota_cache") or {}
             cached_text = cached.get("text")
             if cached_text:
@@ -252,7 +252,7 @@ class PodcastGeneratorApp:
         self.update_provider_menu_state()
         self.update_voice_settings_enabled()
         # Force un rafraîchissement différé du label pour laisser le temps au quota d'arriver
-        if self.app_settings.get("tts_provider", "gemini").lower() == "elevenlabs":
+        if self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs":
             self._schedule_provider_label_refresh(delay_ms=2000, retries=5)
 
     def _is_macos_dark_mode(self) -> bool:
@@ -468,7 +468,7 @@ class PodcastGeneratorApp:
         self.update_provider_menu_state()
         self.update_voice_settings_enabled()
         # Si ElevenLabs est actif, rafraîchir le quota affiché
-        if self.app_settings.get("tts_provider", "gemini").lower() == "elevenlabs":
+        if self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs":
             self.update_elevenlabs_quota_in_status()
 
     def load_settings(self):
@@ -864,14 +864,14 @@ class PodcastGeneratorApp:
     def on_settings_window_close(self):
         self.menubar.entryconfig("Settings", state="normal")
         self._update_provider_label()
-        self.provider_var.set(self.app_settings.get("tts_provider", "gemini").lower())
+        self.provider_var.set(self.app_settings.get("tts_provider", "elevenlabs").lower())
         self.update_provider_menu_state()
         if self.app_settings.get("tts_provider", "").lower() == "elevenlabs":
             self.update_elevenlabs_quota_in_status()
 
     def _update_provider_label(self):
         """Updates the provider label based on the current provider and cached quota text."""
-        current_provider_raw = self.app_settings.get("tts_provider", "gemini")
+        current_provider_raw = self.app_settings.get("tts_provider", "elevenlabs")
         current_provider_display = current_provider_raw.title()
         text_to_display = f"TTS Provider: {current_provider_display}"
         
@@ -890,7 +890,7 @@ class PodcastGeneratorApp:
             # Si ElevenLabs est actif et que le quota n'est pas encore connu, retente plus tard
             if (
                 attempt < retries
-                and self.app_settings.get("tts_provider", "gemini").lower() == "elevenlabs"
+                and self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs"
                 and not self.elevenlabs_quota_text
             ):
                 self.root.after(delay_ms, lambda: _try_refresh(attempt + 1))
@@ -917,7 +917,7 @@ class APIKeysWindow(tk.Toplevel):
             "Welcome!\n"
             "Podcast Generator is a tool that generates podcasts using AI.\n"
             "To use it, you need to configure at least one API key for TTS (Text-to-Speech).\n"
-            "You can set your Google Gemini or ElevenLabs API key below. They will be stored securely in your system.\n"
+            "You can set your ElevenLabs (and/or Google Gemini)  API keys below. They will be stored securely in your system.\n"
         )
         tk.Label(
             main_frame,
@@ -925,26 +925,6 @@ class APIKeysWindow(tk.Toplevel):
             justify="left",
             wraplength=520
         ).pack(anchor="w", pady=(0, 12))
-
-        # Gemini API Key section
-        gemini_frame = tk.LabelFrame(main_frame, text="Google Gemini API", padx=10, pady=10)
-        gemini_frame.pack(fill=tk.X, pady=(0, 10))
-
-        # Lien cliquable vers la page pour obtenir la clé Gemini
-        gemini_link = tk.Label(gemini_frame, text="Get a Gemini API key", fg="blue", cursor="hand2")
-        gemini_link.pack(anchor="w", pady=(0, 6))
-        gemini_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://aistudio.google.com/app/apikey"))
-        self.gemini_status_label = tk.Label(gemini_frame, text="", fg="green")
-        self.gemini_status_label.pack(anchor="w", pady=(0, 5))
-
-        gemini_button_frame = tk.Frame(gemini_frame)
-        gemini_button_frame.pack(fill=tk.X)
-
-        tk.Button(gemini_button_frame, text="Set/Update Key", command=lambda: self.set_api_key("gemini")).pack(
-            side=tk.LEFT, padx=(0, 5))
-        tk.Button(gemini_button_frame, text="Remove Key", command=lambda: self.remove_api_key("gemini")).pack(
-            side=tk.LEFT, padx=(0, 5))
-        tk.Button(gemini_button_frame, text="Test Key", command=lambda: self.test_api_key("gemini")).pack(side=tk.LEFT)
 
         # ElevenLabs API Key section
         elevenlabs_frame = tk.LabelFrame(main_frame, text="ElevenLabs API", padx=10, pady=10)
@@ -961,9 +941,9 @@ class APIKeysWindow(tk.Toplevel):
             wraplength=520
         ).pack(anchor="w", pady=(0, 6))
         # Lien cliquable vers la page pour obtenir la clé ElevenLabs
-        elevenlabs_link = tk.Label(elevenlabs_frame, text="Get an ElevenLabs API key", fg="blue", cursor="hand2")
+        elevenlabs_link = tk.Label(elevenlabs_frame, text="Get an ElevenLabs API key (affiliate)", fg="blue", cursor="hand2")
         elevenlabs_link.pack(anchor="w", pady=(0, 6))
-        elevenlabs_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://elevenlabs.io/app/subscription"))
+        elevenlabs_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://try.elevenlabs.io/zobct2wsp98z"))
 
         self.elevenlabs_status_label = tk.Label(elevenlabs_frame, text="", fg="green")
         self.elevenlabs_status_label.pack(anchor="w", pady=(0, 5))
@@ -977,6 +957,25 @@ class APIKeysWindow(tk.Toplevel):
             side=tk.LEFT, padx=(0, 5))
         tk.Button(elevenlabs_button_frame, text="Test Key", command=lambda: self.test_api_key("elevenlabs")).pack(
             side=tk.LEFT)
+
+        # Gemini API Key section
+        gemini_frame = tk.LabelFrame(main_frame, text="Google Gemini API", padx=10, pady=10)
+        gemini_frame.pack(fill=tk.X, pady=(0, 10))
+
+        gemini_link = tk.Label(gemini_frame, text="Get a Gemini API key", fg="blue", cursor="hand2")
+        gemini_link.pack(anchor="w", pady=(0, 6))
+        gemini_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://aistudio.google.com/app/apikey"))
+        self.gemini_status_label = tk.Label(gemini_frame, text="", fg="green")
+        self.gemini_status_label.pack(anchor="w", pady=(0, 5))
+
+        gemini_button_frame = tk.Frame(gemini_frame)
+        gemini_button_frame.pack(fill=tk.X)
+
+        tk.Button(gemini_button_frame, text="Set/Update Key", command=lambda: self.set_api_key("gemini")).pack(
+            side=tk.LEFT, padx=(0, 5))
+        tk.Button(gemini_button_frame, text="Remove Key", command=lambda: self.remove_api_key("gemini")).pack(
+            side=tk.LEFT, padx=(0, 5))
+        tk.Button(gemini_button_frame, text="Test Key", command=lambda: self.test_api_key("gemini")).pack(side=tk.LEFT)
 
         # Close button
         tk.Button(main_frame, text="Close", command=self.on_close).pack(pady=(15, 0))
@@ -1271,7 +1270,7 @@ def main():
 
     # --- API key check at startup (remplace l'ancien get_api_key) ---
     import keyring
-    current_provider = app.app_settings.get("tts_provider", "gemini")
+    current_provider = app.app_settings.get("tts_provider", "elevenlabs")
     account_name = "elevenlabs_api_key" if current_provider == "elevenlabs" else "gemini_api_key"
     api_key = keyring.get_password("PodcastGenerator", account_name)
 

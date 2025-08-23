@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
 
 # The podcast script is now a constant to be used by the console mode.
 PODCAST_SCRIPT = """Read aloud in a warm, welcoming tone
-John: [playful] Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs – my dogs' names are corgis! Who am I?
-Samantha: [amused] You're queen Elizabeth II!
+John: [playful] Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs – my dogs' names are corgis! Who am I??
+Samantha: [laughing] You're queen Elizabeth II!!
 """
 
 class WelcomeDialog(tk.Toplevel):
@@ -337,53 +337,78 @@ class ElevenLabsTTS:
     def synthesize(self, script_text: str, speaker_mapping: Dict[str, str], output_filepath: str, status_callback=print) -> Optional[str]:
         """
         Main entry: generates audio from script_text and saves to output_filepath.
+        Uses the v3 text_to_dialogue endpoint to generate the entire conversation at once.
         """
         segments = self._parse_script_segments(script_text)
         if not segments:
             status_callback("[ElevenLabs] No segments found in script.")
             return None
 
-        tmp_dir = tempfile.mkdtemp(prefix="podgen_el_")
-        piece_files = []
+        dialogue_inputs = []
+        for idx, (speaker, text) in enumerate(segments, start=1):
+            voice_id = speaker_mapping.get(speaker, "")
+            if not voice_id:
+                status_callback(f"[ElevenLabs] No voice mapped for '{speaker}', skipping segment {idx}.")
+                continue
+            dialogue_inputs.append({"text": text, "voice_id": voice_id})
 
+        if not dialogue_inputs:
+            status_callback("[ElevenLabs] No valid dialogue segments to generate.")
+            return None
+
+        status_callback("[ElevenLabs] Generating full dialogue...")
         try:
-            for idx, (speaker, text) in enumerate(segments, start=1):
-                voice_id = speaker_mapping.get(speaker, "")
-                if not voice_id:
-                    status_callback(f"[ElevenLabs] No voice mapped for '{speaker}', skipping segment {idx}.")
-                    continue
+            audio_generator = self.client.text_to_dialogue.convert(
+                inputs=dialogue_inputs
+            )
 
-                status_callback(f"[ElevenLabs] Generating segment {idx} for speaker '{speaker}'...")
-                audio_gen = self.client.text_to_dialogue.convert(
-                    inputs=[{"text": text, "voice_id": voice_id}]
-                )
+            # The API returns MP3 audio. We need to handle the output format.
+            output_ext = os.path.splitext(output_filepath)[1].lower()
+            if output_ext not in [".mp3", ".wav"]:
+                status_callback(f"Unsupported file format: '{output_ext}'. Defaulting to '.mp3'.")
+                self.logger.warning(f"Unsupported file format: '{output_ext}'. Defaulting to '.mp3'.")
+                output_filepath = os.path.splitext(output_filepath)[0] + ".mp3"
+                output_ext = ".mp3"
 
-                # Concat generator chunks to bytes
-                try:
-                    audio_bytes = b"".join(audio_gen)
-                except Exception as e:
-                    status_callback(f"[ElevenLabs] Error reading audio generator: {e}")
-                    self.logger.error(f"Audio generator error: {e}", exc_info=True)
-                    continue
+            # If the requested format is MP3, we can stream directly to the file.
+            if output_ext == ".mp3":
+                with open(output_filepath, "wb") as f:
+                    for chunk in audio_generator:
+                        f.write(chunk)
+                status_callback(f"File saved successfully: {output_filepath}")
+                return output_filepath
 
-                # Save temporary segment
-                seg_file = os.path.join(tmp_dir, f"seg_{idx:04d}.mp3")
-                with open(seg_file, "wb") as f:
-                    f.write(audio_bytes)
-                piece_files.append(seg_file)
+            # If another format (like WAV) is requested, we need FFmpeg for conversion.
+            else:
+                ffmpeg_path = find_ffmpeg_path()
+                if not ffmpeg_path:
+                    status_callback("FFmpeg not found. Cannot convert to WAV. Please install FFmpeg.")
+                    return None
 
-            if not piece_files:
-                status_callback("[ElevenLabs] No audio segments generated.")
-                return None
+                command = [ffmpeg_path, "-y", "-i", "pipe:0", output_filepath]
+                status_callback(f"Converting with FFmpeg to {os.path.basename(output_filepath)}...")
+                full_audio_data = b"".join(audio_generator)
 
-            # Concatenate segments
-            return self._concatenate_segments(piece_files, output_filepath, tmp_dir, status_callback)
+                creation_flags = 0
+                if sys.platform == "win32":
+                    creation_flags = subprocess.CREATE_NO_WINDOW
 
-        finally:
-            try:
-                shutil.rmtree(tmp_dir, ignore_errors=True)
-            except Exception:
-                pass
+                process = subprocess.run(command, input=full_audio_data, capture_output=True, check=False, creationflags=creation_flags)
+                if process.returncode != 0:
+                    ffmpeg_error = process.stderr.decode('utf-8', errors='ignore')
+                    self.logger.error(f"FFmpeg error during ElevenLabs conversion:\n{ffmpeg_error}")
+                    status_callback("--- ERROR DURING AUDIO CONVERSION ---")
+                    if ffmpeg_error.strip():
+                        status_callback(f"FFmpeg error detail: {ffmpeg_error.strip().splitlines()[-1]}")
+                    return None
+
+                status_callback(f"File saved successfully: {output_filepath}")
+                return output_filepath
+
+        except Exception as e:
+            status_callback(f"[ElevenLabs] Critical error during dialogue generation: {e}")
+            self.logger.error(f"ElevenLabs dialogue generation error: {e}", exc_info=True)
+            return None
 
     def _parse_script_segments(self, script_text: str) -> List[Tuple[Optional[str], str]]:
         """
@@ -406,47 +431,6 @@ class ElevenLabsTTS:
             if text: # Only add segment if there is text left to speak
                 segments.append((speaker, text))
         return segments
-
-    def _concatenate_segments(self, piece_files: List[str], output_filepath: str, tmp_dir: str, status_callback=print) -> Optional[str]:
-        """
-        Concatenate segments using FFmpeg and save to final output.
-        """
-        ffmpeg_path = shutil.which("ffmpeg")
-        if not ffmpeg_path:
-            status_callback("FFmpeg not found, cannot concatenate segments.")
-            return None
-
-        list_path = os.path.join(tmp_dir, "concat.txt")
-        with open(list_path, "w", encoding="utf-8") as f:
-            for p in piece_files:
-                escaped_path = p.replace("'", "'\\''")
-                f.write(f"file '{escaped_path}'\n")
-
-        # Temporary concat file
-        concat_file = os.path.join(tmp_dir, "concat.mp3")
-        cmd_concat = [ffmpeg_path, "-y", "-f", "concat", "-safe", "0", "-i", list_path, "-ac", "1", concat_file]
-        proc = subprocess.run(cmd_concat, capture_output=True)
-        if proc.returncode != 0:
-            status_callback("FFmpeg error during concatenation.")
-            return None
-
-        # Convert to requested output format if needed
-        output_ext = os.path.splitext(output_filepath)[1].lower()
-        if output_ext not in [".mp3", ".wav"]:
-            output_filepath = os.path.splitext(output_filepath)[0] + ".mp3"
-            output_ext = ".mp3"
-
-        if output_ext == ".mp3":
-            shutil.copyfile(concat_file, output_filepath)
-        else:
-            cmd_convert = [ffmpeg_path, "-y", "-i", concat_file, output_filepath]
-            proc2 = subprocess.run(cmd_convert, capture_output=True)
-            if proc2.returncode != 0:
-                status_callback("FFmpeg error during final conversion.")
-                return None
-
-        status_callback(f"File saved successfully: {output_filepath}")
-        return output_filepath
 
 
 # Additional helper function to update the quota fetching for v3
@@ -600,9 +584,9 @@ def generate(script_text: str, app_settings: dict, output_filepath: str, status_
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
 
-    provider_name = (app_settings or {}).get("tts_provider", "gemini").lower()
+    provider_name = (app_settings or {}).get("tts_provider", "elevenlabs").lower()
     if provider_name not in ("gemini", "elevenlabs"):
-        provider_name = "gemini"
+        provider_name = "elevenlabs"
 
     # Récupération de la clé si absente
     if not api_key:
@@ -721,9 +705,9 @@ Example usage:
     )
     parser.add_argument(
         "--provider",
-        choices=["gemini", "elevenlabs"],
-        default="gemini",
-        help="TTS provider to use (default: gemini)"
+        choices=["elevenlabs", "gemini"],
+        default="elevenlabs",
+        help="TTS provider to use (default: ElevenLabs)"
     )
     args = parser.parse_args()
 

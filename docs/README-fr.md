@@ -7,7 +7,14 @@ Si vous appréciez ce projet et souhaitez soutenir mon travail, vous pouvez [m�
 
 ## 📖 Présentation
 
-**Podcast Generator** est une application de bureau simple mais puissante, développée en Python avec Tkinter, qui permet de créer un podcast audio multi-locuteurs à partir d’un script texte, en utilisant l’API de synthèse vocale Google Gemini.
+Une application légère en Python qui vous permet de générer des podcasts multi-intervenants à partir de n’importe quel script grâce à la nouvelle API ElevenLabs v3 — simple, rapide et efficace.
+
+### 🔑 Pour commencer
+Obtenez votre clé API gratuite sur [ElevenLabs](https://try.elevenlabs.io/zobct2wsp98z) (ou Google Gemini).
+Ajoutez-la de manière sécurisée dans l’application.
+Commencez à créer vos podcasts en quelques minutes.
+
+💡 Remarque : Je suis **affilié** à ElevenLabs. L’utilisation de ce lien peut me rapporter une commission, sans coût supplémentaire pour vous. ElevenLabs propose également un **niveau gratuit** avec des limites mensuelles de caractères pour les voix premium.
 
 ![Capture d'écran de l'application](../podcast_creator_screenshot.png)
 

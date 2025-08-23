@@ -1,4 +1,4 @@
-# Podcast Generator
+# 🎙️ Multi-Speaker Podcast Generator
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=000000)](https://www.buymeacoffee.com/laurentftech)
 
 If you enjoy this project and want to support my work, feel free to [buy me a coffee](https://www.buymeacoffee.com/laurentftech) ☕. Thank you for your support!
@@ -6,8 +6,14 @@ If you enjoy this project and want to support my work, feel free to [buy me a co
 ---
 
 ## 📖 Overview
+A lightweight Python app that lets you generate multi-speaker podcasts from any script using the new ElevenLabs v3 API — simple, fast, and effective.
 
-A simple yet powerful desktop application developed in Python with Tkinter, which allows you to create a multi-speaker audio podcast from a text script using the Google Gemini text-to-speech or ElevenLabs API.
+### 🔑 Getting Started
+Get your free API key from [ElevenLabs](https://try.elevenlabs.io/zobct2wsp98z) (or Google Gemini).
+Add it securely to the app.
+Start creating your own podcasts in minutes.
+
+💡 **Note**: I am an **affiliate of ElevenLabs**. Using this link may earn me a commission at no extra cost to you. ElevenLabs also offers a **free tier** with monthly character limits for premium voices.
 
 ![Application Screenshot](podcast_creator_screenshot.png)
 
