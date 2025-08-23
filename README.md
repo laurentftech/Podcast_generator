@@ -6,7 +6,7 @@ If you enjoy this project and want to support my work, feel free to [buy me a co
 ---
 
 ## 📖 Overview
-A lightweight Python app that lets you generate multi-speaker podcasts from any script using the new ElevenLabs v3 API — simple, fast, and effective.
+A lightweight Python app that lets you generate multi-speaker podcasts from any script using high-quality voices from the new ElevenLabs v3 API — simple, fast, and effective.
 
 ### 🔑 Getting Started
 Get your free API key from [ElevenLabs](https://try.elevenlabs.io/zobct2wsp98z) (or Google Gemini).
@@ -30,16 +30,16 @@ See also the [French README](docs/README-fr.md) for a version in French.
 - **Integrated Playback**: Listen to and stop audio playback directly from the application (requires FFmpeg).
 - **Secure API Key Storage**: Your Google Gemini API key is requested once and securely stored in your system's keychain (`keyring`).
 - **Automatic Versioning**: The application version is automatically synchronized with the project's Git tags.
-- **Accent and Language Support**: Create podcasts in multiple languages with distinct voices and accents for each language (Gemini API only).
+- **Accent and Language Support**: Create podcasts in multiple languages with distinct voices and accents for each language (from the speaker settings with the ElevenLabs API or from the prompt with Gemini).
 
 ---
 
 ## 🌍 Multilingual Support
 
-Thanks to the Google Gemini or ElevenLabs API, **Podcast Generator** supports multiple languages and accents, allowing you to:
+Thanks to the ElevenLabs or Google Gemini API, **Podcast Generator** supports multiple languages and accents, allowing you to:
 
 - Create multilingual podcasts with distinct voices and accents for each language.
-- Emotional tone adaptation (Gemini API only).
+- Emotional tone adaptation from the script.
 - Produce content for an international audience.
 - Facilitate language learning with realistic dialogues.
 - Enhance accessibility by tailoring language to your target audience.
@@ -73,10 +73,9 @@ John: Stay with us to learn more!
 Samantha: Don't forget to subscribe to our podcast.
 ```
 
-⚠️ Important: The speaker names in your script (e.g., John:, Samantha:) must **exactly** match the names defined in the "Voice Settings" window.
+⚠️ The speaker names in your script (e.g., John:, Samantha:) must **exactly** match the names defined in the "Voice Settings" window. If not, the script will not be processed.
 
-### Here's an example of a script for a multilingual podcast:
-
+### Here's an example of a script with emotional tone instructions:
 
 ```txt 
 Read aloud the play with emphasing strongly the emotions of the characters.
@@ -91,6 +90,8 @@ Que dis-je, c’est un cap ? … C’est une péninsule ! »
 [teasing] Curieux : « De quoi sert cette oblongue capsule ?
 D’écritoire, monsieur, ou de boîte à ciseaux ? »
 ```
+
+💡 Note on Annotations: The app uses square brackets [emotion] for ElevenLabs' emotional cues. If you use Gemini, the app will automatically convert them to parentheses (emotion) for you.
 
 ## 📦 Installation
 

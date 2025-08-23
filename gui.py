@@ -9,7 +9,7 @@ import json
 import webbrowser
 from datetime import datetime
 from typing import Optional, Dict
-from generate_podcast import validate_speakers, update_elevenlabs_quota_v3, setup_logging # Add the new function
+from generate_podcast import validate_speakers, update_elevenlabs_quota, setup_logging # Add the new function
 import requests
 
 
@@ -533,41 +533,12 @@ class PodcastGeneratorApp:
         def fetch_and_update():
             try:
                 # Use the new v3-compatible quota function
-                quota_text = update_elevenlabs_quota_v3(key, self.log_status)
+                quota_text = update_elevenlabs_quota(key, self.log_status)
                 if quota_text:
                     self.elevenlabs_quota_text = quota_text
                     _save_quota_cache(quota_text)
                 else:
                     self.elevenlabs_quota_text = "TTS Provider: ElevenLabs - Quota unavailable"
-                    _save_quota_cache(self.elevenlabs_quota_text)
-            except Exception as e:
-                self.logger.error(f"Error fetching ElevenLabs quota: {e}", exc_info=True)
-                self.elevenlabs_quota_text = "TTS Provider: ElevenLabs - Network error"
-                _save_quota_cache(self.elevenlabs_quota_text)
-            finally:
-                # Always schedule the UI update from the main thread
-                self.root.after(0, self._update_provider_label)
-
-        threading.Thread(target=fetch_and_update, daemon=True).start()
-
-        def fetch_and_update():
-            try:
-                headers = {"xi-api-key": key}
-                resp = requests.get("https://api.elevenlabs.io/v1/user", headers=headers, timeout=10)
-                if resp.status_code != 200:
-                    self.elevenlabs_quota_text = "TTS Provider: ElevenLabs - Quota unavailable"
-                    self.logger.warning(f"Failed to get ElevenLabs quota, status: {resp.status_code}")
-                    _save_quota_cache(self.elevenlabs_quota_text)
-                else:
-                    data = resp.json()
-                    sub = data.get("subscription", {})
-                    used = sub.get("character_count")
-                    limit = sub.get("character_limit")
-                    if isinstance(used, int) and isinstance(limit, int) and limit > 0:
-                        remaining = max(0, limit - used)
-                        self.elevenlabs_quota_text = f"TTS Provider: ElevenLabs - Remaining: {remaining} / {limit} characters"
-                    else:
-                        self.elevenlabs_quota_text = "TTS Provider: ElevenLabs - Quota info missing"
                     _save_quota_cache(self.elevenlabs_quota_text)
             except Exception as e:
                 self.logger.error(f"Error fetching ElevenLabs quota: {e}", exc_info=True)
@@ -1060,31 +1031,22 @@ class APIKeysWindow(tk.Toplevel):
                 messagebox.showwarning("No Key", "No ElevenLabs API key is configured.", parent=self)
                 return
 
-            # Test ElevenLabs API with v3 compatibility
+            # Test ElevenLabs API
             try:
                 headers = {"xi-api-key": key}
-
-                # Try v3 endpoint first
-                response = requests.get("https://api.elevenlabs.io/v3/user", headers=headers, timeout=10)
-
-                if response.status_code == 404:
-                    # Fallback to v1 endpoint
-                    response = requests.get("https://api.elevenlabs.io/v1/user", headers=headers, timeout=10)
+                response = requests.get("https://api.elevenlabs.io/v1/user", headers=headers, timeout=10)
 
                 if response.status_code == 200:
                     user_data = response.json()
                     subscription = user_data.get('subscription', {}).get('tier', 'Unknown')
                     char_count = user_data.get('subscription', {}).get('character_count', 'Unknown')
                     char_limit = user_data.get('subscription', {}).get('character_limit', 'Unknown')
-
-                    # Check for v3 features
-                    api_version = "v3" if "v3" in response.url else "v1"
-
-                    messagebox.showinfo("Success",
-                                        f"ElevenLabs API key is valid! (API {api_version})\n\n"
+                    
+                    messagebox.showinfo("Success",  # Restoring more detailed message
+                                        f"ElevenLabs API key is valid! (API v1)\n\n"
                                         f"Subscription: {subscription}\n"
                                         f"Usage: {char_count} / {char_limit} characters\n\n"
-                                        f"{'✓ v3 features available' if api_version == 'v3' else '⚠ Using v1 compatibility mode'}",
+                                        f"⚠ Using v1 compatibility mode",
                                         parent=self)
 
                 elif response.status_code == 401:
@@ -1295,8 +1257,8 @@ def main():
     app.update_voice_settings_enabled()
 
     # Précharger les voix ElevenLabs au démarrage (si la clé est configurée)
-    def _prefetch_elevenlabs_v3():
-        """Updated function to prefetch ElevenLabs voices with v3 compatibility."""
+    def _prefetch_elevenlabs():
+        """Prefetches ElevenLabs voices using the v1 API."""
         try:
             import keyring, requests
             key = keyring.get_password("PodcastGenerator", "elevenlabs_api_key")
@@ -1306,13 +1268,7 @@ def main():
 
             headers = {"xi-api-key": key}
 
-            # Try v3 endpoint first
-            resp = requests.get("https://api.elevenlabs.io/v3/voices", headers=headers, timeout=15)
-
-            if resp.status_code == 404:
-                # Fallback to v1 endpoint
-                resp = requests.get("https://api.elevenlabs.io/v1/voices", headers=headers, timeout=15)
-
+            resp = requests.get("https://api.elevenlabs.io/v1/voices", headers=headers, timeout=15)
             if resp.status_code != 200:
                 app.elevenlabs_voices_cache = []
                 return
@@ -1326,16 +1282,9 @@ def main():
                 category = voice.get('category', '')
                 labels = voice.get('labels', {}) if voice.get('labels') else {}
 
-                # Handle both v1 and v3 response formats
-                if isinstance(labels, dict):
-                    accent = labels.get('accent', '')
-                    age = labels.get('age', '')
-                    gender = labels.get('gender', '')
-                else:
-                    # v3 might have different structure
-                    accent = ''
-                    age = ''
-                    gender = ''
+                accent = labels.get('accent', '')
+                age = labels.get('age', '')
+                gender = labels.get('gender', '')
 
                 desc_parts = []
                 if gender: desc_parts.append(str(gender).title())
@@ -1360,7 +1309,7 @@ def main():
             app.elevenlabs_voices_cache = []
 
     import threading as _th
-    _th.Thread(target=_prefetch_elevenlabs_v3, daemon=True).start()
+    _th.Thread(target=_prefetch_elevenlabs, daemon=True).start()
 
     root.deiconify()
     root.mainloop()

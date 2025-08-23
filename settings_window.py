@@ -179,10 +179,9 @@ class SettingsWindow(tk.Toplevel):
                     self.after(100, self.populate_fields_delayed)
                     return
 
-                print("Tentative de chargement des voix ElevenLabs...")
+                logging.info("Attempting to fetch ElevenLabs voices from v1 endpoint...")
                 headers = {"xi-api-key": api_key}
                 response = requests.get("https://api.elevenlabs.io/v1/voices", headers=headers, timeout=15)
-
                 if response.status_code == 200:
                     voices_data = response.json()
                     voices = []
@@ -220,14 +219,13 @@ class SettingsWindow(tk.Toplevel):
                     self.elevenlabs_voices = voices
                     self.elevenlabs_voices_loaded = True
 
-                    print(f"Chargé {len(voices)} voix ElevenLabs avec succès")
-                    print("Activation du flag de mise à jour des voix...")
+                    logging.info(f"Loaded {len(voices)} voices and flagged UI for update.")
                     self._voices_need_update = True
 
                 else:
                     self.elevenlabs_voices = []
                     self.elevenlabs_voices_loaded = False
-                    print(f"Erreur API ElevenLabs: {response.status_code} - {response.text[:200]}")
+                    logging.error(f"ElevenLabs API Error: {response.status_code} - {response.text[:200]}")
 
             except requests.exceptions.Timeout:
                 self.elevenlabs_voices = []
@@ -236,17 +234,14 @@ class SettingsWindow(tk.Toplevel):
             except requests.exceptions.RequestException as e:
                 self.elevenlabs_voices = []
                 self.elevenlabs_voices_loaded = False
-                print(f"Erreur réseau lors du chargement des voix ElevenLabs: {e}")
-                print("Programmation de populate_fields_delayed après erreur réseau...")
+                logging.error(f"Network error loading ElevenLabs voices: {e}")
                 self.after(100, self.populate_fields_delayed)
             except Exception as e:
                 self.elevenlabs_voices = []
                 self.elevenlabs_voices_loaded = False
-                print(f"Erreur lors du chargement des voix ElevenLabs: {e}")
-                print("Programmation de populate_fields_delayed après exception...")
+                logging.error(f"Error loading ElevenLabs voices: {e}")
                 self.after(100, self.populate_fields_delayed)
 
-        print("Lancement du thread de chargement...")
         thread = threading.Thread(target=fetch_voices, daemon=True)
         thread.start()
 

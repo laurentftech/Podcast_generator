@@ -12,6 +12,7 @@ import subprocess
 import logging
 from typing import Optional
 
+import json
 import keyring # For secure credential storage
 # Import tools for dialog boxes
 import tkinter as tk
@@ -434,19 +435,14 @@ class ElevenLabsTTS:
 
 
 # Additional helper function to update the quota fetching for v3
-def update_elevenlabs_quota_v3(api_key: str, status_callback=print) -> Optional[str]:
+def update_elevenlabs_quota(api_key: str, status_callback=print) -> Optional[str]:
     """
-    Updated quota fetching function for ElevenLabs v3 API.
+    Fetches the character quota from the ElevenLabs v1 API.
     Returns a formatted quota string or None if unavailable.
     """
     try:
         headers = {"xi-api-key": api_key}
-        # Try v3 endpoint first
-        resp = requests.get("https://api.elevenlabs.io/v3/user", headers=headers, timeout=10)
-        
-        if resp.status_code == 404:
-            # Fallback to v1 endpoint
-            resp = requests.get("https://api.elevenlabs.io/v1/user", headers=headers, timeout=10)
+        resp = requests.get("https://api.elevenlabs.io/v1/user", headers=headers, timeout=10)
         
         if resp.status_code != 200:
             return None
@@ -642,45 +638,6 @@ def parse_audio_mime_type(mime_type: str) -> Dict[str, int]:
 
     return {"bits_per_sample": bits_per_sample, "rate": rate}
 
-
-def setup_logging():
-    """Configuration du logger pour Podcast Generator"""
-    logger = logging.getLogger("PodcastGenerator")
-    logger.setLevel(logging.DEBUG)
-
-    # Éviter les doublons
-    if logger.handlers:
-        return logger
-
-    # Console handler
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    console_format = logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(message)s',
-        datefmt='%H:%M:%S'
-    )
-    console_handler.setFormatter(console_format)
-
-    # File handler
-    log_dir = os.path.expanduser("~/Library/Logs/PodcastGenerator")  # macOS
-    os.makedirs(log_dir, exist_ok=True)
-
-    file_handler = logging.FileHandler(
-        os.path.join(log_dir, f"podcast_generator_{datetime.now().strftime('%Y%m%d')}.log"),
-        encoding='utf-8'
-    )
-    file_handler.setLevel(logging.DEBUG)
-    file_format = logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
-    )
-    file_handler.setFormatter(file_format)
-
-    logger.addHandler(console_handler)
-    logger.addHandler(file_handler)
-
-    return logger
-
-
 if __name__ == "__main__":
     logger = setup_logging()
 
@@ -737,23 +694,53 @@ Example usage:
         output_filepath = os.path.join(script_dir, f"{base_script_name}.mp3")
         print(f"No output path specified. Defaulting to: {output_filepath}")
 
+    def _load_cli_settings():
+        """Loads settings from the JSON file for CLI usage."""
+        app_data_dir = get_app_data_dir()
+        settings_filepath = os.path.join(app_data_dir, "settings.json")
+        try:
+            with open(settings_filepath, 'r') as f:
+                print(f"INFO: Loaded voice settings from {settings_filepath}")
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            print("WARNING: settings.json not found or invalid. Using hardcoded default speakers.")
+            return {
+                "tts_provider": "elevenlabs",
+                "speaker_voices": {"John": "Schedar", "Samantha": "Zephyr"},
+                "speaker_voices_elevenlabs": {"John": "EkK5I93UQWFDigLMpZcX", "Samantha": "Z3R5wn05IrDiVCyEkUrK"}
+            }
+
     # --- Get API Key and Generate ---
-    # Construire des settings minimales pour la CLI
-    if args.provider == "elevenlabs":
-        app_settings = {
-            "tts_provider": "elevenlabs",
-            "speaker_voices": {"John": "Schedar", "Samantha": "Zephyr"},
-            "speaker_voices_elevenlabs": {"John": "EkK5I93UQWFDigLMpZcX", "Samantha": "Z3R5wn05IrDiVCyEkUrK"}
-        }
-    else:
-        app_settings = {
-            "tts_provider": "gemini",
-            "speaker_voices": {"John": "Schedar", "Samantha": "Zephyr"},
-            "speaker_voices_elevenlabs": {"John": "EkK5I93UQWFDigLMpZcX", "Samantha": "Z3R5wn05IrDiVCyEkUrK"}
-        }
+    app_settings = _load_cli_settings()
+    app_settings['tts_provider'] = args.provider # Override provider from command line
+
+    # --- Data Sanitization for backend ---
+    # This logic mirrors the one in gui.py to ensure the backend receives clean data.
+    app_settings_clean = {
+        "tts_provider": app_settings.get("tts_provider"),
+        "speaker_voices": app_settings.get("speaker_voices", {})
+    }
+    gemini_clean = {}
+    for speaker, voice in app_settings_clean.get("speaker_voices", {}).items():
+        if isinstance(voice, str) and " - " in voice:
+            gemini_clean[speaker] = voice.split(" - ", 1)[0].strip()
+        else:
+            gemini_clean[speaker] = voice
+    app_settings_clean["speaker_voices"] = gemini_clean
+
+    elevenlabs_mapping_clean = {}
+    elevenlabs_mapping_raw = app_settings.get("speaker_voices_elevenlabs", {})
+    for speaker, data in elevenlabs_mapping_raw.items():
+        if isinstance(data, dict):
+            elevenlabs_mapping_clean[speaker] = data.get('id', '')
+        else:
+            # Legacy format: use the string as-is
+            elevenlabs_mapping_clean[speaker] = data
+    app_settings_clean["speaker_voices_elevenlabs"] = elevenlabs_mapping_clean
 
     # --- Validate Speaker Voices ---
-    missing_speakers, _ = validate_speakers(script_text, app_settings)
+    # Use the clean settings for validation, as this is what the backend expects
+    missing_speakers, _ = validate_speakers(script_text, app_settings_clean)
     if missing_speakers:
         missing_speakers_str = ", ".join(missing_speakers)
         print(f"\n--- CONFIGURATION ERROR ---")
@@ -762,15 +749,15 @@ Example usage:
         logger.error(f"Generation stopped. Missing speakers in configuration: {missing_speakers_str}")
         sys.exit(1)
 
-    api_key = get_api_key(print, logger, service=app_settings["tts_provider"])
+    api_key = get_api_key(print, logger, service=app_settings_clean["tts_provider"])
     if not api_key:
         print("API key is required to proceed. Exiting.")
         sys.exit(1)
 
-    print(f"\nGenerating audio from '{os.path.basename(args.script_filepath)}' with provider '{app_settings['tts_provider']}'...")
+    print(f"\nGenerating audio from '{os.path.basename(args.script_filepath)}' with provider '{app_settings_clean['tts_provider']}'...")
     result = generate(
         script_text=script_text,
-        app_settings=app_settings,
+        app_settings=app_settings_clean,
         output_filepath=output_filepath,
         status_callback=print,
         api_key=api_key
