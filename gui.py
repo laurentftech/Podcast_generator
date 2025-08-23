@@ -739,7 +739,8 @@ class PodcastGeneratorApp:
                 app_settings=app_settings_clean,  # Pass the clean version
                 output_filepath=output_filepath,
                 status_callback=self.log_status,
-                api_key=api_key
+                api_key=api_key,
+                parent_window=self.root
             )
             if generated_filepath:
                 self.last_generated_filepath = generated_filepath

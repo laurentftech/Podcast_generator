@@ -549,13 +549,14 @@ def validate_speakers(script_text: str, app_settings: Dict[str, Any]) -> Tuple[L
 
     return (missing_speakers, configured_speakers)
 
-def generate(script_text: str, app_settings: dict, output_filepath: str, status_callback=print, api_key: Optional[str] = None) -> Optional[str]:
+def generate(script_text: str, app_settings: dict, output_filepath: str, status_callback=print, api_key: Optional[str] = None, parent_window=None) -> Optional[str]:
     """
     Génère l'audio depuis un script en utilisant le fournisseur choisi (Gemini ou ElevenLabs).
     app_settings doit contenir:
       - tts_provider
       - speaker_voices (Gemini)
       - speaker_voices_elevenlabs (ElevenLabs)
+    Le paramètre `parent_window` est crucial pour le contexte GUI.
     """
     logger = logging.getLogger("PodcastGenerator")
     logger.info("Starting generation function.")
@@ -580,7 +581,7 @@ def generate(script_text: str, app_settings: dict, output_filepath: str, status_
 
     # Récupération de la clé si absente
     if not api_key:
-        api_key = get_api_key(status_callback, logger, service=provider_name)
+        api_key = get_api_key(status_callback, logger, parent_window=parent_window, service=provider_name)
         if not api_key:
             return None
 
