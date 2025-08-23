@@ -14,7 +14,7 @@ import getpass
 from typing import Optional
 
 import json
-import keyring # For secure credential storage
+import keyring  # For secure credential storage
 # Import tools for dialog boxes
 import tkinter as tk
 from tkinter import simpledialog
@@ -28,14 +28,14 @@ logger = logging.getLogger(__name__)
 
 # The podcast script is now a constant to be used by the console mode.
 PODCAST_SCRIPT = """Read aloud in a warm, welcoming tone
-John: [playful] Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs – my dogs' names are corgis! Who am I??
+John: [playful] Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs â€" my dogs' names are corgis! Who am I??
 Samantha: [laughing] You're queen Elizabeth II!!
 """
 
 
 def setup_logging() -> logging.Logger:
     """Configures logging to write to a file in the application's data directory."""
-    if logger.hasHandlers(): # Avoids adding duplicate handlers
+    if logger.hasHandlers():  # Avoids adding duplicate handlers
         return logger
 
     log_dir = get_app_data_dir()
@@ -49,6 +49,7 @@ def setup_logging() -> logging.Logger:
     logger.addHandler(handler)
     return logger
 
+
 def get_app_data_dir() -> str:
     """Returns the standard application data directory path for the current OS."""
     app_name = "PodcastGenerator"
@@ -58,6 +59,7 @@ def get_app_data_dir() -> str:
         return os.path.join(os.environ['APPDATA'], app_name)
     else:  # Linux and others
         return os.path.join(os.path.expanduser('~'), '.config', app_name)
+
 
 def _find_command_path(command: str) -> Optional[str]:
     """
@@ -74,13 +76,16 @@ def _find_command_path(command: str) -> Optional[str]:
             return brew_path
     return None
 
+
 def find_ffmpeg_path() -> Optional[str]:
     """Finds the path to the FFmpeg executable."""
     return _find_command_path("ffmpeg")
 
+
 def find_ffplay_path() -> Optional[str]:
     """Finds the path to the ffplay executable."""
     return _find_command_path("ffplay")
+
 
 def get_api_key(status_callback, logger: logging.Logger, parent_window=None, service: str = "gemini") -> Optional[str]:
     """
@@ -104,7 +109,7 @@ def get_api_key(status_callback, logger: logging.Logger, parent_window=None, ser
         prompt_title = "API Key Required"
         prompt_text = "Please paste your Google Gemini API key:"
 
-    logger.info("="*20)
+    logger.info("=" * 20)
     logger.info(f"Starting API key search for service '{service}'...")
 
     # --- 1. For developers: priority to local .env file ---
@@ -181,24 +186,28 @@ def get_api_key(status_callback, logger: logging.Logger, parent_window=None, ser
     logger.info("API key search finished.")
     return api_key
 
+
 # --- Abstraction des fournisseurs TTS ---
 
 class TTSProvider:
-    def synthesize(self, script_text: str, speaker_mapping: dict, output_filepath: str, status_callback=print) -> Optional[str]:
+    def synthesize(self, script_text: str, speaker_mapping: dict, output_filepath: str, status_callback=print) -> \
+    Optional[str]:
         raise NotImplementedError
+
 
 class GeminiTTS(TTSProvider):
     def __init__(self, api_key: str):
         self.api_key = api_key
 
-    def synthesize(self, script_text: str, speaker_mapping: dict, output_filepath: str, status_callback=print) -> Optional[str]:
+    def synthesize(self, script_text: str, speaker_mapping: dict, output_filepath: str, status_callback=print) -> \
+    Optional[str]:
         logger = logging.getLogger("PodcastGenerator")
         client = genai.Client(api_key=self.api_key)
 
         # Gemini expects annotations in parentheses, so we convert them from the script's square bracket format.
         gemini_script = script_text.replace('[', '(').replace(']', ')')
         logger.info("Converted script annotations from [] to () for Gemini.")
-
+ 
         models_to_try = ["gemini-2.5-pro-preview-tts", "gemini-2.5-flash-preview-tts"]
         contents = [
             types.Content(
@@ -206,10 +215,23 @@ class GeminiTTS(TTSProvider):
                 parts=[types.Part.from_text(text=gemini_script)],
             ),
         ]
-        generate_content_config = types.GenerateContentConfig(
-            temperature=1,
-            response_modalities=["audio"],
-            speech_config=types.SpeechConfig(
+ 
+        # Gemini has different configurations for 1 or 2 speakers.
+        num_speakers = len(speaker_mapping)
+        speech_config = None
+ 
+        if num_speakers == 1:
+            # Configuration for a single speaker
+            the_only_voice_name = list(speaker_mapping.values())[0]
+            speech_config = types.SpeechConfig(
+                voice_config=types.VoiceConfig(
+                    prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=the_only_voice_name)
+                )
+            )
+            logger.info("Using Gemini single-speaker configuration.")
+        elif num_speakers == 2:
+            # Configuration for two speakers
+            speech_config = types.SpeechConfig(
                 multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
                     speaker_voice_configs=[
                         types.SpeakerVoiceConfig(
@@ -221,7 +243,18 @@ class GeminiTTS(TTSProvider):
                         for speaker_name, voice_name in speaker_mapping.items()
                     ]
                 ),
-            ),
+            )
+            logger.info("Using Gemini multi-speaker configuration.")
+        else:
+            # This case is normally prevented by `validate_speakers`, but is handled for safety.
+            status_callback(f"Error: Gemini TTS requires 1 or 2 speakers, but {num_speakers} were provided.")
+            logger.error(f"Invalid number of speakers for Gemini TTS: {num_speakers}")
+            return None
+ 
+        generate_content_config = types.GenerateContentConfig(
+            temperature=1,
+            response_modalities=["audio"],
+            speech_config=speech_config,
         )
 
         generated_successfully = False
@@ -235,14 +268,14 @@ class GeminiTTS(TTSProvider):
                 audio_chunks = []
                 final_mime_type = ""
                 for chunk in client.models.generate_content_stream(
-                    model=model_name,
-                    contents=contents,
-                    config=generate_content_config,
+                        model=model_name,
+                        contents=contents,
+                        config=generate_content_config,
                 ):
                     if (
-                        chunk.candidates is None
-                        or chunk.candidates[0].content is None
-                        or chunk.candidates[0].content.parts is None
+                            chunk.candidates is None
+                            or chunk.candidates[0].content is None
+                            or chunk.candidates[0].content.parts is None
                     ):
                         continue
 
@@ -262,8 +295,8 @@ class GeminiTTS(TTSProvider):
                 break
             except errors.APIError as e:
                 raw_error_message = str(e)
-                # Check for quota errors to provide a more specific message.
-                if "RESOURCE_EXHAUSTED" in raw_error_message or isinstance(e, errors.ResourceExhaustedError):
+                # FIX 2: Use the correct error class names from google.genai.errors
+                if "RESOURCE_EXHAUSTED" in raw_error_message:
                     status_callback(f"API Error with model '{model_name}': Quota limit reached.")
                     clean_details = None
                     if ". " in raw_error_message:
@@ -271,7 +304,8 @@ class GeminiTTS(TTSProvider):
                             import ast
                             details_str = raw_error_message.split('. ', 1)[1]
                             details_dict = ast.literal_eval(details_str)
-                            if isinstance(details_dict, dict) and 'error' in details_dict and 'message' in details_dict['error']:
+                            if isinstance(details_dict, dict) and 'error' in details_dict and 'message' in details_dict[
+                                'error']:
                                 clean_details = details_dict['error']['message']
                         except (ValueError, SyntaxError, IndexError):
                             pass  # Parsing failed, clean_details remains None
@@ -291,11 +325,13 @@ class GeminiTTS(TTSProvider):
                 break
 
         if not generated_successfully:
-            status_callback("\nAudio generation failed after trying all available models. Please check the logs for more details.")
+            status_callback(
+                "\nAudio generation failed after trying all available models. Please check the logs for more details.")
             return None
 
         # Convertir avec FFmpeg
         return _ffmpeg_convert_inline_audio_chunks(audio_chunks, final_mime_type, output_filepath, status_callback)
+
 
 # Updated ElevenLabsTTS class for v3 API integration
 # Replace the existing ElevenLabsTTS class in generate_podcast.py
@@ -305,12 +341,14 @@ class ElevenLabsTTS:
     ElevenLabs TTS provider using v3 API.
     Supports conversational mode and individual segments.
     """
+
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.client = ElevenLabs(api_key=api_key)
         self.logger = logging.getLogger("PodcastGenerator")
 
-    def synthesize(self, script_text: str, speaker_mapping: Dict[str, str], output_filepath: str, status_callback=print) -> Optional[str]:
+    def synthesize(self, script_text: str, speaker_mapping: Dict[str, str], output_filepath: str,
+                   status_callback=print) -> Optional[str]:
         """
         Main entry: generates audio from script_text and saves to output_filepath.
         Uses the v3 text_to_dialogue endpoint to generate the entire conversation at once.
@@ -369,7 +407,8 @@ class ElevenLabsTTS:
                 if sys.platform == "win32":
                     creation_flags = subprocess.CREATE_NO_WINDOW
 
-                process = subprocess.run(command, input=full_audio_data, capture_output=True, check=False, creationflags=creation_flags)
+                process = subprocess.run(command, input=full_audio_data, capture_output=True, check=False,
+                                         creationflags=creation_flags)
                 if process.returncode != 0:
                     ffmpeg_error = process.stderr.decode('utf-8', errors='ignore')
                     self.logger.error(f"FFmpeg error during ElevenLabs conversion:\n{ffmpeg_error}")
@@ -423,7 +462,7 @@ class ElevenLabsTTS:
             speaker = m.group(1).strip()
             text = m.group(2).strip()
             text = re.sub(r"<[^>]+>", "", text).strip()  # remove tags like <cheerfully>
-            if text: # Only add segment if there is text left to speak
+            if text:  # Only add segment if there is text left to speak
                 segments.append((speaker, text))
         return segments
 
@@ -437,26 +476,28 @@ def update_elevenlabs_quota(api_key: str, status_callback=print) -> Optional[str
     try:
         headers = {"xi-api-key": api_key}
         resp = requests.get("https://api.elevenlabs.io/v1/user", headers=headers, timeout=10)
-        
+
         if resp.status_code != 200:
             return None
-            
+
         data = resp.json()
         sub = data.get("subscription", {})
         used = sub.get("character_count")
         limit = sub.get("character_limit")
-        
+
         if isinstance(used, int) and isinstance(limit, int) and limit > 0:
             remaining = max(0, limit - used)
             return f"TTS Provider: ElevenLabs v3 - Remaining: {remaining} / {limit} characters"
         else:
             return "TTS Provider: ElevenLabs v3 - Quota info missing"
-            
+
     except Exception as e:
         status_callback(f"Error fetching ElevenLabs quota: {e}")
         return "TTS Provider: ElevenLabs v3 - Network error"
 
-def _ffmpeg_convert_inline_audio_chunks(audio_chunks: List[bytes], mime_type: str, output_filepath: str, status_callback=print) -> Optional[str]:
+
+def _ffmpeg_convert_inline_audio_chunks(audio_chunks: List[bytes], mime_type: str, output_filepath: str,
+                                        status_callback=print) -> Optional[str]:
     """Convert inline PCM chunks to requested output via FFmpeg."""
     ffmpeg_path = find_ffmpeg_path()
     logger = logging.getLogger("PodcastGenerator")
@@ -494,7 +535,8 @@ def _ffmpeg_convert_inline_audio_chunks(audio_chunks: List[bytes], mime_type: st
     if sys.platform == "win32":
         creation_flags = subprocess.CREATE_NO_WINDOW
 
-    process = subprocess.run(command, input=full_audio_data, capture_output=True, check=False, creationflags=creation_flags)
+    process = subprocess.run(command, input=full_audio_data, capture_output=True, check=False,
+                             creationflags=creation_flags)
     if process.returncode != 0:
         ffmpeg_error = process.stderr.decode('utf-8', errors='ignore')
         logger.error(f"FFmpeg error:\n{ffmpeg_error}")
@@ -505,6 +547,7 @@ def _ffmpeg_convert_inline_audio_chunks(audio_chunks: List[bytes], mime_type: st
         return None
 
     return output_filepath
+
 
 def validate_speakers(script_text: str, app_settings: Dict[str, Any]) -> Tuple[List[str], List[str]]:
     """
@@ -549,7 +592,9 @@ def validate_speakers(script_text: str, app_settings: Dict[str, Any]) -> Tuple[L
 
     return (missing_speakers, configured_speakers)
 
-def generate(script_text: str, app_settings: dict, output_filepath: str, status_callback=print, api_key: Optional[str] = None, parent_window=None) -> Optional[str]:
+
+def generate(script_text: str, app_settings: dict, output_filepath: str, status_callback=print,
+             api_key: Optional[str] = None, parent_window=None) -> Optional[str]:
     """
     Génère l'audio depuis un script en utilisant le fournisseur choisi (Gemini ou ElevenLabs).
     app_settings doit contenir:
@@ -588,11 +633,14 @@ def generate(script_text: str, app_settings: dict, output_filepath: str, status_
     if provider_name == "gemini":
         speaker_mapping = (app_settings or {}).get("speaker_voices", {})
         provider = GeminiTTS(api_key=api_key)
-        return provider.synthesize(script_text=script_text, speaker_mapping=speaker_mapping, output_filepath=output_filepath, status_callback=status_callback)
+        return provider.synthesize(script_text=script_text, speaker_mapping=speaker_mapping,
+                                   output_filepath=output_filepath, status_callback=status_callback)
     else:
         speaker_mapping = (app_settings or {}).get("speaker_voices_elevenlabs", {})
         provider = ElevenLabsTTS(api_key=api_key)
-        return provider.synthesize(script_text=script_text, speaker_mapping=speaker_mapping, output_filepath=output_filepath, status_callback=status_callback)
+        return provider.synthesize(script_text=script_text, speaker_mapping=speaker_mapping,
+                                   output_filepath=output_filepath, status_callback=status_callback)
+
 
 def parse_audio_mime_type(mime_type: str) -> Dict[str, int]:
     """Parses bits per sample and rate from an audio MIME type string.
@@ -638,23 +686,33 @@ if __name__ == "__main__":
 
     # --- Argument Parsing for CLI mode ---
     parser = argparse.ArgumentParser(
-        description="Generate a podcast from a script file using the Gemini or ElevenLabs API.",
+        description="Generate a podcast from a script file or text using the Gemini or ElevenLabs API.",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""\
 Example usage:
+  # From a file
   python generate_podcast.py path/to/your/script.txt
   python generate_podcast.py path/to/your/script.txt -o path/to/your/output.mp3
   python generate_podcast.py script.txt --provider elevenlabs --speaker "John:TX3LPaxmHKxFdv7VOQHJ" --speaker "Samantha:pT95jSTK1iJkOytAqCbf"
+
+  # From a string
+  python generate_podcast.py --script-text "John: Hello" --output out.mp3
 """
     )
     parser.add_argument(
         "script_filepath",
-        help="Path to the text file containing the podcast script."
+        nargs='?',
+        default=None,
+        help="Path to the text file containing the podcast script. Required if --script-text is not used."
+    )
+    parser.add_argument(
+        "--script-text",
+        help="The script text to generate, as a string. Use instead of a file."
     )
     parser.add_argument(
         "-o", "--output",
         dest="output_filepath",
-        help="Path to save the output audio file. Can be a directory or a full path. Defaults to the same directory as the input script."
+        help="Path to save the output audio file. Can be a directory (if using a script file) or a full path. Required if using --script-text."
     )
     parser.add_argument(
         "--provider",
@@ -672,31 +730,44 @@ Example usage:
     )
     args = parser.parse_args()
 
-    # --- Read Script File ---
-    try:
-        with open(args.script_filepath, 'r', encoding='utf-8') as f:
-            script_text = f.read()
-    except FileNotFoundError:
-        print(f"Error: The script file was not found at '{args.script_filepath}'")
-        sys.exit(1)
-    except Exception as e:
-        print(f"Error: Could not read the script file: {e}")
-        sys.exit(1)
+    # --- Validate input and read script ---
+    if args.script_filepath and args.script_text:
+        parser.error("argument script_filepath and --script-text are mutually exclusive.")
+    if not args.script_filepath and not args.script_text:
+        parser.error("one of the arguments script_filepath or --script-text is required.")
 
-    # --- Determine Output Path ---
-    output_filepath = args.output_filepath
-    base_script_name = os.path.splitext(os.path.basename(args.script_filepath))[0]
+    if args.script_text:
+        script_text = args.script_text
+        script_source_description = "the provided text"
+        if not args.output_filepath:
+            parser.error("argument --output is required when using --script-text.")
+        if os.path.isdir(args.output_filepath):
+            parser.error("when using --script-text, --output must be a full file path, not a directory.")
+        output_filepath = args.output_filepath
+    else:  # script_filepath is guaranteed to be not None here
+        try:
+            with open(args.script_filepath, 'r', encoding='utf-8') as f:
+                script_text = f.read()
+            script_source_description = f"'{os.path.basename(args.script_filepath)}'"
+        except FileNotFoundError:
+            print(f"Error: The script file was not found at '{args.script_filepath}'")
+            sys.exit(1)
+        except Exception as e:
+            print(f"Error: Could not read the script file: {e}")
+            sys.exit(1)
 
-    if output_filepath:
-        # If the provided path is a directory, create the filename inside it
-        if os.path.isdir(output_filepath):
-            output_filepath = os.path.join(output_filepath, f"{base_script_name}.mp3")
-            print(f"Output directory specified. Saving to: {output_filepath}")
-    else:
-        # Default to the same directory as the input script
-        script_dir = os.path.dirname(os.path.abspath(args.script_filepath))
-        output_filepath = os.path.join(script_dir, f"{base_script_name}.mp3")
-        print(f"No output path specified. Defaulting to: {output_filepath}")
+        # --- Determine Output Path (only when using a script file) ---
+        output_filepath = args.output_filepath
+        base_script_name = os.path.splitext(os.path.basename(args.script_filepath))[0]
+
+        if output_filepath:
+            if os.path.isdir(output_filepath):
+                output_filepath = os.path.join(output_filepath, f"{base_script_name}.mp3")
+                print(f"Output directory specified. Saving to: {output_filepath}")
+        else:
+            script_dir = os.path.dirname(os.path.abspath(args.script_filepath))
+            output_filepath = os.path.join(script_dir, f"{base_script_name}.mp3")
+            print(f"No output path specified. Defaulting to: {output_filepath}")
 
     def _load_cli_settings():
         """Loads settings from the JSON file for CLI usage."""
@@ -754,11 +825,11 @@ Example usage:
             cli_speaker_mapping[name.strip()] = voice.strip()
 
         if args.provider == "elevenlabs":
-            app_settings_clean["speaker_voices_elevenlabs"].update(cli_speaker_mapping)
-            print(f"INFO: ElevenLabs voices updated: {app_settings_clean['speaker_voices_elevenlabs']}")
+            app_settings_clean["speaker_voices_elevenlabs"] = cli_speaker_mapping
+            print(f"INFO: ElevenLabs voices set to: {app_settings_clean['speaker_voices_elevenlabs']}")
         else:  # gemini
-            app_settings_clean["speaker_voices"].update(cli_speaker_mapping)
-            print(f"INFO: Gemini voices updated: {app_settings_clean['speaker_voices']}")
+            app_settings_clean["speaker_voices"] = cli_speaker_mapping
+            print(f"INFO: Gemini voices set to: {app_settings_clean['speaker_voices']}")
 
     # --- Validate Speaker Voices ---
     # Use the clean settings for validation, as this is what the backend expects
@@ -776,7 +847,7 @@ Example usage:
         print("API key is required to proceed. Exiting.")
         sys.exit(1)
 
-    print(f"\nGenerating audio from '{os.path.basename(args.script_filepath)}' with provider '{app_settings_clean['tts_provider']}'...")
+    print(f"\nGenerating audio from {script_source_description} with provider '{app_settings_clean['tts_provider']}'...")
     result = generate(
         script_text=script_text,
         app_settings=app_settings_clean,
