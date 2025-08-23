@@ -7,7 +7,7 @@ If you enjoy this project and want to support my work, feel free to [buy me a co
 
 ## 📖 Overview
 
-A simple yet powerful desktop application developed in Python with Tkinter, which allows you to create a multi-speaker audio podcast from a text script using the Google Gemini text-to-speech API.
+A simple yet powerful desktop application developed in Python with Tkinter, which allows you to create a multi-speaker audio podcast from a text script using the Google Gemini text-to-speech or ElevenLabs API.
 
 ![Application Screenshot](podcast_creator_screenshot.png)
 
@@ -17,21 +17,23 @@ See also the [French README](docs/README-fr.md) for a version in French.
 
 ## ✨ Features
 
-- **Audio Generation**: Create multi-speaker podcasts using high-quality voices from the Google Gemini API.
+- **Audio Generation**: Create multi-speaker podcasts using high-quality voices from the Google Gemini or ElevenLabs API.
 - **User-Friendly Interface**: An intuitive graphical interface built with Tkinter.
 - **Flexible Formats**: Export your creations in **MP3** (default) or **WAV** formats.
 - **Customization**: Configure and save voices for each speaker in your scripts, with options for language and accent.
 - **Integrated Playback**: Listen to and stop audio playback directly from the application (requires FFmpeg).
 - **Secure API Key Storage**: Your Google Gemini API key is requested once and securely stored in your system's keychain (`keyring`).
 - **Automatic Versioning**: The application version is automatically synchronized with the project's Git tags.
+- **Accent and Language Support**: Create podcasts in multiple languages with distinct voices and accents for each language (Gemini API only).
 
 ---
 
 ## 🌍 Multilingual Support
 
-Thanks to the Google Gemini API, **Podcast Generator** supports multiple languages and accents, allowing you to:
+Thanks to the Google Gemini or ElevenLabs API, **Podcast Generator** supports multiple languages and accents, allowing you to:
 
-- Create multilingual podcasts with distinct voices for each language.
+- Create multilingual podcasts with distinct voices and accents for each language.
+- Emotional tone adaptation (Gemini API only).
 - Produce content for an international audience.
 - Facilitate language learning with realistic dialogues.
 - Enhance accessibility by tailoring language to your target audience.
@@ -65,17 +67,33 @@ John: Stay with us to learn more!
 Samantha: Don't forget to subscribe to our podcast.
 ```
 
-⚠️ Important: The speaker names in your script (e.g., John:, Samantha:) must **exactly** match the names defined in the "Voice Settings" window. The application does not perform any checks, and a mismatch will result in a generation error or incorrect voice assignment.
+⚠️ Important: The speaker names in your script (e.g., John:, Samantha:) must **exactly** match the names defined in the "Voice Settings" window.
 
 ### Here's an example of a script for a multilingual podcast:
 
-```txt
+```txt (Gemini)
 John (fr): Bonjour à tous, bienvenue dans ce nouvel épisode.
 Samantha (en): Hello everyone, welcome to this new episode.
 John (es): Hola a todos, bienvenidos a este nuevo episodio.
 ```
+For elevenlabs, you need to change the voice name / id in the script to change the language
 
 ---
+
+```txt 
+Read aloud the play with emphasing strongly the emotions of the characters.
+Cyrano: <mocking> Ah ! non ! c’est un peu court, jeune homme !
+On pouvait dire… oh ! Dieu ! … bien des choses en somme…
+<sarcastic> Agressif : « moi, monsieur, si j’avais un tel nez,
+Il faudrait sur-le-champ que je me l’amputasse ! »
+<playful> Amical : « Mais il doit tremper dans votre tasse !
+Pour boire, faites-vous fabriquer un hanap ! »
+<dramatic> Descriptif : « C’est un roc ! … c’est un pic ! … c’est un cap !
+Que dis-je, c’est un cap ? … C’est une péninsule ! »
+<teasing> Curieux : « De quoi sert cette oblongue capsule ?
+D’écritoire, monsieur, ou de boîte à ciseaux ? »
+```
+with Cyrano mapped to Orus with Gemini
 
 ## 📦 Installation
 

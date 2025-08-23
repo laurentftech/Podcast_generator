@@ -1,32 +1,35 @@
-import logging
-import mimetypes
 import argparse
-import os
-import subprocess
 import webbrowser
-import shutil
 import sys
 import traceback
-from typing import Optional, Dict, List, Any
 from dotenv import load_dotenv
 from google import genai
 from google.genai import errors, types
+from elevenlabs.client import ElevenLabs
+import os
+import shutil
+import subprocess
+import logging
+from typing import Optional
 
 import keyring # For secure credential storage
 # Import tools for dialog boxes
 import tkinter as tk
-from tkinter import simpledialog, messagebox
+from tkinter import simpledialog
 
 import tempfile
-import json
 import re
 from typing import Any, Dict, List, Tuple
 import requests
+from datetime import datetime
+
+# Global logger instance - initialized once when module is imported
+logger = logging.getLogger(__name__)
 
 # The podcast script is now a constant to be used by the console mode.
 PODCAST_SCRIPT = """Read aloud in a warm, welcoming tone
-John: <playful> Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs – my dogs' names are corgis! Who am I?
-Samantha: <amused> Queen Elizabeth II!
+John: [playful] Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs – my dogs' names are corgis! Who am I?
+Samantha: [amused] You're queen Elizabeth II!
 """
 
 class WelcomeDialog(tk.Toplevel):
@@ -67,7 +70,6 @@ class WelcomeDialog(tk.Toplevel):
 
 def setup_logging() -> logging.Logger:
     """Configures logging to write to a file in the application's data directory."""
-    logger = logging.getLogger("PodcastGenerator")
     if logger.hasHandlers(): # Avoids adding duplicate handlers
         return logger
 
@@ -238,11 +240,15 @@ class GeminiTTS(TTSProvider):
         logger = logging.getLogger("PodcastGenerator")
         client = genai.Client(api_key=self.api_key)
 
+        # Gemini expects annotations in parentheses, so we convert them from the script's square bracket format.
+        gemini_script = script_text.replace('[', '(').replace(']', ')')
+        logger.info("Converted script annotations from [] to () for Gemini.")
+
         models_to_try = ["gemini-2.5-pro-preview-tts", "gemini-2.5-flash-preview-tts"]
         contents = [
             types.Content(
                 role="user",
-                parts=[types.Part.from_text(text=script_text)],
+                parts=[types.Part.from_text(text=gemini_script)],
             ),
         ]
         generate_content_config = types.GenerateContentConfig(
@@ -315,28 +321,74 @@ class GeminiTTS(TTSProvider):
         # Convertir avec FFmpeg
         return _ffmpeg_convert_inline_audio_chunks(audio_chunks, final_mime_type, output_filepath, status_callback)
 
-class ElevenLabsTTS(TTSProvider):
-    """
-    Implémentation simple: on découpe le script par lignes "Speaker: texte",
-    on génère un fichier par segment, puis on concatène via FFmpeg.
-    """
-    BASE_URL = "https://api.elevenlabs.io/v1"
-    MODEL_ID = "eleven_multilingual_v2"
+# Updated ElevenLabsTTS class for v3 API integration
+# Replace the existing ElevenLabsTTS class in generate_podcast.py
 
+class ElevenLabsTTS:
+    """
+    ElevenLabs TTS provider using v3 API.
+    Supports conversational mode and individual segments.
+    """
     def __init__(self, api_key: str):
         self.api_key = api_key
+        self.client = ElevenLabs(api_key=api_key)
+        self.logger = logging.getLogger("PodcastGenerator")
 
-    def synthesize(self, script_text: str, speaker_mapping: dict, output_filepath: str, status_callback=print) -> Optional[str]:
-        logger = logging.getLogger("PodcastGenerator")
-        ffmpeg_path = find_ffmpeg_path()
-        if not ffmpeg_path:
-            status_callback("--- CRITICAL ERROR ---")
-            status_callback("The FFmpeg executable was not found on this system.")
-            status_callback("Please install it and try again.")
-            logger.error("FFmpeg was not found in the PATH or Homebrew locations.")
+    def synthesize(self, script_text: str, speaker_mapping: Dict[str, str], output_filepath: str, status_callback=print) -> Optional[str]:
+        """
+        Main entry: generates audio from script_text and saves to output_filepath.
+        """
+        segments = self._parse_script_segments(script_text)
+        if not segments:
+            status_callback("[ElevenLabs] No segments found in script.")
             return None
 
-        # Parse simple "Speaker: text" lines
+        tmp_dir = tempfile.mkdtemp(prefix="podgen_el_")
+        piece_files = []
+
+        try:
+            for idx, (speaker, text) in enumerate(segments, start=1):
+                voice_id = speaker_mapping.get(speaker, "")
+                if not voice_id:
+                    status_callback(f"[ElevenLabs] No voice mapped for '{speaker}', skipping segment {idx}.")
+                    continue
+
+                status_callback(f"[ElevenLabs] Generating segment {idx} for speaker '{speaker}'...")
+                audio_gen = self.client.text_to_dialogue.convert(
+                    inputs=[{"text": text, "voice_id": voice_id}]
+                )
+
+                # Concat generator chunks to bytes
+                try:
+                    audio_bytes = b"".join(audio_gen)
+                except Exception as e:
+                    status_callback(f"[ElevenLabs] Error reading audio generator: {e}")
+                    self.logger.error(f"Audio generator error: {e}", exc_info=True)
+                    continue
+
+                # Save temporary segment
+                seg_file = os.path.join(tmp_dir, f"seg_{idx:04d}.mp3")
+                with open(seg_file, "wb") as f:
+                    f.write(audio_bytes)
+                piece_files.append(seg_file)
+
+            if not piece_files:
+                status_callback("[ElevenLabs] No audio segments generated.")
+                return None
+
+            # Concatenate segments
+            return self._concatenate_segments(piece_files, output_filepath, tmp_dir, status_callback)
+
+        finally:
+            try:
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+            except Exception:
+                pass
+
+    def _parse_script_segments(self, script_text: str) -> List[Tuple[Optional[str], str]]:
+        """
+        Parse script into (speaker, text) segments.
+        """
         segments = []
         for raw_line in script_text.splitlines():
             line = raw_line.strip()
@@ -344,140 +396,91 @@ class ElevenLabsTTS(TTSProvider):
                 continue
             m = re.match(r"^([^:]+):\s*(.+)$", line)
             if not m:
-                # ligne sans format speaker: texte -> on peut choisir une voix par défaut (première) ou ignorer
-                segments.append((None, line))
+                # This line is not a dialog line (e.g., an instruction).
+                # Gemini uses it, but for ElevenLabs we must skip it.
+                self.logger.info(f"Skipping non-dialogue line for ElevenLabs: '{line}'")
                 continue
             speaker = m.group(1).strip()
             text = m.group(2).strip()
-            segments.append((speaker, text))
+            text = re.sub(r"<[^>]+>", "", text).strip()  # remove tags like <cheerfully>
+            if text: # Only add segment if there is text left to speak
+                segments.append((speaker, text))
+        return segments
 
-        if not segments:
-            status_callback("No content to synthesize.")
+    def _concatenate_segments(self, piece_files: List[str], output_filepath: str, tmp_dir: str, status_callback=print) -> Optional[str]:
+        """
+        Concatenate segments using FFmpeg and save to final output.
+        """
+        ffmpeg_path = shutil.which("ffmpeg")
+        if not ffmpeg_path:
+            status_callback("FFmpeg not found, cannot concatenate segments.")
             return None
 
-        tmp_dir = tempfile.mkdtemp(prefix="podgen_el_")
-        piece_files = []
-        headers = {
-            "xi-api-key": self.api_key,
-            "accept": "audio/mpeg",
-            "content-type": "application/json"
-        }
+        list_path = os.path.join(tmp_dir, "concat.txt")
+        with open(list_path, "w", encoding="utf-8") as f:
+            for p in piece_files:
+                escaped_path = p.replace("'", "'\\''")
+                f.write(f"file '{escaped_path}'\n")
 
-        try:
-            # Générer chaque segment
-            for idx, (speaker, text) in enumerate(segments, start=1):
-                voice_id = ""
-                if speaker and speaker in speaker_mapping:
-                    voice_id = speaker_mapping[speaker]
-                # Si vide, l'utilisateur n'a pas mappé -> on log et continue (erreur légère)
-                if not voice_id:
-                    status_callback(f"[ElevenLabs] No voice mapped for speaker '{speaker}'. Skipping segment.")
-                    continue
+        # Temporary concat file
+        concat_file = os.path.join(tmp_dir, "concat.mp3")
+        cmd_concat = [ffmpeg_path, "-y", "-f", "concat", "-safe", "0", "-i", list_path, "-ac", "1", concat_file]
+        proc = subprocess.run(cmd_concat, capture_output=True)
+        if proc.returncode != 0:
+            status_callback("FFmpeg error during concatenation.")
+            return None
 
-                status_callback(f"[ElevenLabs] Generating segment {idx} for speaker '{speaker}'...")
+        # Convert to requested output format if needed
+        output_ext = os.path.splitext(output_filepath)[1].lower()
+        if output_ext not in [".mp3", ".wav"]:
+            output_filepath = os.path.splitext(output_filepath)[0] + ".mp3"
+            output_ext = ".mp3"
 
-                url = f"{self.BASE_URL}/text-to-speech/{voice_id}"
-                payload = {
-                    "text": text,
-                    "model_id": self.MODEL_ID,
-                    "voice_settings": {
-                        "stability": 0.5,
-                        "similarity_boost": 0.75
-                    }
-                }
-                try:
-                    resp = requests.post(url, headers=headers, json=payload, timeout=60)
-                except Exception as e:
-                    status_callback(f"[ElevenLabs] Network error: {e}")
-                    logger.error(f"Network error to ElevenLabs: {e}", exc_info=True)
-                    return None
-
-                if resp.status_code != 200:
-                    status_callback(f"[ElevenLabs] API error ({resp.status_code}): {resp.text[:200]}")
-                    logger.error(f"ElevenLabs API error {resp.status_code}: {resp.text}")
-                    return None
-
-                # Sauvegarde temporaire en MP3
-                seg_mp3 = os.path.join(tmp_dir, f"seg_{idx:04d}.mp3")
-                with open(seg_mp3, "wb") as f:
-                    f.write(resp.content)
-                piece_files.append(seg_mp3)
-
-            if not piece_files:
-                status_callback("[ElevenLabs] No segment generated.")
+        if output_ext == ".mp3":
+            shutil.copyfile(concat_file, output_filepath)
+        else:
+            cmd_convert = [ffmpeg_path, "-y", "-i", concat_file, output_filepath]
+            proc2 = subprocess.run(cmd_convert, capture_output=True)
+            if proc2.returncode != 0:
+                status_callback("FFmpeg error during final conversion.")
                 return None
 
-            # Concaténer via FFmpeg
-            status_callback(f"Converting and concatenating {len(piece_files)} segment(s) with FFmpeg...")
+        status_callback(f"File saved successfully: {output_filepath}")
+        return output_filepath
 
-            # Créer un fichier de liste pour le concat demuxer
-            list_path = os.path.join(tmp_dir, "concat.txt")
-            with open(list_path, "w", encoding="utf-8") as f:
-                for p in piece_files:
-                    # FFmpeg concat demuxer needs escaped paths
-                    escaped_path = p.replace("'", "'\\''")
-                    f.write(f"file '{escaped_path}'\n")
 
-            # Déterminer format de sortie
-            output_format = os.path.splitext(output_filepath)[1].lower().strip('.')
-            if output_format not in ["wav", "mp3"]:
-                output_format = "mp3"
-                output_filepath = f"{os.path.splitext(output_filepath)[0]}.mp3"
-
-            creation_flags = 0
-            if sys.platform == "win32":
-                creation_flags = subprocess.CREATE_NO_WINDOW
-
-            # Concaténer en premier vers un WAV temporaire pour uniformiser
-            concat_wav = os.path.join(tmp_dir, "concat.wav")
-            cmd_concat = [
-                ffmpeg_path,
-                "-y",
-                "-f", "concat",
-                "-safe", "0",
-                "-i", list_path,
-                "-ac", "1",
-                concat_wav
-            ]
-            proc1 = subprocess.run(cmd_concat, capture_output=True, creationflags=creation_flags)
-            if proc1.returncode != 0:
-                err = proc1.stderr.decode('utf-8', errors='ignore')
-                status_callback("--- ERROR DURING CONCAT ---")
-                if err.strip():
-                    status_callback(err.strip().splitlines()[-1])
-                else:
-                    status_callback("Unknown error")
-                logger.error(f"FFmpeg concat error:\n{err}")
-                return None
-
-            # Puis convertir vers le format final si nécessaire
-            if output_format == "wav":
-                shutil.copyfile(concat_wav, output_filepath)
-            else:
-                cmd_conv = [
-                    ffmpeg_path, "-y",
-                    "-i", concat_wav,
-                    output_filepath
-                ]
-                proc2 = subprocess.run(cmd_conv, capture_output=True, creationflags=creation_flags)
-                if proc2.returncode != 0:
-                    err = proc2.stderr.decode('utf-8', errors='ignore')
-                    status_callback("--- ERROR DURING FINAL CONVERSION ---")
-                    if err.strip():
-                        status_callback(err.strip().splitlines()[-1])
-                    else:
-                        status_callback("Unknown error")
-                    logger.error(f"FFmpeg final conversion error:\n{err}")
-                    return None
-
-            status_callback(f"File saved successfully: {output_filepath}")
-            return output_filepath
-        finally:
-            # Nettoyage des fichiers temporaires
-            try:
-                shutil.rmtree(tmp_dir, ignore_errors=True)
-            except Exception:
-                pass
+# Additional helper function to update the quota fetching for v3
+def update_elevenlabs_quota_v3(api_key: str, status_callback=print) -> Optional[str]:
+    """
+    Updated quota fetching function for ElevenLabs v3 API.
+    Returns a formatted quota string or None if unavailable.
+    """
+    try:
+        headers = {"xi-api-key": api_key}
+        # Try v3 endpoint first
+        resp = requests.get("https://api.elevenlabs.io/v3/user", headers=headers, timeout=10)
+        
+        if resp.status_code == 404:
+            # Fallback to v1 endpoint
+            resp = requests.get("https://api.elevenlabs.io/v1/user", headers=headers, timeout=10)
+        
+        if resp.status_code != 200:
+            return None
+            
+        data = resp.json()
+        sub = data.get("subscription", {})
+        used = sub.get("character_count")
+        limit = sub.get("character_limit")
+        
+        if isinstance(used, int) and isinstance(limit, int) and limit > 0:
+            remaining = max(0, limit - used)
+            return f"TTS Provider: ElevenLabs - Remaining: {remaining} / {limit} characters"
+        else:
+            return "TTS Provider: ElevenLabs - Quota info missing"
+            
+    except Exception as e:
+        status_callback(f"Error fetching ElevenLabs quota: {e}")
+        return "TTS Provider: ElevenLabs - Network error"
 
 def _ffmpeg_convert_inline_audio_chunks(audio_chunks: List[bytes], mime_type: str, output_filepath: str, status_callback=print) -> Optional[str]:
     """Convert inline PCM chunks to requested output via FFmpeg."""
@@ -656,6 +659,44 @@ def parse_audio_mime_type(mime_type: str) -> Dict[str, int]:
     return {"bits_per_sample": bits_per_sample, "rate": rate}
 
 
+def setup_logging():
+    """Configuration du logger pour Podcast Generator"""
+    logger = logging.getLogger("PodcastGenerator")
+    logger.setLevel(logging.DEBUG)
+
+    # Éviter les doublons
+    if logger.handlers:
+        return logger
+
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_format = logging.Formatter(
+        '%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%H:%M:%S'
+    )
+    console_handler.setFormatter(console_format)
+
+    # File handler
+    log_dir = os.path.expanduser("~/Library/Logs/PodcastGenerator")  # macOS
+    os.makedirs(log_dir, exist_ok=True)
+
+    file_handler = logging.FileHandler(
+        os.path.join(log_dir, f"podcast_generator_{datetime.now().strftime('%Y%m%d')}.log"),
+        encoding='utf-8'
+    )
+    file_handler.setLevel(logging.DEBUG)
+    file_format = logging.Formatter(
+        '%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
+    )
+    file_handler.setFormatter(file_format)
+
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
+
+    return logger
+
+
 if __name__ == "__main__":
     logger = setup_logging()
 
@@ -718,17 +759,17 @@ Example usage:
         app_settings = {
             "tts_provider": "elevenlabs",
             "speaker_voices": {"John": "Schedar", "Samantha": "Zephyr"},
-            "speaker_voices_elevenlabs": {"John": "", "Samantha": ""}
+            "speaker_voices_elevenlabs": {"John": "EkK5I93UQWFDigLMpZcX", "Samantha": "Z3R5wn05IrDiVCyEkUrK"}
         }
     else:
         app_settings = {
             "tts_provider": "gemini",
             "speaker_voices": {"John": "Schedar", "Samantha": "Zephyr"},
-            "speaker_voices_elevenlabs": {"John": "", "Samantha": ""}
+            "speaker_voices_elevenlabs": {"John": "EkK5I93UQWFDigLMpZcX", "Samantha": "Z3R5wn05IrDiVCyEkUrK"}
         }
 
     # --- Validate Speaker Voices ---
-    missing_speakers = validate_speakers(script_text, app_settings)
+    missing_speakers, _ = validate_speakers(script_text, app_settings)
     if missing_speakers:
         missing_speakers_str = ", ".join(missing_speakers)
         print(f"\n--- CONFIGURATION ERROR ---")
