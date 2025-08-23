@@ -160,7 +160,7 @@ Une fois validé, Windows ne vous le demandera plus.
 
 ### Premier lancement : clé API
 
-Lors du premier démarrage, l’application vous demandera votre **clé API Google Gemini**.  
+Lors du premier démarrage, l’application vous demandera votre clé **API ElevenLabs** (et éventuellement votre clé **API Google Gemini**).  
 Elle sera stockée de manière sécurisée.
 
 ---

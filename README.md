@@ -77,29 +77,20 @@ Samantha: Don't forget to subscribe to our podcast.
 
 ### Here's an example of a script for a multilingual podcast:
 
-```txt (Gemini)
-John (fr): Bonjour à tous, bienvenue dans ce nouvel épisode.
-Samantha (en): Hello everyone, welcome to this new episode.
-John (es): Hola a todos, bienvenidos a este nuevo episodio.
-```
-For elevenlabs, you need to change the voice name / id in the script to change the language
-
----
 
 ```txt 
 Read aloud the play with emphasing strongly the emotions of the characters.
-Cyrano: <mocking> Ah ! non ! c’est un peu court, jeune homme !
+Cyrano: [mocking] Ah ! non ! c’est un peu court, jeune homme !
 On pouvait dire… oh ! Dieu ! … bien des choses en somme…
-<sarcastic> Agressif : « moi, monsieur, si j’avais un tel nez,
+[sarcastic] Agressif : « moi, monsieur, si j’avais un tel nez,
 Il faudrait sur-le-champ que je me l’amputasse ! »
-<playful> Amical : « Mais il doit tremper dans votre tasse !
+[playful] Amical : « Mais il doit tremper dans votre tasse !
 Pour boire, faites-vous fabriquer un hanap ! »
-<dramatic> Descriptif : « C’est un roc ! … c’est un pic ! … c’est un cap !
+[dramatic] Descriptif : « C’est un roc ! … c’est un pic ! … c’est un cap !
 Que dis-je, c’est un cap ? … C’est une péninsule ! »
-<teasing> Curieux : « De quoi sert cette oblongue capsule ?
+[teasing] Curieux : « De quoi sert cette oblongue capsule ?
 D’écritoire, monsieur, ou de boîte à ciseaux ? »
 ```
-with Cyrano mapped to Orus with Gemini
 
 ## 📦 Installation
 
@@ -207,7 +198,7 @@ After doing this once, Windows will remember your choice and won’t show the wa
 
 ### First Launch: API Key
 
-On first launch, the application will request your **Google Gemini API key**.  
+On first launch, the application will request your **ElevenLabs API key** (and optionally your **Google ).  
 It will be stored securely.
 
 ---
