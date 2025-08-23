@@ -1,15 +1,16 @@
 import argparse
-import webbrowser
 import sys
 import traceback
 from dotenv import load_dotenv
 from google import genai
 from google.genai import errors, types
 from elevenlabs.client import ElevenLabs
+from elevenlabs.core import ApiError
 import os
 import shutil
 import subprocess
 import logging
+import getpass
 from typing import Optional
 
 import json
@@ -18,11 +19,9 @@ import keyring # For secure credential storage
 import tkinter as tk
 from tkinter import simpledialog
 
-import tempfile
 import re
 from typing import Any, Dict, List, Tuple
 import requests
-from datetime import datetime
 
 # Global logger instance - initialized once when module is imported
 logger = logging.getLogger(__name__)
@@ -33,41 +32,6 @@ John: [playful] Who am I? I am a little old lady. My hair is white. I have got a
 Samantha: [laughing] You're queen Elizabeth II!!
 """
 
-class WelcomeDialog(tk.Toplevel):
-    """A custom dialog window to welcome the user and provide a clickable link."""
-    def __init__(self, parent, service: str = "gemini"):
-        super().__init__(parent)
-        self.title("Welcome!")
-        self.transient(parent)
-        self.grab_set()
-        self.resizable(False, False)
-
-        main_frame = tk.Frame(self, padx=20, pady=15)
-        main_frame.pack(fill=tk.BOTH, expand=True)
-
-        tk.Label(main_frame, text="Welcome to Podcast Generator!", font=('Helvetica', 12, 'bold')).pack(pady=(0, 10))
-        if service == "elevenlabs":
-            tk.Label(main_frame, text="To get started, the application needs your ElevenLabs API key.").pack(pady=(0, 10))
-            link_frame = tk.Frame(main_frame)
-            link_frame.pack(pady=(0, 15))
-            tk.Label(link_frame, text="You can get a key at:").pack(side=tk.LEFT)
-            link_label = tk.Label(link_frame, text="elevenlabs.io", fg="blue", cursor="hand2")
-            link_label.pack(side=tk.LEFT, padx=5)
-            link_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://elevenlabs.io"))
-        else:
-            tk.Label(main_frame, text="To get started, the application needs your Google Gemini API key.").pack(pady=(0, 10))
-            link_frame = tk.Frame(main_frame)
-            link_frame.pack(pady=(0, 15))
-            tk.Label(link_frame, text="You can get a free key at:").pack(side=tk.LEFT)
-            link_label = tk.Label(link_frame, text="ai.google.dev/gemini-api", fg="blue", cursor="hand2")
-            link_label.pack(side=tk.LEFT, padx=5)
-            link_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://ai.google.dev/gemini-api"))
-
-        ok_button = tk.Button(main_frame, text="OK", command=self.destroy, width=10)
-        ok_button.pack(pady=(10, 0))
-
-        self.bind('<Return>', lambda event: ok_button.invoke())
-        self.protocol("WM_DELETE_WINDOW", self.destroy)
 
 def setup_logging() -> logging.Logger:
     """Configures logging to write to a file in the application's data directory."""
@@ -178,49 +142,39 @@ def get_api_key(status_callback, logger: logging.Logger, parent_window=None, ser
 
     # --- 4. If the key is still not found, ask the user ---
     if not api_key:
-        logger.info("API key not found, opening dialog for user.")
-        status_callback("API key not found or invalid. Opening dialog...")
+        # If called from the GUI, we don't ask here. The GUI is responsible for its own dialogs.
+        # This breaks the circular dependency that crashes the packaged app.
+        if parent_window:
+            logger.info("API key not found in storage. Returning None to GUI caller.")
+            return None
 
-        # Manages the parent window for dialogs.
-        # If none is provided (CLI mode), a temporary one is created.
-        dialog_parent = parent_window
-        we_created_root = False
-        if dialog_parent is None:
-            dialog_parent = tk.Tk()
-            dialog_parent.withdraw()
-            we_created_root = True
+        # If called from CLI (parent_window is None), we prompt in the console.
+        logger.info("API key not found, prompting user in console.")
 
-        # Temporarily de-iconify the parent if it exists and is withdrawn,
-        # to ensure our dialogs are visible.
-        parent_was_withdrawn = False
-        if parent_window and parent_window.winfo_exists() and parent_window.state() == 'withdrawn':
-            parent_window.deiconify()
-            parent_was_withdrawn = True
+        # This is the CLI version of the WelcomeDialog
+        print("\n--- Welcome to Podcast Generator ---")
+        if service == "elevenlabs":
+            print("To get started, the application needs your ElevenLabs API key.")
+            print("You can get a key at: https://try.elevenlabs.io/zobct2wsp98z (affiliate link)")
+        else:
+            print("To get started, the application needs your Google Gemini API key.")
+            print("You can get a free key at: https://ai.google.dev/gemini-api")
 
-        welcome_dialog = WelcomeDialog(dialog_parent, service=welcome_service)
-        dialog_parent.wait_window(welcome_dialog)
+        print(f"\n{prompt_text}")
+        try:
+            # Use getpass to hide the key as it's typed
+            api_key_input = getpass.getpass(prompt="> ")
+        except EOFError:
+            api_key_input = None
 
-        api_key_input = simpledialog.askstring(
-            prompt_title,
-            prompt_text,
-            parent=dialog_parent
-        )
-
-        # Re-withdraw the parent if we temporarily showed it
-        if parent_was_withdrawn:
-            parent_window.withdraw()
-
-        if we_created_root:
-            dialog_parent.destroy()
-
-        if api_key_input:
+        if api_key_input and api_key_input.strip():
+            api_key = api_key_input.strip()
             logger.info("User provided an API key.")
-            api_key = api_key_input
-            keyring.set_password(SERVICE_NAME, ACCOUNT_NAME, api_key_input)
+            keyring.set_password(SERVICE_NAME, ACCOUNT_NAME, api_key)
             logger.info(f"New key saved to the secure system keychain.")
             status_callback("API key saved securely for future launches.")
         else:
-            logger.info("User cancelled API key entry.")
+            logger.info("User cancelled or provided empty API key entry.")
             status_callback("No API key provided. Cancelling.")
             return None
 
@@ -274,7 +228,8 @@ class GeminiTTS(TTSProvider):
         final_mime_type = ""
         audio_chunks = []
 
-        for model_name in models_to_try:
+        nb_of_models = len(models_to_try)
+        for i, model_name in enumerate(models_to_try):
             status_callback(f"\nAttempting generation with model: {model_name}...")
             try:
                 audio_chunks = []
@@ -306,9 +261,28 @@ class GeminiTTS(TTSProvider):
                 status_callback(f"Audio generated successfully via {model_name}.")
                 break
             except errors.APIError as e:
-                status_callback(f"API error with model '{model_name}'")
-                status_callback("Trying next model...")
-                logger.warning(f"API error with model '{model_name}': {e}")
+                raw_error_message = str(e)
+                # Check for quota errors to provide a more specific message.
+                if "RESOURCE_EXHAUSTED" in raw_error_message or isinstance(e, errors.ResourceExhaustedError):
+                    status_callback(f"API Error with model '{model_name}': Quota limit reached.")
+                    clean_details = None
+                    if ". " in raw_error_message:
+                        try:
+                            import ast
+                            details_str = raw_error_message.split('. ', 1)[1]
+                            details_dict = ast.literal_eval(details_str)
+                            if isinstance(details_dict, dict) and 'error' in details_dict and 'message' in details_dict['error']:
+                                clean_details = details_dict['error']['message']
+                        except (ValueError, SyntaxError, IndexError):
+                            pass  # Parsing failed, clean_details remains None
+                    final_message = clean_details or "Could not parse specific details from API response."
+                    status_callback(f"Details: {final_message}")
+                    logger.warning(f"API Quota Error with model '{model_name}': {final_message}")
+                else:
+                    status_callback(f"API error with model '{model_name}': {raw_error_message}")
+                    logger.warning(f"API error with model '{model_name}': {e}")
+                if i < nb_of_models - 1:
+                    status_callback("Trying next model...")
             except Exception as e:
                 status_callback(f"An unexpected critical error occurred: {e}")
                 status_callback(traceback.format_exc())
@@ -317,6 +291,7 @@ class GeminiTTS(TTSProvider):
                 break
 
         if not generated_successfully:
+            status_callback("\nAudio generation failed after trying all available models. Please check the logs for more details.")
             return None
 
         # Convertir avec FFmpeg
@@ -406,9 +381,28 @@ class ElevenLabsTTS:
                 status_callback(f"File saved successfully: {output_filepath}")
                 return output_filepath
 
+        except ApiError as e:
+            try:
+                # Try to parse the specific quota error message from the API response body
+                if hasattr(e, 'body') and e.body and e.body.get('detail', {}).get('status') == 'quota_exceeded':
+                    message = e.body['detail'].get('message', 'Your ElevenLabs quota has been exceeded.')
+                    status_callback("[ElevenLabs] API Error: Quota Exceeded.")
+                    status_callback(f"Details: {message}")
+                    self.logger.warning(f"ElevenLabs Quota Exceeded: {message}")
+                else:
+                    # For other API errors, show the raw error to the user and in logs
+                    status_callback(f"[ElevenLabs] An API error occurred: {e}")
+                    self.logger.error(f"ElevenLabs API error: {e}")
+            except (KeyError, TypeError):
+                # Fallback if the body structure is unexpected
+                status_callback(f"[ElevenLabs] An API error occurred: {e}")
+                self.logger.error(f"ElevenLabs API error with unexpected body: {e}")
+            status_callback("\nAudio generation failed. Please check the logs for more details.")
+            return None
         except Exception as e:
-            status_callback(f"[ElevenLabs] Critical error during dialogue generation: {e}")
-            self.logger.error(f"ElevenLabs dialogue generation error: {e}", exc_info=True)
+            status_callback(f"[ElevenLabs] An unexpected critical error occurred: {e}")
+            self.logger.error(f"ElevenLabs critical error: {e}", exc_info=True)
+            status_callback("\nAudio generation failed. Please check the logs for more details.")
             return None
 
     def _parse_script_segments(self, script_text: str) -> List[Tuple[Optional[str], str]]:
@@ -645,10 +639,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Generate a podcast from a script file using the Gemini or ElevenLabs API.",
         formatter_class=argparse.RawTextHelpFormatter,
-        epilog="""
+        epilog="""\
 Example usage:
   python generate_podcast.py path/to/your/script.txt
   python generate_podcast.py path/to/your/script.txt -o path/to/your/output.mp3
+  python generate_podcast.py script.txt --provider elevenlabs --speaker "John:TX3LPaxmHKxFdv7VOQHJ" --speaker "Samantha:pT95jSTK1iJkOytAqCbf"
 """
     )
     parser.add_argument(
@@ -665,6 +660,14 @@ Example usage:
         choices=["elevenlabs", "gemini"],
         default="elevenlabs",
         help="TTS provider to use (default: ElevenLabs)"
+    )
+    parser.add_argument(
+        "--speaker",
+        action="append",
+        help='Assign a voice to a speaker. Format: "SpeakerName:VoiceNameOrID".\n'
+             'Can be used multiple times. This overrides settings from the config file.\n'
+             'Example for ElevenLabs: --speaker "John:TX3LPaxmHKxFdv7VOQHJ"\n'
+             'Example for Gemini: --speaker "Samantha:Zephyr"'
     )
     args = parser.parse_args()
 
@@ -737,6 +740,24 @@ Example usage:
             # Legacy format: use the string as-is
             elevenlabs_mapping_clean[speaker] = data
     app_settings_clean["speaker_voices_elevenlabs"] = elevenlabs_mapping_clean
+
+    # --- Override speakers from CLI arguments ---
+    if args.speaker:
+        print("INFO: Overriding speaker voices from command line arguments.")
+        cli_speaker_mapping = {}
+        for speaker_arg in args.speaker:
+            if ":" not in speaker_arg:
+                print(f"WARNING: Invalid speaker format '{speaker_arg}'. Skipping. Use 'Name:Voice'.")
+                continue
+            name, voice = speaker_arg.split(":", 1)
+            cli_speaker_mapping[name.strip()] = voice.strip()
+
+        if args.provider == "elevenlabs":
+            app_settings_clean["speaker_voices_elevenlabs"].update(cli_speaker_mapping)
+            print(f"INFO: ElevenLabs voices updated: {app_settings_clean['speaker_voices_elevenlabs']}")
+        else:  # gemini
+            app_settings_clean["speaker_voices"].update(cli_speaker_mapping)
+            print(f"INFO: Gemini voices updated: {app_settings_clean['speaker_voices']}")
 
     # --- Validate Speaker Voices ---
     # Use the clean settings for validation, as this is what the backend expects
