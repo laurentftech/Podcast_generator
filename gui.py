@@ -81,8 +81,8 @@ class PodcastGeneratorApp:
         "tts_provider": "elevenlabs",
         "speaker_voices": {"John": "Schedar - Even", "Samantha": "Zephyr - Bright"},
         "speaker_voices_elevenlabs": {
-            "John": {"id": "TX3LPaxmHKxFdv7VOQHJ", "display_name": "Liam"},
-            "Samantha": {"id": "cgSgspJ2msm6clMCkdW9", "display_name": "Jessica"}
+            "John": {"id": "TX3LPaxmHKxFdv7VOQHJ", "display_name": "Liam - Male, Young, american"},
+            "Samantha": {"id": "cgSgspJ2msm6clMCkdW9", "display_name": "Jessica - Female, Young, american"}
         },
         "elevenlabs_quota_cache": None
     }
@@ -187,7 +187,7 @@ class PodcastGeneratorApp:
 
         current_provider = self.app_settings.get("tts_provider", "elevenlabs").title()
         # Couleur adaptative selon le mode sombre macOS
-        self._is_dark_mode = self._is_macos_dark_mode()
+        self._is_dark_mode = self._is_system_dark_mode()
         text_color = "white" if self._is_dark_mode else "blue"
         self.provider_label = tk.Label(status_frame, text=f"TTS Provider: {current_provider}", font=('Helvetica', 9),
                                        fg=text_color)
@@ -253,21 +253,27 @@ class PodcastGeneratorApp:
         if self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs":
             self._schedule_provider_label_refresh(delay_ms=2000, retries=5)
 
-    def _is_macos_dark_mode(self) -> bool:
-        """Retourne True si macOS est en mode sombre, False sinon (ou si indétectable)."""
+    def _is_system_dark_mode(self) -> bool:
+        """Retourne True si le système (macOS ou Windows) est en mode sombre."""
         try:
-            if sys.platform != "darwin":
-                return False
-            # AppleInterfaceStyle existe seulement en mode sombre
-            proc = subprocess.run(
-                ["defaults", "read", "-g", "AppleInterfaceStyle"],
-                capture_output=True, text=True
-            )
-            if proc.returncode != 0:
-                return False
-            return proc.stdout.strip().lower() == "dark"
+            if sys.platform == "darwin":
+                # AppleInterfaceStyle existe seulement en mode sombre
+                proc = subprocess.run(
+                    ["defaults", "read", "-g", "AppleInterfaceStyle"],
+                    capture_output=True, text=True
+                )
+                return proc.returncode == 0 and proc.stdout.strip().lower() == "dark"
+
+            if sys.platform == "win32":
+                import winreg
+                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize')
+                value, _ = winreg.QueryValueEx(key, 'AppsUseLightTheme')
+                winreg.CloseKey(key)
+                return value == 0
         except Exception:
+            # En cas d'erreur (ex: clé de registre absente, commande non trouvée), on suppose le mode clair.
             return False
+        return False  # Pour les autres OS (Linux, etc.)
 
     def _apply_provider_label_theme(self):
         """Applique la bonne couleur au provider_label selon le mode sombre."""
@@ -277,10 +283,10 @@ class PodcastGeneratorApp:
         self.provider_label.config(fg=("white" if self._is_dark_mode else "blue"))
 
     def _start_theme_watcher(self, interval_ms: int = 2000):
-        """Surveille le mode sombre macOS et met à jour la couleur du provider_label si l'état change."""
+        """Surveille le mode sombre (macOS/Windows) et met à jour la couleur du provider_label si l'état change."""
         def _tick():
             try:
-                current = self._is_macos_dark_mode()
+                current = self._is_system_dark_mode()
                 if current != self._is_dark_mode:
                     self._is_dark_mode = current
                     self._apply_provider_label_theme()
