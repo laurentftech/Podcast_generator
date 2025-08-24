@@ -85,7 +85,11 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
     Utilise Montreal Forced Aligner (MFA) pour aligner mot à mot.
     """
     logger = logging.getLogger("PodcastGenerator.Demo")
-    mfa_base_command = [sys.executable, "-m", "montreal_forced_aligner.command_line.mfa"]
+    # Using 'mfa' directly relies on it being in the system's PATH.
+    # This is the correct approach for an external dependency and avoids
+    # the infinite loop issue with frozen apps, where sys.executable
+    # would point to the app bundle itself.
+    mfa_base_command = ["mfa"]
 
     # --- 1. Dependency and Setup Checks ---
     if not shutil.which("ffmpeg"):

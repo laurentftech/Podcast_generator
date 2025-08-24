@@ -164,7 +164,11 @@ class PodcastGeneratorApp:
 
     def check_mfa_availability(self) -> bool:
         """Checks if MFA is installed and runnable, without showing errors to the user."""
-        mfa_base_command = [sys.executable, "-m", "montreal_forced_aligner.command_line.mfa"]
+        # Using 'mfa' directly relies on it being in the system's PATH.
+        # This is the correct approach for an external dependency and avoids
+        # the infinite loop issue with frozen apps, where sys.executable
+        # would point to the app bundle itself.
+        mfa_base_command = ["mfa"]
         try:
             # We only care about the return code. Using DEVNULL for output is efficient.
             # The command is 'version' for MFA v3.x
