@@ -55,6 +55,19 @@ AVAILABLE_VOICES = {
     "Sulafat": "Warm"
 }
 
+SERVICE_CONFIG = {
+    "elevenlabs": {
+        "title": "ElevenLabs API Key",
+        "account": "elevenlabs_api_key",
+        "url": "https://try.elevenlabs.io/zobct2wsp98z"
+    },
+    "gemini": {
+        "title": "Gemini API Key",
+        "account": "gemini_api_key",
+        "url": "https://aistudio.google.com/app/apikey"
+    }
+}
+
 
 def get_app_version() -> str:
     """Gets the application version from the _version.py file."""
@@ -119,9 +132,14 @@ class PodcastGeneratorApp:
         self.last_generated_filepath = None
         self.last_generated_script = None # To store script for demo generation
         self.ffplay_path = find_ffplay_path()
+        self.is_mfa_available = self.check_mfa_availability()
         self.elevenlabs_quota_text = None # New state variable
 
         self.app_settings = self.load_settings()
+        self.provider_var = tk.StringVar(value=self.app_settings.get("tts_provider", "elevenlabs").lower())
+
+        self._setup_menu()
+        self._setup_widgets(default_script)
 
         # Provider sélectionné
         self.provider_var = tk.StringVar(value=self.app_settings.get("tts_provider", "elevenlabs").lower())
@@ -131,6 +149,40 @@ class PodcastGeneratorApp:
         # Cache des voix ElevenLabs préchargées
         self.elevenlabs_voices_cache = []
 
+        self.poll_log_queue()
+
+        # Update UI states after all widgets are created
+        self.update_provider_menu_state()
+        self.update_voice_settings_enabled()
+
+        # Schedule initial quota fetch and theme watcher
+        if self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs":
+            self._schedule_provider_label_refresh(delay_ms=2000, retries=5)
+        self._start_theme_watcher()
+
+        self.logger.info("Main interface initialized.")
+
+    def check_mfa_availability(self) -> bool:
+        """Checks if MFA is installed and runnable, without showing errors to the user."""
+        mfa_base_command = [sys.executable, "-m", "montreal_forced_aligner.command_line.mfa"]
+        try:
+            # We only care about the return code. Using DEVNULL for output is efficient.
+            # The command is 'version' for MFA v3.x
+            subprocess.run(
+                mfa_base_command + ["version"],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            self.logger.info("MFA installation found and verified. Demo generation is enabled.")
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError, NotADirectoryError):
+            self.logger.warning("MFA not found or installation is broken. Demo generation will be disabled.")
+            return False
+
+
+    def _setup_menu(self):
+        """Sets up the main application menu bar."""
         # --- Menu Bar (Platform-specific) ---
         self.menubar = tk.Menu(self.root)
         self.root.config(menu=self.menubar)
@@ -185,13 +237,11 @@ class PodcastGeneratorApp:
         self.menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="Documentation (Github)...", command=self.open_documentation)
         help_menu.add_command(label="About...", command=self.show_about_window)
-        self.logger.info("Main interface initialized.")
 
-        self.poll_log_queue()
-        # car les boutons ne sont pas encore créés.
-
+    def _setup_widgets(self, default_script: str):
+        """Sets up the main UI widgets like text areas and buttons."""
         # --- Main Frame ---
-        main_frame = tk.Frame(root, padx=10, pady=10)
+        main_frame = tk.Frame(self.root, padx=10, pady=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         # --- TTS Provider Status Bar ---
@@ -207,11 +257,7 @@ class PodcastGeneratorApp:
         self.provider_label.pack(side=tk.LEFT, padx=5, pady=2)
         # Déclenche le rafraîchissement du quota immédiatement si ElevenLabs est actif
         if self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs":
-            cached = self.app_settings.get("elevenlabs_quota_cache") or {}
-            cached_text = cached.get("text")
-            if cached_text:
-                self.elevenlabs_quota_text = cached_text
-                self._update_provider_label()
+            self._load_cached_quota()
             self.update_elevenlabs_quota_in_status()
         # Lance le watcher de thème (actualise la couleur s'il y a bascule sombre/clair)
         self._start_theme_watcher()
@@ -259,12 +305,14 @@ class PodcastGeneratorApp:
         self.play_button = tk.Button(self.button_frame, text="▶️ Play", command=self.play_last_generated_file,
                                      state='disabled', width=common_button_width)
         self.play_button.pack(side=tk.RIGHT)
-        # Après que tous les widgets (dont generate_button) sont créés, on peut mettre à jour les états.
-        self.update_provider_menu_state()
-        self.update_voice_settings_enabled()
-        # Force un rafraîchissement différé du label pour laisser le temps au quota d'arriver
-        if self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs":
-            self._schedule_provider_label_refresh(delay_ms=2000, retries=5)
+
+    def _load_cached_quota(self):
+        """Loads and displays the cached quota if available."""
+        cached = self.app_settings.get("elevenlabs_quota_cache") or {}
+        cached_text = cached.get("text")
+        if cached_text:
+            self.elevenlabs_quota_text = cached_text
+            self._update_provider_label()
 
     def _is_system_dark_mode(self) -> bool:
         """Retourne True si le système (macOS ou Windows) est en mode sombre."""
@@ -792,7 +840,8 @@ class PodcastGeneratorApp:
             if self.ffplay_path:
                 self.show_button.config(state='normal')
                 self.play_button.config(state='normal')
-                self.actions_menu.entryconfig("Generate HTML Demo...", state='normal')
+            # Enable demo button only if MFA is available
+            self.actions_menu.entryconfig("Generate HTML Demo...", state='normal' if self.is_mfa_available else 'disabled')
             if self.app_settings.get("tts_provider").lower() == "elevenlabs":
                 self.update_elevenlabs_quota_in_status()
 
@@ -1151,19 +1200,13 @@ class APIKeysWindow(tk.Toplevel):
         import keyring
         from tkinter import simpledialog
 
-        if service == "elevenlabs":
-            title = "ElevenLabs API Key"
-            prompt = "Enter your ElevenLabs API key:"
-            account = "elevenlabs_api_key"
-        else:
-            title = "Gemini API Key"
-            prompt = "Enter your Google Gemini API key:"
-            account = "gemini_api_key"
+        config = SERVICE_CONFIG.get(service)
+        if not config: return
 
-        new_key = simpledialog.askstring(title, prompt, parent=self, show="*")
+        new_key = simpledialog.askstring(config["title"], f"Enter your {config['title']}:", parent=self, show="*")
         if new_key and new_key.strip():
-            keyring.set_password("PodcastGenerator", account, new_key.strip())
-            messagebox.showinfo("Success", f"{title} has been saved securely.", parent=self)
+            keyring.set_password("PodcastGenerator", config["account"], new_key.strip())
+            messagebox.showinfo("Success", f"{config['title']} has been saved securely.", parent=self)
             self.update_status()
         elif new_key is not None:  # User clicked OK but entered empty key
             messagebox.showwarning("Invalid Key", "API key cannot be empty.", parent=self)
@@ -1171,20 +1214,15 @@ class APIKeysWindow(tk.Toplevel):
     def remove_api_key(self, service: str):
         """Remove an API key for the specified service."""
         import keyring
+        config = SERVICE_CONFIG.get(service)
+        if not config: return
 
-        if service == "elevenlabs":
-            title = "ElevenLabs API Key"
-            account = "elevenlabs_api_key"
-        else:
-            title = "Gemini API Key"
-            account = "gemini_api_key"
-
-        if messagebox.askyesno("Confirm Removal", f"Are you sure you want to remove the {title}?", parent=self):
+        if messagebox.askyesno("Confirm Removal", f"Are you sure you want to remove the {config['title']}?", parent=self):
             try:
-                keyring.delete_password("PodcastGenerator", account)
-                messagebox.showinfo("Success", f"{title} has been removed.", parent=self)
+                keyring.delete_password("PodcastGenerator", config["account"])
+                messagebox.showinfo("Success", f"{config['title']} has been removed.", parent=self)
             except keyring.errors.PasswordDeleteError:
-                messagebox.showinfo("Info", f"No {title} was stored.", parent=self)
+                messagebox.showinfo("Info", f"No {config['title']} was stored.", parent=self)
             self.update_status()
 
     def test_api_key(self, service: str):

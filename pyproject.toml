@@ -16,9 +16,7 @@ dependencies = [
     "google-genai",
     "python-dotenv",
     "keyring",
-    "elevenlabs",
-    "aeneas",
-    "langdetect"
+    "elevenlabs"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -33,6 +31,9 @@ classifiers = [
 [project.optional-dependencies]
 dev = [
     "pyinstaller"
+]
+demo = [
+    "textgrid"
 ]
 
 [project.urls]

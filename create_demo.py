@@ -96,13 +96,13 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
 
     # Check MFA version compatibility
     try:
-        # For MFA v2.x and later, --version is standard. check=True will raise on failure.
+        # For MFA v3.x, 'version' is a command. check=True will raise on failure.
         version_result = subprocess.run(
             mfa_base_command + ["version"], capture_output=True, text=True, check=True
         )
         version_str = version_result.stdout.strip().split()[-1]
         logger.info(f"Found compatible MFA version: {version_str}")
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+    except (subprocess.CalledProcessError, FileNotFoundError, NotADirectoryError) as e:
         error_msg = (
             "Could not run or verify Montreal Forced Aligner (MFA).\n"
             "Please ensure it is installed correctly using the recommended Conda method.\n"
@@ -208,7 +208,9 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
                     # Move the pointer to the end of the found word
                     text_pointer = found_at + len(word_to_find)
                 except ValueError:
-                    logger.warning(f"Could not find word '{word_to_find}' in the original script after position {text_pointer}. Alignment may be imperfect.")
+                    logger.warning(f"Could not find word '{word_to_find}' in the original script after position {text_pointer}. Appending as plain text.")
+                    # Append the word as plain, non-interactive text so it's not lost.
+                    html_body_parts.append(word_to_find)
 
             # Append any remaining text after the last aligned word
             trailing_text = source_text[text_pointer:]

@@ -96,7 +96,7 @@ D’écritoire, monsieur, ou de boîte à ciseaux ? »
 
 ## 📦 Installation
 
-### 1. External Dependency: FFmpeg (Required)
+### 1. Required Dependency: FFmpeg
 
 For audio conversion and playback, this application requires FFmpeg to be installed on your system.
 

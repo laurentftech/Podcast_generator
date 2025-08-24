@@ -23,16 +23,21 @@ Only the repository owner (Laurent) can trigger this generation and officially p
 git clone https://github.com/laurentftech/Podcast_generator.git
 cd Podcast_generator
 
-# 2. Create and activate a virtual environment
-python -m venv .venv
-source .venv/bin/activate  # macOS/Linux
-# .\.venv\Scripts\activate  # Windows
+# 2. Create and activate a Conda environment
+conda create -n podcast_generator_dev python=3.11 -y
+conda activate podcast_generator_dev
 
-# 3. Install dependencies
-# The '-e' flag installs the project in "editable" mode.
+# 3. Install MFA with Conda
+conda install -c conda-forge montreal-forced-aligner -y
+
+# 4. Install other dependencies with pip
+# The '-e' flag installs the project in "editable" mode for development.
 pip install -e .[dev]
 
-# 4. Run the application
+# 5. (Optional) Install textgrid if not covered by other dependencies
+pip install textgrid
+
+# 6. Run the application
 python gui.py
 ```
 

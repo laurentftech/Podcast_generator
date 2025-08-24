@@ -3,4 +3,3 @@ google-genai
 python-dotenv
 keyring
 elevenlabs
-textgrid
