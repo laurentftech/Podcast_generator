@@ -162,65 +162,135 @@ class VoiceSettingsWindow(tk.Toplevel):
             header_frame.columnconfigure(next_column, weight=1)
 
     def _populate_guide_tab(self, tab, provider):
-        """Populates a tab with voice samples."""
-        canvas = tk.Canvas(tab, highlightthickness=0)
-        scrollbar = ttk.Scrollbar(tab, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
+        """Populates a tab with voice samples with improved scrolling."""
+        # Frame principal pour contenir le canvas et la scrollbar
+        main_frame = tk.Frame(tab)
+        main_frame.pack(fill="both", expand=True)
 
-        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        # Canvas avec scrollbar
+        canvas = tk.Canvas(main_frame, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+
+        # Frame scrollable
+        scrollable_frame = tk.Frame(canvas)
+
+        # Fonction pour mettre à jour la région de scroll
+        def configure_scroll_region(event=None):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        # Fonction pour synchroniser la largeur du frame scrollable avec le canvas
+        def configure_canvas_width(event=None):
+            canvas_width = canvas.winfo_width()
+            canvas.itemconfig(canvas_window, width=canvas_width)
+
+        # Lier les événements
+        scrollable_frame.bind("<Configure>", configure_scroll_region)
+        canvas.bind("<Configure>", configure_canvas_width)
+
+        # Créer la fenêtre dans le canvas
+        canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
+        # Configurer le scrolling avec la molette de la souris
+        def on_mousewheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        canvas.bind("<MouseWheel>", on_mousewheel)  # Windows
+        canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # Linux
+        canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))  # Linux
+
+        # Configurer le canvas pour le scrolling
         canvas.configure(yscrollcommand=scrollbar.set)
 
+        # Pack le canvas et la scrollbar
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
+        # Remplir le contenu selon le provider
         if provider == "gemini":
             for name, desc in AVAILABLE_VOICES.items():
                 self._create_guide_row(scrollable_frame, provider, name, f"{name} - {desc}", name)
         elif provider == "elevenlabs":
             if self.elevenlabs_voices_loaded and self.elevenlabs_voices:
                 for voice in self.elevenlabs_voices:
-                    self._create_guide_row(scrollable_frame, provider, voice['id'], voice['display_name'], voice['preview_url'])
+                    self._create_guide_row(scrollable_frame, provider, voice['id'],
+                                           voice['display_name'], voice['preview_url'])
             else:
-                tk.Label(scrollable_frame, text="Loading ElevenLabs voices...").pack(pady=20)
+                # Message de chargement avec style cohérent
+                loading_frame = tk.Frame(scrollable_frame, height=60)
+                loading_frame.pack(fill="x", pady=20, padx=5)
+                loading_frame.pack_propagate(False)
+
+                tk.Label(loading_frame, text="Loading ElevenLabs voices...",
+                         font=('Helvetica', 10), fg="grey").pack(expand=True)
+
+        # Mettre le focus sur le canvas pour permettre le scrolling au clavier
+        canvas.focus_set()
+
+        # Lier les touches fléchées pour le scrolling
+        canvas.bind("<Up>", lambda e: canvas.yview_scroll(-1, "units"))
+        canvas.bind("<Down>", lambda e: canvas.yview_scroll(1, "units"))
+        canvas.bind("<Prior>", lambda e: canvas.yview_scroll(-10, "units"))  # Page Up
+        canvas.bind("<Next>", lambda e: canvas.yview_scroll(10, "units"))
 
     def _create_guide_row(self, parent, provider, voice_id, display_name, play_identifier):
-        """Creates a single row in the voice guide."""
-        # Creates a single row using a grid layout for robust alignment.
-        row_frame = tk.Frame(parent)
+        """Creates a single row in the voice guide with perfect button alignment."""
+        # Créer un frame principal pour la ligne avec une hauteur minimale fixe
+        row_frame = tk.Frame(parent, height=60)  # Hauteur minimale fixe
         row_frame.pack(fill=tk.X, pady=4, padx=5)
+        row_frame.pack_propagate(False)  # Empêche le frame de se redimensionner selon son contenu
 
-        # Configure grid: column 0 for text (expands), column 1 for buttons (fixed).
+        # Configuration du grid: colonne 0 pour le texte (expandable), colonne 1 pour les boutons (fixe)
         row_frame.columnconfigure(0, weight=1)
-        row_frame.columnconfigure(1, weight=0)
+        row_frame.columnconfigure(1, weight=0, minsize=120)  # Largeur minimale fixe pour les boutons
 
-        # --- Column 1: Buttons ---
-        button_frame = tk.Frame(row_frame)
-        button_frame.grid(row=0, column=1, sticky="e", padx=(10, 0))
-
-        if provider == "gemini" and self.play_gemini_sample:
-            tk.Button(button_frame, text="▶", command=lambda v=play_identifier: self.play_gemini_sample(v)).pack(side=tk.LEFT)
-        elif provider == "elevenlabs" and self.play_elevenlabs_sample:
-            tk.Button(button_frame, text="▶", command=lambda i=voice_id, u=play_identifier: self.play_elevenlabs_sample(i, u)).pack(side=tk.LEFT)
-
-        tk.Button(button_frame, text="Add", command=lambda p=provider, d=display_name, i=voice_id: self.add_voice_to_speakers(p, d, i)).pack(side=tk.LEFT, padx=(5,0))
-
-        # --- Column 0: Text Content ---
+        # --- Colonne 0: Contenu texte ---
         text_frame = tk.Frame(row_frame)
-        text_frame.grid(row=0, column=0, sticky="w")
+        text_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
 
-        # Split display_name into name and description for better formatting
+        # Séparer le nom d'affichage en nom et description pour un meilleur formatage
         if " - " in display_name:
             name, description = display_name.split(" - ", 1)
         else:
             name = display_name
             description = ""
 
-        tk.Label(text_frame, text=name, font=('Helvetica', 10, 'bold'), anchor="w").pack(anchor="w")
+        # Nom de la voix (en gras)
+        name_label = tk.Label(text_frame, text=name, font=('Helvetica', 10, 'bold'),
+                              anchor="w", justify=tk.LEFT)
+        name_label.pack(anchor="w", fill="x")
 
+        # Description (si présente)
         if description:
-            # Use wraplength for the description to handle long text
-            tk.Label(text_frame, text=description, anchor="w", justify=tk.LEFT, wraplength=400, fg="grey").pack(anchor="w")
+            desc_label = tk.Label(text_frame, text=description, anchor="w", justify=tk.LEFT,
+                                  wraplength=400, fg="grey", font=('Helvetica', 9))
+            desc_label.pack(anchor="w", fill="x")
+
+        # --- Colonne 1: Boutons (alignés à droite et centrés verticalement) ---
+        button_frame = tk.Frame(row_frame)
+        button_frame.grid(row=0, column=1, sticky="ns", padx=(10, 0))
+
+        # Créer un conteneur pour centrer verticalement les boutons
+        buttons_container = tk.Frame(button_frame)
+        buttons_container.pack(expand=True, fill="both")
+
+        # Frame pour les boutons avec centrage vertical
+        buttons_inner = tk.Frame(buttons_container)
+        buttons_inner.pack(expand=True, anchor="center")  # Centre verticalement
+
+        # Bouton Play
+        if provider == "gemini" and self.play_gemini_sample:
+            play_btn = tk.Button(buttons_inner, text="▶", width=3, height=1,
+                                 command=lambda v=play_identifier: self.play_gemini_sample(v))
+            play_btn.pack(side=tk.LEFT, padx=(0, 5))
+        elif provider == "elevenlabs" and self.play_elevenlabs_sample:
+            play_btn = tk.Button(buttons_inner, text="▶", width=3, height=1,
+                                 command=lambda i=voice_id, u=play_identifier: self.play_elevenlabs_sample(i, u))
+            play_btn.pack(side=tk.LEFT, padx=(0, 5))
+
+        # Bouton Add
+        add_btn = tk.Button(buttons_inner, text="Add", width=6, height=1,
+                            command=lambda p=provider, d=display_name, i=voice_id: self.add_voice_to_speakers(p, d, i))
+        add_btn.pack(side=tk.LEFT)
 
     def safe_update_button(self, state, text):
         """Met à jour le bouton de manière sécurisée."""

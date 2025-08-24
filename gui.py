@@ -901,6 +901,43 @@ class PodcastGeneratorApp:
     def on_settings_window_close(self):
         self.menubar.entryconfig("Settings", state="normal")
         self._update_provider_label()
+        if not self.ffplay_path:
+            messagebox.showwarning(
+                "Player Not Found",
+                "ffplay (part of FFmpeg) is required to play voice samples.",
+                parent=self.root
+            )
+            return
+
+        # Gemini voice names are simple, e.g., "Schedar"
+        sample_filename = f"{voice_name}.mp3"
+        sample_path = get_asset_path(os.path.join("samples", "gemini_voices", sample_filename))
+
+        if not sample_path:
+            self.log_status(f"Sample for voice '{voice_name}' not found.")
+            return
+
+        def _play_sample_in_thread():
+            try:
+                creation_flags = 0
+                if sys.platform == "win32":
+                    creation_flags = subprocess.CREATE_NO_WINDOW
+
+                command = [self.ffplay_path, "-nodisp", "-autoexit", "-loglevel", "quiet", sample_path]
+                self.sample_playback_obj = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                                             creationflags=creation_flags)
+                self.sample_playback_obj.wait()
+            except Exception as e:
+                self.logger.error(f"Voice sample playback error: {e}", exc_info=True)
+            finally:
+                self.sample_playback_obj = None
+                self._current_sample_name = None
+
+        threading.Thread(target=_play_sample_in_thread, daemon=True).start()
+
+    def on_settings_window_close(self):
+        self.menubar.entryconfig("Settings", state="normal")
+        self._update_provider_label()
         self.provider_var.set(self.app_settings.get("tts_provider", "elevenlabs").lower())
         self.update_provider_menu_state()
         if self.app_settings.get("tts_provider", "").lower() == "elevenlabs":
