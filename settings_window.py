@@ -146,20 +146,23 @@ class VoiceSettingsWindow(tk.Toplevel):
         """Creates the headers for the speaker configuration section."""
         header_frame = tk.Frame(parent_frame)
         header_frame.pack(fill=tk.X, pady=(0, 5))
-        tk.Label(header_frame, text="Speaker Name (in script)",
-                 font=('Helvetica', 10, 'bold')).grid(row=0, column=0, sticky="w", padx=(0, 10))
 
-        next_column = 1
+        # Speaker Name header - ajuster la largeur pour correspondre aux Entry
+        speaker_label = tk.Label(header_frame, text="Speaker Name (in script)",
+                                 font=('Helvetica', 10, 'bold'), anchor="w", width=30)
+        speaker_label.pack(side=tk.LEFT, padx=(0, 10))
+
+        # Gemini Voice header (si API configurée)
         if self.gemini_api_configured:
-            tk.Label(header_frame, text="Gemini Voice", font=('Helvetica', 10, 'bold')) \
-                .grid(row=0, column=next_column, sticky="w", padx=(0, 10))
-            header_frame.columnconfigure(next_column, weight=1)
-            next_column += 1
+            gemini_label = tk.Label(header_frame, text="Gemini Voice",
+                                    font=('Helvetica', 10, 'bold'), anchor="w", width=30)
+            gemini_label.pack(side=tk.LEFT, padx=(0, 10))
 
+        # ElevenLabs Voice header (si API configurée)
         if self.elevenlabs_api_configured:
-            tk.Label(header_frame, text="ElevenLabs Voice", font=('Helvetica', 10, 'bold')) \
-                .grid(row=0, column=next_column, sticky="w", padx=(0, 10))
-            header_frame.columnconfigure(next_column, weight=1)
+            elevenlabs_label = tk.Label(header_frame, text="ElevenLabs Voice",
+                                        font=('Helvetica', 10, 'bold'), anchor="w", width=30)
+            elevenlabs_label.pack(side=tk.LEFT, padx=(0, 10))
 
     def _populate_guide_tab(self, tab, provider):
         """Populates a tab with voice samples with improved scrolling."""
@@ -561,40 +564,44 @@ class VoiceSettingsWindow(tk.Toplevel):
         row_frame = tk.Frame(self.speaker_frame)
         row_frame.pack(fill=tk.X, pady=2)
 
-        speaker_entry = tk.Entry(row_frame, width=25)
+        # Entry pour le nom du speaker - largeur augmentée pour correspondre aux headers
+        speaker_entry = tk.Entry(row_frame, width=30)
         speaker_entry.pack(side=tk.LEFT, padx=(0, 10))
         speaker_entry.insert(0, speaker_name)
 
         row_data = {
-            'frame': row_frame, # Keep a reference to the frame for removal
+            'frame': row_frame,
             'speaker': speaker_entry,
             'gemini_voice': None,
             'elevenlabs_voice': None
         }
 
+        # Combobox Gemini (si API configurée)
         if self.gemini_api_configured:
             gemini_combo = ttk.Combobox(row_frame, values=self.VOICE_DISPLAY_LIST,
-                                        width=25, state="readonly")
+                                        width=30, state="readonly")
             gemini_combo.pack(side=tk.LEFT, padx=(0, 10))
             if gemini_voice:
                 gemini_combo.set(gemini_voice)
             row_data['gemini_voice'] = gemini_combo
 
+        # Combobox ElevenLabs (si API configurée)
         if self.elevenlabs_api_configured:
             elevenlabs_values = []
             if self.elevenlabs_voices_loaded and self.elevenlabs_voices:
                 elevenlabs_values = [voice['display_name'] for voice in self.elevenlabs_voices]
 
             elevenlabs_combo = ttk.Combobox(row_frame, values=elevenlabs_values,
-                                            width=25, state="readonly")
+                                            width=30, state="readonly")
             elevenlabs_combo.pack(side=tk.LEFT, padx=(0, 10))
             if elevenlabs_voice:
                 elevenlabs_combo.set(elevenlabs_voice)
             row_data['elevenlabs_voice'] = elevenlabs_combo
 
+        # Bouton de suppression
         remove_btn = tk.Button(row_frame, text="-", width=3,
-                               command=lambda r=row_frame: self.remove_row(r)) # Pass the frame to identify the row
-        remove_btn.pack(side=tk.LEFT)
+                               command=lambda r=row_frame: self.remove_row(r))
+        remove_btn.pack(side=tk.RIGHT)
 
         row_data['remove_btn'] = remove_btn
         self.entries.append(row_data)

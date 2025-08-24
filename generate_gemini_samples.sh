@@ -41,7 +41,20 @@ echo "---"
 
 for voice in "${VOICES[@]}"; do
     output_file="$OUTPUT_DIR/${voice}.mp3"
-    echo "-> Generating sample for '$voice'..."
+
+    # Vérifie si le fichier existe déjà et demande confirmation
+    if [ -f "$output_file" ]; then
+        read -p "-> Sample for '$voice' already exists. Overwrite? [y/N] " -n 1 -r
+        echo # (pour le retour à la ligne après la saisie)
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "   Skipping '$voice'."
+            echo "---"
+            continue
+        fi
+        echo "-> Overwriting sample for '$voice'..."
+    else
+        echo "-> Generating sample for '$voice'..."
+    fi
 
     # Crée un texte d'échantillon personnalisé pour chaque voix
     current_sample_text=$(printf "$SAMPLE_TEXT_TEMPLATE" "$voice")
