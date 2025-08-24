@@ -111,6 +111,8 @@ class PodcastGeneratorApp:
         self.api_key = api_key
         self.log_queue = queue.Queue()
         self.playback_obj = None  # To keep a reference to the playback process
+        self.sample_playback_obj = None # For voice sample playback
+        self._current_sample_name: Optional[str] = None # To track which sample is playing
         self.last_generated_filepath = None
         self.ffplay_path = find_ffplay_path()
         self.elevenlabs_quota_text = None # New state variable
@@ -566,14 +568,16 @@ class PodcastGeneratorApp:
         """Opens the settings management window."""
         # Disable the button while the window is open to avoid duplicates
         self.menubar.entryconfig("Settings", state="disabled")
-        from settings_window import SettingsWindow
-        SettingsWindow(
+        from settings_window import VoiceSettingsWindow
+        VoiceSettingsWindow(
             self.root,
             current_settings=self.app_settings,
             save_callback=self.save_settings,
             close_callback=self.on_settings_window_close,
             default_settings=self.DEFAULT_APP_SETTINGS,
-            preloaded_elevenlabs_voices=self.elevenlabs_voices_cache  # <-- passe le cache
+            preloaded_elevenlabs_voices=self.elevenlabs_voices_cache,
+            play_gemini_sample_callback=self.play_gemini_voice_sample,
+            play_elevenlabs_sample_callback=self.play_elevenlabs_voice_sample
         )
 
     def show_about_window(self):
@@ -844,6 +848,55 @@ class PodcastGeneratorApp:
             self.playback_obj = None
             if self.root.winfo_exists():
                 self.log_queue.put(('UPDATE_PLAY_BUTTON', '▶️ Play', 'normal'))
+
+    def play_gemini_voice_sample(self, voice_name: str):
+        """Plays a voice sample for the given Gemini voice name."""
+        sample_filename = f"{voice_name}.mp3"
+        sample_path = get_asset_path(os.path.join("samples", "gemini_voices", sample_filename))
+
+        if not sample_path:
+            self.log_status(f"Sample for voice '{voice_name}' not found.")
+            return
+        self._play_sample(voice_name, sample_path)
+
+    def play_elevenlabs_voice_sample(self, voice_id: str, preview_url: str):
+        """Plays a voice sample for ElevenLabs from a URL."""
+        if not preview_url:
+            self.log_status(f"No preview available for voice ID '{voice_id}'.")
+            return
+        self._play_sample(voice_id, preview_url)
+
+    def _play_sample(self, sample_identifier: str, sample_source: str):
+        """Generic sample player for local files or URLs."""
+        if self.sample_playback_obj and self.sample_playback_obj.poll() is None:
+            self.sample_playback_obj.terminate()
+            if self._current_sample_name == sample_identifier:
+                self._current_sample_name = None
+                return
+
+        self._current_sample_name = sample_identifier
+
+        if not self.ffplay_path:
+            messagebox.showwarning("Player Not Found", "ffplay (part of FFmpeg) is required to play voice samples.", parent=self.root)
+            return
+
+        def _play_in_thread():
+            try:
+                creation_flags = 0
+                if sys.platform == "win32":
+                    creation_flags = subprocess.CREATE_NO_WINDOW
+
+                command = [self.ffplay_path, "-nodisp", "-autoexit", "-loglevel", "quiet", sample_source]
+                self.sample_playback_obj = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                                             creationflags=creation_flags)
+                self.sample_playback_obj.wait()
+            except Exception as e:
+                self.logger.error(f"Voice sample playback error: {e}", exc_info=True)
+            finally:
+                self.sample_playback_obj = None
+                self._current_sample_name = None
+
+        threading.Thread(target=_play_in_thread, daemon=True).start()
 
     def on_settings_window_close(self):
         self.menubar.entryconfig("Settings", state="normal")
@@ -1190,8 +1243,8 @@ def open_settings_window(self):
         """Opens the settings management window."""
         # Disable the button while the window is open to avoid duplicates
         self.menubar.entryconfig("Settings", state="disabled")
-        from settings_window import SettingsWindow
-        SettingsWindow(
+        from settings_window import VoiceSettingsWindow
+        VoiceSettingsWindow(
             self.root,
             current_settings=self.app_settings,
             save_callback=self.save_settings,
@@ -1294,6 +1347,7 @@ def main():
                 name = voice.get('name', 'Unknown')
                 category = voice.get('category', '')
                 labels = voice.get('labels', {}) if voice.get('labels') else {}
+                preview_url = voice.get('preview_url', '')
 
                 accent = labels.get('accent', '')
                 age = labels.get('age', '')
@@ -1312,7 +1366,8 @@ def main():
                     'name': name,
                     'display_name': display_name,
                     'category': category,
-                    'labels': labels
+                    'labels': labels,
+                    'preview_url': preview_url
                 })
 
             voices.sort(key=lambda x: x.get('name', ''))
@@ -1330,40 +1385,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-class WelcomeDialog(tk.Toplevel):
-    """A custom dialog window to welcome the user and provide a clickable link."""
-    def __init__(self, parent, service: str = "gemini"):
-        super().__init__(parent)
-        self.title("Welcome!")
-        self.transient(parent)
-        self.grab_set()
-        self.resizable(False, False)
-
-        main_frame = tk.Frame(self, padx=20, pady=15)
-        main_frame.pack(fill=tk.BOTH, expand=True)
-
-        tk.Label(main_frame, text="Welcome to Podcast Generator!", font=('Helvetica', 12, 'bold')).pack(pady=(0, 10))
-        if service == "elevenlabs":
-            tk.Label(main_frame, text="To get started, the application needs your ElevenLabs API key.").pack(pady=(0, 10))
-            link_frame = tk.Frame(main_frame)
-            link_frame.pack(pady=(0, 15))
-            tk.Label(link_frame, text="You can get a key at:").pack(side=tk.LEFT)
-            link_label = tk.Label(link_frame, text="elevenlabs.io", fg="blue", cursor="hand2")
-            link_label.pack(side=tk.LEFT, padx=5)
-            link_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://elevenlabs.io"))
-        else:
-            tk.Label(main_frame, text="To get started, the application needs your Google Gemini API key.").pack(pady=(0, 10))
-            link_frame = tk.Frame(main_frame)
-            link_frame.pack(pady=(0, 15))
-            tk.Label(link_frame, text="You can get a free key at:").pack(side=tk.LEFT)
-            link_label = tk.Label(link_frame, text="ai.google.dev/gemini-api", fg="blue", cursor="hand2")
-            link_label.pack(side=tk.LEFT, padx=5)
-            link_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://ai.google.dev/gemini-api"))
-
-        ok_button = tk.Button(main_frame, text="OK", command=self.destroy, width=10)
-        ok_button.pack(pady=(10, 0))
-
-        self.bind('<Return>', lambda event: ok_button.invoke())
-        self.protocol("WM_DELETE_WINDOW", self.destroy)
