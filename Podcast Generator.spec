@@ -28,8 +28,9 @@ a = Analysis(
     ['gui.py'],
     pathex=[SPEC_DIR], # Ensure the project root is in the path
     binaries=[],
-    # We explicitly add the _version.py file here to ensure it's included.
-    datas=[(version_file_path, '.')],
+    # We explicitly add the _version.py file and the 'samples/gemini_voices' directory
+    # to ensure they are included in the final executable.
+    datas=[(version_file_path, '.'), (os.path.join(SPEC_DIR, 'samples', 'gemini_voices'), 'samples/gemini_voices')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
