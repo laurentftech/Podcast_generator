@@ -10,21 +10,22 @@ import shutil
 import subprocess
 
 
-def _clean_script(script_text: str) -> str:
+def _prepare_scripts(original_script_text: str) -> tuple[str, str]:
     """
-    Cleans the script text to keep only the spoken words for the aligner.
-    Removes speaker names, annotations, and instructions.
+    Prepares two versions of the script:
+    1. A clean version for MFA alignment (no speaker names, no annotations).
+    2. A display version for the final HTML (speaker names and annotations preserved).
     """
-    # Remove speaker names like "John: "
-    cleaned_text = re.sub(r'^\s*[\w\s]+:\s*', '', script_text, flags=re.MULTILINE)
-    # Remove annotations in brackets or angle brackets like "[playful]" or "<playful>"
-    cleaned_text = re.sub(r'[<\[][^>\]]*[>\]]', '', cleaned_text)
-    # Remove lines that seem to be instructions and clean up
-    lines = []
-    for line in cleaned_text.splitlines():
-        if "aloud" not in line.lower() and "tone" not in line.lower() and line.strip():
-            lines.append(line.strip())
-    return " ".join(lines)
+    # The display version is the original text with normalized apostrophes.
+    display_text_normalized = original_script_text.replace("’", "'").replace("`", "'")
+
+    # The MFA version is created by cleaning the display version.
+    # 1. Remove annotations.
+    mfa_text_intermediate = re.sub(r'[<\[][^>\]]*[>\]]', '', display_text_normalized)
+    # 2. Remove speaker names.
+    mfa_text_normalized = re.sub(r'^\s*[\w\s]+:\s*', '', mfa_text_intermediate, flags=re.MULTILINE)
+
+    return mfa_text_normalized, display_text_normalized
 
 def _parse_textgrid(textgrid_filepath: str) -> list:
     """Parses a TextGrid file from MFA to extract word timings."""
@@ -56,35 +57,29 @@ def _parse_textgrid(textgrid_filepath: str) -> list:
             })
     return transcript
 
-def _setup_mfa_models(dictionary: str, acoustic_model: str, mfa_base_command: list, status_callback=print):
-    """Checks for MFA models and downloads them if not present."""
+def _download_mfa_model_if_needed(model_type: str, model_name: str, mfa_base_command: list, status_callback=print):
+    """Helper to check for an MFA model and download it if missing."""
     logger = logging.getLogger("PodcastGenerator.Demo")
 
-    # Check dictionary model
-    check_dict_cmd = mfa_base_command + ["model", "inspect", "dictionary", dictionary]
-    logger.debug(f"Checking for MFA dictionary: {' '.join(check_dict_cmd)}")
-    if subprocess.run(check_dict_cmd, capture_output=True).returncode != 0:
-        status_callback(f"MFA dictionary '{dictionary}' not found. Downloading...")
-        download_dict_cmd = mfa_base_command + ["model", "download", "dictionary", dictionary]
-        logger.debug(f"Running: {' '.join(download_dict_cmd)}")
-        result = subprocess.run(download_dict_cmd, capture_output=True, text=True)
+    check_cmd = mfa_base_command + ["model", "inspect", model_type, model_name]
+    logger.debug(f"Checking for MFA {model_type} model: {' '.join(check_cmd)}")
+    if subprocess.run(check_cmd, capture_output=True).returncode != 0:
+        status_callback(f"MFA {model_type} model '{model_name}' not found. Downloading...")
+        download_cmd = mfa_base_command + ["model", "download", model_type, model_name]
+        logger.debug(f"Running: {' '.join(download_cmd)}")
+        result = subprocess.run(download_cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            raise RuntimeError(f"Failed to download MFA dictionary '{dictionary}'.\nError: {result.stderr}")
-        status_callback("Dictionary downloaded successfully.")
+            raise RuntimeError(f"Failed to download MFA {model_type} model '{model_name}'.\nError: {result.stderr}")
+        status_callback(f"{model_type.capitalize()} model downloaded successfully.")
+    else:
+        logger.info(f"MFA {model_type} model '{model_name}' already installed.")
 
-    # Check acoustic model
-    check_acoustic_cmd = mfa_base_command + ["model", "inspect", "acoustic", acoustic_model]
-    logger.debug(f"Checking for MFA acoustic model: {' '.join(check_acoustic_cmd)}")
-    if subprocess.run(check_acoustic_cmd, capture_output=True).returncode != 0:
-        status_callback(f"MFA acoustic model '{acoustic_model}' not found. Downloading...")
-        download_acoustic_cmd = mfa_base_command + ["model", "download", "acoustic", acoustic_model]
-        logger.debug(f"Running: {' '.join(download_acoustic_cmd)}")
-        result = subprocess.run(download_acoustic_cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"Failed to download MFA acoustic model '{acoustic_model}'.\nError: {result.stderr}")
-        status_callback("Acoustic model downloaded successfully.")
+def _setup_mfa_models(dictionary: str, acoustic_model: str, mfa_base_command: list, status_callback=print):
+    """Checks for MFA models and downloads them if not present."""
+    _download_mfa_model_if_needed("dictionary", dictionary, mfa_base_command, status_callback)
+    _download_mfa_model_if_needed("acoustic", acoustic_model, mfa_base_command, status_callback)
 
-def create_html_demo(script_filepath: str, audio_filepath: str, status_callback=print):
+def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Podcast Demo", status_callback=print):
     """
     Génère une démo HTML synchronisée depuis un script et son audio.
     Utilise Montreal Forced Aligner (MFA) pour aligner mot à mot.
@@ -110,11 +105,18 @@ def create_html_demo(script_filepath: str, audio_filepath: str, status_callback=
             raise RuntimeError(f"Your installed MFA version ({version_str}) is too old. Version 2.0 or higher is required for automatic model downloads.")
         logger.info(f"Found compatible MFA version: {version_str}")
     except Exception as e:
-        error_msg = (
-            "Could not run Montreal Forced Aligner (MFA).\n"
-            "Please ensure it is installed correctly using the recommended Conda method.\n"
-            f"Details: {e}"
-        )
+        # Check for specific, common errors to provide better guidance.
+        if isinstance(e, subprocess.CalledProcessError) and "No such option: --version" in e.stderr:
+            error_msg = (
+                "Your installed MFA version is too old (v1.x) and does not support modern commands.\n"
+                "Please follow the instructions to reinstall the correct version using Conda."
+            )
+        else:
+            error_msg = (
+                "Could not run Montreal Forced Aligner (MFA).\n"
+                "Please ensure it is installed correctly using the recommended Conda method.\n"
+                f"Details: {e}"
+            )
         status_callback(error_msg)
         logger.error(error_msg)
         return
@@ -152,55 +154,93 @@ def create_html_demo(script_filepath: str, audio_filepath: str, status_callback=
             # Clean the script and save it with the same basename as the audio.
             with open(script_filepath, "r", encoding="utf-8") as f:
                 original_script_text = f.read()
-            cleaned_script_text = _clean_script(original_script_text)
+            mfa_script_text, display_script_text = _prepare_scripts(original_script_text)
             temp_script_filepath = os.path.join(corpus_dir, f"{base_name}.txt")
             with open(temp_script_filepath, "w", encoding="utf-8") as f:
-                f.write(cleaned_script_text)
+                f.write(mfa_script_text)
 
             status_callback("Corpus prepared. Starting alignment with MFA (this may take a moment)...")
 
             # --- 3. Run MFA Aligner ---
             mfa_command = mfa_base_command + [
                 "align", corpus_dir, dictionary_model, acoustic_model, output_dir,
-                "--clean", "--quiet", "--use_punctuation"
+                "--clean", "--use_punctuation", "--case_sensitive"
             ]
             logger.debug(f"Executing MFA: {' '.join(mfa_command)}")
-            result = subprocess.run(mfa_command, capture_output=True, text=True)
-
-            if result.returncode != 0:
-                logger.error("MFA alignment failed.")
-                logger.error(f"  - STDOUT: {result.stdout}")
-                logger.error(f"  - STDERR: {result.stderr}")
-                raise RuntimeError(f"MFA alignment failed. See logs for details. Error: {result.stderr or result.stdout}")
+            # Run MFA and stream its output to the console to show progress.
+            # check=True will raise an exception on failure.
+            subprocess.run(mfa_command, check=True)
 
             status_callback("MFA alignment successful.")
 
-            # --- 4. Parse TextGrid Output ---
+            # --- 4. Parse TextGrid Output and Reconstruct HTML ---
             textgrid_filepath = os.path.join(output_dir, f"{base_name}.TextGrid")
             transcript_from_mfa = _parse_textgrid(textgrid_filepath)
             if not transcript_from_mfa:
                 raise RuntimeError("Failed to parse TextGrid output or no words were aligned.")
 
-            # Reconstruct transcript with correct spacing for display
-            transcript = []
-            for i, item in enumerate(transcript_from_mfa):
-                current_word = item['word']
-                # Add a space after the word, unless it's the last word or the next word is punctuation.
-                add_space = (i + 1) < len(transcript_from_mfa) and transcript_from_mfa[i+1]['word'].isalnum()
+            # Reconstruct the final HTML body by mapping timed words back to the cleaned script text.
+            # This preserves all original formatting (casing, line breaks, extra spaces).
+            html_body_parts = []
+            text_pointer = 0
+            source_text = display_script_text # Use the script with speaker names for reconstruction
 
-                transcript.append({
-                    "word": current_word + (" " if add_space else ""),
-                    "start": item['start'],
-                    "end": item['end']
-                })
+            for timed_item in transcript_from_mfa:
+                word_to_find = timed_item['word']
+                # MFA can output <unk> for words it doesn't recognize (like emojis). Skip them.
+                if word_to_find == '<unk>':
+                    continue
+                try:
+                    # Find the next occurrence of the word from MFA in our source text, case-insensitively.
+                    # This is crucial for matching MFA's lowercase output to the original script's casing.
+                    found_at = source_text.lower().index(word_to_find.lower(), text_pointer)
+
+                    # Append the text (whitespace, etc.) between the last word and this one
+                    leading_text = source_text[text_pointer:found_at]
+                    # Format for HTML: escape special chars, convert newlines, and bold speaker names
+                    processed_leading_text = leading_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                    processed_leading_text = processed_leading_text.replace("\n", "<br>\n")
+                    processed_leading_text = re.sub(r'(^|<br>\n)(\s*)([\w\s]+:)', r'\1\2<strong>\3</strong>', processed_leading_text)
+                    html_body_parts.append(
+                        processed_leading_text
+                    )
+
+                    # Append the timed word as a span
+                    start, end = timed_item['start'], timed_item['end']
+                    original_word = source_text[found_at:found_at + len(word_to_find)] # Get the word with original casing
+                    word_html = f'<span class="word" data-start="{start}" data-end="{end}" onclick="audio.currentTime = {start};">{original_word}</span>'
+                    html_body_parts.append(word_html)
+
+                    # Move the pointer to the end of the found word
+                    text_pointer = found_at + len(word_to_find)
+                except ValueError:
+                    logger.warning(f"Could not find word '{word_to_find}' in the original script after position {text_pointer}. Alignment may be imperfect.")
+
+            # Append any remaining text after the last aligned word
+            trailing_text = source_text[text_pointer:]
+            processed_trailing_text = trailing_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            processed_trailing_text = processed_trailing_text.replace("\n", "<br>\n")
+            processed_trailing_text = re.sub(r'(^|<br>\n)(\s*)([\w\s]+:)', r'\1\2<strong>\3</strong>', processed_trailing_text)
+            html_body_parts.append(
+                processed_trailing_text
+            )
+            final_html_body = "".join(html_body_parts)
 
             # --- 5. Generate HTML ---
-            html_filepath = os.path.splitext(audio_filepath)[0] + ".html"
+            # Sanitize the title to create a safe filename
+            safe_filename = re.sub(r'[^\w\s-]', '', title).strip().lower()
+            safe_filename = re.sub(r'[-\s]+', '_', safe_filename)
+            if not safe_filename:
+                # Fallback if the title contains only special characters
+                safe_filename = "podcast_demo"
+            output_directory = os.path.dirname(audio_filepath)
+            html_filepath = os.path.join(output_directory, f"{safe_filename}.html")
+
             html_template = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Podcast Demo</title>
+  <title>{title}</title>
   <style>
     body {{ font-family: system-ui, sans-serif; max-width:800px; margin:2rem auto; line-height:1.6; }}
     audio {{ width:100%; margin:1rem 0; }}
@@ -209,21 +249,10 @@ def create_html_demo(script_filepath: str, audio_filepath: str, status_callback=
   </style>
 </head>
 <body>
-  <h1>Podcast Demo</h1>
+  <h1>{title}</h1>
   <audio id="player" controls src="{os.path.basename(audio_filepath)}"></audio>
-  <p id="transcript"></p>
+  <p id="transcript">{final_html_body}</p>
   <script>
-    const transcript = {json.dumps(transcript, ensure_ascii=False)};
-    const container = document.getElementById("transcript");
-    transcript.forEach(item => {{
-      const span = document.createElement("span");
-      span.textContent = item.word;
-      span.classList.add("word");
-      span.dataset.start = item.start;
-      span.dataset.end = item.end;
-      span.onclick = () => {{ audio.currentTime = item.start; }};
-      container.appendChild(span);
-    }});
     const audio = document.getElementById("player");
     const words = document.querySelectorAll(".word");
     audio.addEventListener("timeupdate", () => {{
@@ -256,6 +285,11 @@ if __name__ == "__main__":
     )
     parser.add_argument("audio_file", help="Path to the audio file (e.g., .mp3, .wav).")
     parser.add_argument("script_file", help="Path to the text script file (.txt).")
+    parser.add_argument(
+        "--title",
+        default="Podcast Demo",
+        help="The title for the generated HTML page. (default: %(default)s)"
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.audio_file):
@@ -267,4 +301,4 @@ if __name__ == "__main__":
 
     # Set logging to DEBUG for detailed output, especially for Aeneas.
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    create_html_demo(args.script_file, args.audio_file)
+    create_html_demo(args.script_file, args.audio_file, title=args.title)
