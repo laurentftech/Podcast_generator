@@ -212,7 +212,8 @@ To contribute to the project, run the code, or create your own build, please ref
 ### Generating a Synchronized HTML Demo (MFA required)
 
 You can generate a shareable HTML demo with synchronized audio and text from the command line.
-This optional feature require the installation of MFA (Montreal Forced Aligner [https://montreal-forced-aligner.readthedocs.io/en/latest])
+This completely optional feature require the installation of MFA [Montreal Forced Aligner](https://montreal-forced-aligner.readthedocs.io/en/latest)
+See an example of HTML page generated [here](docs/who_am_i.html)
 
 ```bash
 python create_demo.py /path/to/audio.mp3 /path/to/script.txt --title "My Awesome Podcast" --subtitle "Episode 1" --output-dir docs
