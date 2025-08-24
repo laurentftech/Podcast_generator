@@ -877,6 +877,17 @@ class PodcastGeneratorApp:
             return
         self._play_sample(button, preview_url)
 
+    def _stop_sample_playback(self):
+        """Stops any active sample playback and resets associated UI elements."""
+        if self.sample_poll_id:
+            self.root.after_cancel(self.sample_poll_id)
+            self.sample_poll_id = None
+
+        if self.sample_playback_obj and self.sample_playback_obj.poll() is None:
+            self.sample_playback_obj.terminate()
+            self.sample_playback_obj = None
+            self._reset_active_button()
+
     def _poll_sample_playback(self):
         """Periodically checks if the sample playback process has finished."""
         if self.sample_playback_obj:
@@ -897,20 +908,12 @@ class PodcastGeneratorApp:
         Plays a voice sample using a polling mechanism to update the UI,
         which is more robust than using a separate thread's finally block.
         """
-        # --- Stop any currently playing sample and polling ---
-        if self.sample_poll_id:
-            self.root.after_cancel(self.sample_poll_id)
-            self.sample_poll_id = None
+        button_that_was_playing = self._active_play_button
+        self._stop_sample_playback()
 
-        if self.sample_playback_obj and self.sample_playback_obj.poll() is None:
-            button_that_was_playing = self._active_play_button
-            self.sample_playback_obj.terminate()
-            self.sample_playback_obj = None
-            self._reset_active_button()
-
-            # If the button we just clicked was the one playing, our only job was to stop it.
-            if button_that_was_playing == button:
-                return
+        # If the button we just clicked was the one playing, our only job was to stop it.
+        if button_that_was_playing == button:
+            return
 
         # --- Start new playback ---
         self._active_play_button = button
@@ -942,6 +945,7 @@ class PodcastGeneratorApp:
             self.sample_playback_obj = None
 
     def on_settings_window_close(self):
+        self._stop_sample_playback()
         self.menubar.entryconfig("Settings", state="normal")
         self._update_provider_label()
         self.provider_var.set(self.app_settings.get("tts_provider", "elevenlabs").lower())
