@@ -11,18 +11,14 @@ import shutil
 import subprocess
 import logging
 import getpass
-from typing import Optional
-import webbrowser
+from typing import Optional, Any, Dict, List, Tuple
 import tempfile
 
 import json
 import keyring  # For secure credential storage
-# Import tools for dialog boxes
-import tkinter as tk
-from tkinter import simpledialog
+from create_demo import create_html_demo
 
 import re
-from typing import Any, Dict, List, Tuple
 import requests
 
 # Global logger instance - initialized once when module is imported
@@ -193,7 +189,7 @@ def get_api_key(status_callback, logger: logging.Logger, parent_window=None, ser
 
 class TTSProvider:
     def synthesize(self, script_text: str, speaker_mapping: dict, output_filepath: str, status_callback=print) -> \
-    Optional[str]:
+            Optional[str]:
         raise NotImplementedError
 
 
@@ -202,14 +198,14 @@ class GeminiTTS(TTSProvider):
         self.api_key = api_key
 
     def synthesize(self, script_text: str, speaker_mapping: dict, output_filepath: str, status_callback=print) -> \
-    Optional[str]:
+            Optional[str]:
         logger = logging.getLogger("PodcastGenerator")
         client = genai.Client(api_key=self.api_key)
 
         # Gemini expects annotations in parentheses, so we convert them from the script's square bracket format.
         gemini_script = script_text.replace('[', '(').replace(']', ')')
         logger.info("Converted script annotations from [] to () for Gemini.")
- 
+
         models_to_try = ["gemini-2.5-pro-preview-tts", "gemini-2.5-flash-preview-tts"]
         contents = [
             types.Content(
@@ -217,11 +213,11 @@ class GeminiTTS(TTSProvider):
                 parts=[types.Part.from_text(text=gemini_script)],
             ),
         ]
- 
+
         # Gemini has different configurations for 1 or 2 speakers.
         num_speakers = len(speaker_mapping)
         speech_config = None
- 
+
         if num_speakers == 1:
             # Configuration for a single speaker
             the_only_voice_name = list(speaker_mapping.values())[0]
@@ -252,7 +248,7 @@ class GeminiTTS(TTSProvider):
             status_callback(f"Error: Gemini TTS requires 1 or 2 speakers, but {num_speakers} were provided.")
             logger.error(f"Invalid number of speakers for Gemini TTS: {num_speakers}")
             return None
- 
+
         generate_content_config = types.GenerateContentConfig(
             temperature=1,
             response_modalities=["audio"],
@@ -721,131 +717,6 @@ def sanitize_app_settings_for_backend(app_settings: Dict[str, Any]) -> Dict[str,
     return app_settings_clean
 
 
-def create_html_demo(script_filepath: str, audio_filepath: str, status_callback=print):
-    """
-    Génère une démo HTML synchronisée depuis un script et son audio.
-    Utilise Aeneas pour aligner mot à mot et détecte automatiquement la langue du script.
-    """
-    import os
-    import json
-    import webbrowser
-    import logging
-
-    logger = logging.getLogger("PodcastGenerator")
-
-    try:
-        from aeneas.executetask import ExecuteTask
-        from aeneas.task import Task
-    except ImportError:
-        status_callback("The 'aeneas' library is required for demo generation. Install with: pip install aeneas")
-        logger.error("Aeneas library not found")
-        return
-
-    try:
-        # Lecture du script
-        with open(script_filepath, "r", encoding="utf-8") as f:
-            script_text = f.read()
-
-        # Détection automatique de la langue
-        try:
-            from langdetect import detect
-            detected_lang = detect(script_text)
-            lang_map = {"en": "eng", "fr": "fra", "es": "spa", "de": "deu", "it": "ita"}
-            task_language = lang_map.get(detected_lang, "eng")
-            status_callback(f"Detected script language: {detected_lang} (Aeneas: {task_language})")
-        except Exception:
-            task_language = "eng"
-            status_callback("Language detection failed, defaulting to English (eng)")
-
-        json_filepath = os.path.splitext(audio_filepath)[0] + ".json"
-        html_filepath = os.path.splitext(audio_filepath)[0] + ".html"
-
-        # Création et exécution de la tâche Aeneas
-        config_string = f"task_language={task_language}|is_text_type=plain|os_task_file_format=json"
-        task = Task(config_string=config_string)
-        task.audio_file_path = os.path.abspath(audio_filepath)
-        task.text_file_path = os.path.abspath(script_filepath)
-        task.sync_map_file_path = os.path.abspath(json_filepath)
-
-        ExecuteTask(task).execute()
-        task.output_sync_map_file()
-        status_callback("Timestamps generated successfully.")
-
-        # Lecture du JSON et préparation du transcript
-        with open(json_filepath, "r", encoding="utf-8") as f:
-            sync_map = json.load(f)
-
-        transcript = []
-        for fragment in sync_map.get("fragments", []):
-            if fragment.get("lines"):
-                word = fragment["lines"][0]
-                start = float(fragment["begin"])
-                end = float(fragment["end"])
-                transcript.append({"word": word, "start": start, "end": end})
-
-        # Génération du HTML
-        html_template = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Podcast Demo</title>
-  <style>
-    body {{ font-family: system-ui, sans-serif; max-width:800px; margin:2rem auto; line-height:1.6; }}
-    audio {{ width:100%; margin:1rem 0; }}
-    .word {{ padding:0 2px; transition:background 0.2s; cursor: pointer; }}
-    .highlight {{ background:#ffe08a; border-radius:3px; }}
-  </style>
-</head>
-<body>
-  <h1>Podcast Demo</h1>
-  <audio id="player" controls src="{os.path.basename(audio_filepath)}"></audio>
-  <p id="transcript"></p>
-  <script>
-    const transcript = {json.dumps(transcript, ensure_ascii=False)};
-    const container = document.getElementById("transcript");
-    transcript.forEach(item => {{
-      const span = document.createElement("span");
-      span.textContent = item.word + " ";
-      span.classList.add("word");
-      span.dataset.start = item.start;
-      span.dataset.end = item.end;
-      span.onclick = () => {{ audio.currentTime = item.start; }};
-      container.appendChild(span);
-    }});
-
-    const audio = document.getElementById("player");
-    const words = document.querySelectorAll(".word");
-    audio.addEventListener("timeupdate", () => {{
-      const t = audio.currentTime;
-      words.forEach(w => {{
-        const start = parseFloat(w.dataset.start);
-        const end = parseFloat(w.dataset.end);
-        w.classList.toggle("highlight", t >= start && t < end);
-      }});
-      // Scroll automatique
-      const current = Array.from(words).find(w => w.classList.contains("highlight"));
-      if(current) {{
-        current.scrollIntoView({{behavior: "smooth", block: "center"}});
-      }}
-    }});
-  </script>
-</body>
-</html>"""
-
-        with open(html_filepath, "w", encoding="utf-8") as f:
-            f.write(html_template)
-
-        webbrowser.open("file://" + os.path.abspath(html_filepath))
-        status_callback(f"Demo generated and opened: {os.path.basename(html_filepath)}")
-
-    except Exception as e:
-        status_callback(f"Demo generation failed: {e}")
-        logger.error(f"HTML demo generation failed: {e}", exc_info=True)
-    finally:
-        if os.path.exists(json_filepath):
-            os.remove(json_filepath)
-
-
 if __name__ == "__main__":
     logger = setup_logging()
 
@@ -947,6 +818,7 @@ Example usage:
             output_filepath = os.path.join(script_dir, f"{base_script_name}.mp3")
             print(f"No output path specified. Defaulting to: {output_filepath}")
 
+
     def _load_cli_settings():
         """Loads settings from the JSON file for CLI usage."""
         app_data_dir = get_app_data_dir()
@@ -963,9 +835,10 @@ Example usage:
                 "speaker_voices_elevenlabs": {"John": "EkK5I93UQWFDigLMpZcX", "Samantha": "Z3R5wn05IrDiVCyEkUrK"}
             }
 
+
     # --- Get API Key and Generate ---
     app_settings = _load_cli_settings()
-    app_settings['tts_provider'] = args.provider # Override provider from command line
+    app_settings['tts_provider'] = args.provider  # Override provider from command line
 
     # --- Data Sanitization for backend ---
     # This logic mirrors the one in gui.py to ensure the backend receives clean data.
@@ -1005,7 +878,8 @@ Example usage:
         print("API key is required to proceed. Exiting.")
         sys.exit(1)
 
-    print(f"\nGenerating audio from {script_source_description} with provider '{app_settings_clean['tts_provider']}'...")
+    print(
+        f"\nGenerating audio from {script_source_description} with provider '{app_settings_clean['tts_provider']}'...")
     result = generate(
         script_text=script_text,
         app_settings=app_settings_clean,
