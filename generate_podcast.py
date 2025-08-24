@@ -12,6 +12,8 @@ import subprocess
 import logging
 import getpass
 from typing import Optional
+import webbrowser
+import tempfile
 
 import json
 import keyring  # For secure credential storage
@@ -681,6 +683,113 @@ def parse_audio_mime_type(mime_type: str) -> Dict[str, int]:
 
     return {"bits_per_sample": bits_per_sample, "rate": rate}
 
+
+def create_html_demo(script_filepath: str, audio_filepath: str, status_callback=print):
+    """
+    Generates a synchronized HTML demo from a script and its corresponding audio file.
+    Requires the 'aeneas' library and its dependencies (like espeak).
+    """
+    logger = logging.getLogger("PodcastGenerator")
+    try:
+        from aeneas.executetask import ExecuteTask
+        from aeneas.task import Task
+    except ImportError:
+        status_callback("\n--- DEMO GENERATION FAILED ---")
+        status_callback("The 'aeneas' library is required for demo generation.")
+        status_callback("Please install it with: pip install aeneas")
+        logger.error("Aeneas library not found, cannot generate demo.")
+        return
+
+    status_callback("\nGenerating synchronized demo with Aeneas...")
+
+    json_filepath = os.path.splitext(audio_filepath)[0] + ".json"
+    html_filepath = os.path.splitext(audio_filepath)[0] + ".html"
+
+    # Configure and run Aeneas task
+    # Note: The language is set to English ('eng'). For other languages, this would need to be adjusted.
+    config_string = "task_language=eng|is_text_type=plain|os_task_file_format=json"
+    task = Task(config_string=config_string)
+    task.audio_file_path = os.path.abspath(audio_filepath)
+    task.text_file_path = os.path.abspath(script_filepath)
+    task.sync_map_file_path = os.path.abspath(json_filepath)
+
+    try:
+        ExecuteTask(task).execute()
+        task.output_sync_map_file()
+        status_callback("Timestamps generated successfully.")
+    except Exception as e:
+        status_callback(f"\n--- ERROR during Aeneas alignment: {e} ---")
+        status_callback("Please ensure Aeneas and its dependencies (e.g., ffmpeg, espeak) are correctly installed and in your system's PATH.")
+        logger.error(f"Aeneas execution failed: {e}", exc_info=True)
+        return
+
+    # Build the HTML file
+    try:
+        with open(json_filepath, "r", encoding="utf-8") as f:
+            sync_map = json.load(f)
+
+        transcript = []
+        for fragment in sync_map.get("fragments", []):
+            if fragment.get("lines"):
+                word = fragment["lines"][0]
+                start = float(fragment["begin"])
+                end = float(fragment["end"])
+                transcript.append({"word": word, "start": start, "end": end})
+
+        html_template = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Podcast Demo</title>
+  <style>
+    body {{ font-family: system-ui, sans-serif; max-width:800px; margin:2rem auto; line-height:1.6; }}
+    audio {{ width:100%; margin:1rem 0; }}
+    .word {{ padding:0 2px; transition:background 0.2s; cursor: pointer; }}
+    .highlight {{ background:#ffe08a; border-radius:3px; }}
+  </style>
+</head>
+<body>
+  <h1>Podcast Demo</h1>
+  <audio id="player" controls src="{os.path.basename(audio_filepath)}"></audio>
+  <p id="transcript"></p>
+  <script>
+    const transcript = {json.dumps(transcript, ensure_ascii=False)};
+    const container = document.getElementById("transcript");
+    transcript.forEach(item => {{
+      const span = document.createElement("span");
+      span.textContent = item.word + " ";
+      span.classList.add("word");
+      span.dataset.start = item.start;
+      span.dataset.end = item.end;
+      span.onclick = () => {{ audio.currentTime = item.start; }};
+      container.appendChild(span);
+    }});
+    const audio = document.getElementById("player");
+    const words = document.querySelectorAll(".word");
+    audio.addEventListener("timeupdate", () => {{
+      const t = audio.currentTime;
+      words.forEach(w => {{
+        const start = parseFloat(w.dataset.start);
+        const end = parseFloat(w.dataset.end);
+        w.classList.toggle("highlight", t >= start && t < end);
+      }});
+    }});
+  </script>
+</body>
+</html>"""
+
+        with open(html_filepath, "w", encoding="utf-8") as f:
+            f.write(html_template)
+
+        webbrowser.open("file://" + os.path.abspath(html_filepath))
+        status_callback(f"Demo successfully generated and opened: {os.path.basename(html_filepath)}")
+    except Exception as e:
+        status_callback(f"\n--- ERROR during HTML generation: {e} ---")
+        logger.error(f"HTML demo generation failed: {e}", exc_info=True)
+    finally:
+        if os.path.exists(json_filepath):
+            os.remove(json_filepath)
+
 if __name__ == "__main__":
     logger = setup_logging()
 
@@ -728,6 +837,11 @@ Example usage:
              'Example for ElevenLabs: --speaker "John:TX3LPaxmHKxFdv7VOQHJ"\n'
              'Example for Gemini: --speaker "Samantha:Zephyr"'
     )
+    parser.add_argument(
+        "--demo",
+        action="store_true",
+        help="Generate an HTML demo with a synchronized transcript after creating the audio."
+    )
     args = parser.parse_args()
 
     # --- Validate input and read script ---
@@ -736,6 +850,7 @@ Example usage:
     if not args.script_filepath and not args.script_text:
         parser.error("one of the arguments script_filepath or --script-text is required.")
 
+    temp_script_file_path = None
     if args.script_text:
         script_text = args.script_text
         script_source_description = "the provided text"
@@ -744,10 +859,17 @@ Example usage:
         if os.path.isdir(args.output_filepath):
             parser.error("when using --script-text, --output must be a full file path, not a directory.")
         output_filepath = args.output_filepath
+        # For demo generation, we need a file path.
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix=".txt", encoding='utf-8') as f:
+            f.write(script_text)
+            script_filepath_for_demo = f.name
+        temp_script_file_path = script_filepath_for_demo
+
     else:  # script_filepath is guaranteed to be not None here
         try:
             with open(args.script_filepath, 'r', encoding='utf-8') as f:
                 script_text = f.read()
+            script_filepath_for_demo = args.script_filepath
             script_source_description = f"'{os.path.basename(args.script_filepath)}'"
         except FileNotFoundError:
             print(f"Error: The script file was not found at '{args.script_filepath}'")
@@ -856,4 +978,13 @@ Example usage:
         api_key=api_key
     )
     if not result:
+        # Clean up the temporary script file if it was created, even on failure
+        if temp_script_file_path:
+            os.remove(temp_script_file_path)
         sys.exit(1)
+
+    if result and args.demo:
+        create_html_demo(script_filepath_for_demo, result, status_callback=print)
+
+    if temp_script_file_path:
+        os.remove(temp_script_file_path)
