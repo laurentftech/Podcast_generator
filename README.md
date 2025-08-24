@@ -207,19 +207,36 @@ It will be stored securely.
 
 ## 👨‍💻 For Developers
 To contribute to the project, run the code, or create your own build, please refer to the full developer guide:
-➡️ [DEVELOPERS](docs/DEVELOPERS.md)
+➡️ [DEVELOPERS.md](docs/DEVELOPERS.md)
+
+### Generating a Synchronized HTML Demo
+
+You can generate a shareable HTML demo with synchronized audio and text from the command line.
+
+```bash
+python create_demo.py /path/to/audio.mp3 /path/to/script.txt --title "My Awesome Podcast" --subtitle "Episode 1" --output-dir docs
+```
+
+### Publishing to GitHub Pages
+
+1.  Generate your demo in a `/docs` folder using the `--output-dir docs` option.
+2.  Commit and push the `docs` folder to your GitHub repository.
+3.  In your repository settings, go to the **Pages** tab.
+4.  Under "Build and deployment", select the source **"Deploy from a branch"**.
+5.  Choose your branch (e.g., `main`) and the folder **`/docs`**.
+6.  Save the changes. Your page will be live at `https://<username>.github.io/<repository-name>/<your_demo_file>.html`.
 
 ---
 
 ## 📜 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the LICENSE.md file for details.
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please see the [DEVELOPERS](docs/DEVELOPERS.md) file for guidelines.
+Contributions are welcome! Please see the DEVELOPERS.md file for guidelines.
 
 ---
 

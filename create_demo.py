@@ -79,7 +79,7 @@ def _setup_mfa_models(dictionary: str, acoustic_model: str, mfa_base_command: li
     _download_mfa_model_if_needed("dictionary", dictionary, mfa_base_command, status_callback)
     _download_mfa_model_if_needed("acoustic", acoustic_model, mfa_base_command, status_callback)
 
-def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Podcast Demo", output_dir: str = None, status_callback=print):
+def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Podcast Demo", subtitle: str = None, output_dir: str = None, status_callback=print):
     """
     Génère une démo HTML synchronisée depuis un script et son audio.
     Utilise Montreal Forced Aligner (MFA) pour aligner mot à mot.
@@ -96,27 +96,18 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
 
     # Check MFA version compatibility
     try:
+        # For MFA v2.x and later, --version is standard. check=True will raise on failure.
         version_result = subprocess.run(
             mfa_base_command + ["version"], capture_output=True, text=True, check=True
         )
-        version_str = version_result.stdout.strip().split()[-1] # e.g. 'mfa, version 2.2.17' -> '2.2.17'
-        major_version = int(version_str.split('.')[0])
-        if major_version < 2:
-            raise RuntimeError(f"Your installed MFA version ({version_str}) is too old. Version 2.0 or higher is required for automatic model downloads.")
+        version_str = version_result.stdout.strip().split()[-1]
         logger.info(f"Found compatible MFA version: {version_str}")
-    except Exception as e:
-        # Check for specific,  common errors to provide better guidance.
-        if isinstance(e, subprocess.CalledProcessError) and "No such option: --version" in e.stderr:
-            error_msg = (
-                "Your installed MFA version is too old (v1.x) and does not support modern commands.\n"
-                "Please follow the instructions to reinstall the correct version using Conda."
-            )
-        else:
-            error_msg = (
-                "Could not run Montreal Forced Aligner (MFA).\n"
-                "Please ensure it is installed correctly using the recommended Conda method.\n"
-                f"Details: {e}"
-            )
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        error_msg = (
+            "Could not run or verify Montreal Forced Aligner (MFA).\n"
+            "Please ensure it is installed correctly using the recommended Conda method.\n"
+            f"Details: {e}"
+        )
         status_callback(error_msg)
         logger.error(error_msg)
         return
@@ -248,6 +239,8 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
 
             html_filepath = os.path.join(final_output_dir, f"{safe_filename}.html")
 
+            subtitle_html = f'<h2>{subtitle.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")}</h2>' if subtitle else ""
+
             html_template = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -255,6 +248,8 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
   <title>{title}</title>
   <style>
     body {{ font-family: system-ui, sans-serif; max-width:800px; margin:2rem auto; line-height:1.6; }}
+    h1 {{ margin-bottom: 0.5rem; }}
+    h2 {{ margin-top: 0; color: #666; font-weight: normal; font-size: 1.2rem; }}
     audio {{ width:100%; margin:1rem 0; }}
     .word {{ padding:0 2px; transition:background 0.2s; cursor: pointer; }}
     .highlight {{ background:#ffe08a; border-radius:3px; }}
@@ -262,6 +257,7 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
 </head>
 <body>
   <h1>{title}</h1>
+  {subtitle_html}
   <audio id="player" controls src="{os.path.basename(audio_filepath)}"></audio>
   <p id="transcript">{final_html_body}</p>
   <script>
@@ -306,6 +302,10 @@ if __name__ == "__main__":
         "--output-dir",
         help="Directory to save the generated HTML and audio file. (default: same as audio file)"
     )
+    parser.add_argument(
+        "--subtitle",
+        help="An optional subtitle for the generated HTML page."
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.audio_file):
@@ -317,4 +317,4 @@ if __name__ == "__main__":
 
     # Set logging to DEBUG for detailed output, especially for Aeneas.
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    create_html_demo(args.script_file, args.audio_file, title=args.title, output_dir=args.output_dir)
+    create_html_demo(args.script_file, args.audio_file, title=args.title, subtitle=args.subtitle, output_dir=args.output_dir)
