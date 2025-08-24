@@ -112,7 +112,8 @@ class PodcastGeneratorApp:
         self.log_queue = queue.Queue()
         self.playback_obj = None  # To keep a reference to the playback process
         self.sample_playback_obj = None # For voice sample playback
-        self._current_sample_name: Optional[str] = None # To track which sample is playing
+        self._active_play_button: Optional[tk.Button] = None
+        self.sample_poll_id = None # For polling playback status
         self.last_generated_filepath = None
         self.ffplay_path = find_ffplay_path()
         self.elevenlabs_quota_text = None # New state variable
@@ -849,7 +850,17 @@ class PodcastGeneratorApp:
             if self.root.winfo_exists():
                 self.log_queue.put(('UPDATE_PLAY_BUTTON', '▶️ Play', 'normal'))
 
-    def play_gemini_voice_sample(self, voice_name: str):
+    def _reset_active_button(self):
+        """Resets the currently active play button to its default state."""
+        if self._active_play_button:
+            try:
+                if self._active_play_button.winfo_exists():
+                    self._active_play_button.config(text="▶")
+            except (tk.TclError, AttributeError):
+                pass  # Widget might have been destroyed
+        self._active_play_button = None
+
+    def play_gemini_voice_sample(self, button: tk.Button, voice_name: str):
         """Plays a voice sample for the given Gemini voice name."""
         sample_filename = f"{voice_name}.mp3"
         sample_path = get_asset_path(os.path.join("samples", "gemini_voices", sample_filename))
@@ -857,83 +868,78 @@ class PodcastGeneratorApp:
         if not sample_path:
             self.log_status(f"Sample for voice '{voice_name}' not found.")
             return
-        self._play_sample(voice_name, sample_path)
+        self._play_sample(button, sample_path)
 
-    def play_elevenlabs_voice_sample(self, voice_id: str, preview_url: str):
+    def play_elevenlabs_voice_sample(self, button: tk.Button, voice_id: str, preview_url: str):
         """Plays a voice sample for ElevenLabs from a URL."""
         if not preview_url:
             self.log_status(f"No preview available for voice ID '{voice_id}'.")
             return
-        self._play_sample(voice_id, preview_url)
+        self._play_sample(button, preview_url)
 
-    def _play_sample(self, sample_identifier: str, sample_source: str):
-        """Generic sample player for local files or URLs."""
+    def _poll_sample_playback(self):
+        """Periodically checks if the sample playback process has finished."""
+        if self.sample_playback_obj:
+            if self.sample_playback_obj.poll() is not None:  # Process has finished
+                self.sample_playback_obj = None
+                self._reset_active_button()
+                if self.sample_poll_id:
+                    self.root.after_cancel(self.sample_poll_id)
+                    self.sample_poll_id = None
+            else:  # Still playing, schedule next check
+                self.sample_poll_id = self.root.after(250, self._poll_sample_playback)
+        elif self.sample_poll_id: # No process but polling is scheduled, so cancel it
+            self.root.after_cancel(self.sample_poll_id)
+            self.sample_poll_id = None
+
+    def _play_sample(self, button: tk.Button, sample_source: str):
+        """
+        Plays a voice sample using a polling mechanism to update the UI,
+        which is more robust than using a separate thread's finally block.
+        """
+        # --- Stop any currently playing sample and polling ---
+        if self.sample_poll_id:
+            self.root.after_cancel(self.sample_poll_id)
+            self.sample_poll_id = None
+
         if self.sample_playback_obj and self.sample_playback_obj.poll() is None:
+            button_that_was_playing = self._active_play_button
             self.sample_playback_obj.terminate()
-            if self._current_sample_name == sample_identifier:
-                self._current_sample_name = None
+            self.sample_playback_obj = None
+            self._reset_active_button()
+
+            # If the button we just clicked was the one playing, our only job was to stop it.
+            if button_that_was_playing == button:
                 return
 
-        self._current_sample_name = sample_identifier
+        # --- Start new playback ---
+        self._active_play_button = button
+        try:
+            if button.winfo_exists():
+                button.config(text="⏸")
+        except (tk.TclError, AttributeError):
+            self._reset_active_button()
+            return
 
         if not self.ffplay_path:
             messagebox.showwarning("Player Not Found", "ffplay (part of FFmpeg) is required to play voice samples.", parent=self.root)
+            self._reset_active_button()
             return
 
-        def _play_in_thread():
-            try:
-                creation_flags = 0
-                if sys.platform == "win32":
-                    creation_flags = subprocess.CREATE_NO_WINDOW
+        try:
+            creation_flags = 0
+            if sys.platform == "win32":
+                creation_flags = subprocess.CREATE_NO_WINDOW
 
-                command = [self.ffplay_path, "-nodisp", "-autoexit", "-loglevel", "quiet", sample_source]
-                self.sample_playback_obj = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                                             creationflags=creation_flags)
-                self.sample_playback_obj.wait()
-            except Exception as e:
-                self.logger.error(f"Voice sample playback error: {e}", exc_info=True)
-            finally:
-                self.sample_playback_obj = None
-                self._current_sample_name = None
-
-        threading.Thread(target=_play_in_thread, daemon=True).start()
-
-    def on_settings_window_close(self):
-        self.menubar.entryconfig("Settings", state="normal")
-        self._update_provider_label()
-        if not self.ffplay_path:
-            messagebox.showwarning(
-                "Player Not Found",
-                "ffplay (part of FFmpeg) is required to play voice samples.",
-                parent=self.root
-            )
-            return
-
-        # Gemini voice names are simple, e.g., "Schedar"
-        sample_filename = f"{voice_name}.mp3"
-        sample_path = get_asset_path(os.path.join("samples", "gemini_voices", sample_filename))
-
-        if not sample_path:
-            self.log_status(f"Sample for voice '{voice_name}' not found.")
-            return
-
-        def _play_sample_in_thread():
-            try:
-                creation_flags = 0
-                if sys.platform == "win32":
-                    creation_flags = subprocess.CREATE_NO_WINDOW
-
-                command = [self.ffplay_path, "-nodisp", "-autoexit", "-loglevel", "quiet", sample_path]
-                self.sample_playback_obj = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                                             creationflags=creation_flags)
-                self.sample_playback_obj.wait()
-            except Exception as e:
-                self.logger.error(f"Voice sample playback error: {e}", exc_info=True)
-            finally:
-                self.sample_playback_obj = None
-                self._current_sample_name = None
-
-        threading.Thread(target=_play_sample_in_thread, daemon=True).start()
+            command = [self.ffplay_path, "-nodisp", "-autoexit", "-loglevel", "quiet", sample_source]
+            self.sample_playback_obj = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                                         creationflags=creation_flags)
+            # Start polling for completion
+            self._poll_sample_playback()
+        except Exception as e:
+            self.logger.error(f"Voice sample playback error: {e}", exc_info=True)
+            self._reset_active_button()
+            self.sample_playback_obj = None
 
     def on_settings_window_close(self):
         self.menubar.entryconfig("Settings", state="normal")

@@ -210,13 +210,18 @@ class VoiceSettingsWindow(tk.Toplevel):
 
         # Remplir le contenu selon le provider
         if provider == "gemini":
-            for name, desc in AVAILABLE_VOICES.items():
+            voices = list(AVAILABLE_VOICES.items())
+            for i, (name, desc) in enumerate(voices):
                 self._create_guide_row(scrollable_frame, provider, name, f"{name} - {desc}", name)
+                if i < len(voices) - 1:
+                    ttk.Separator(scrollable_frame, orient='horizontal').pack(fill='x', pady=5, padx=5)
         elif provider == "elevenlabs":
             if self.elevenlabs_voices_loaded and self.elevenlabs_voices:
-                for voice in self.elevenlabs_voices:
-                    self._create_guide_row(scrollable_frame, provider, voice['id'],
-                                           voice['display_name'], voice['preview_url'])
+                voices = self.elevenlabs_voices
+                for i, voice in enumerate(voices):
+                    self._create_guide_row(scrollable_frame, provider, voice['id'], voice['display_name'], voice['preview_url'])
+                    if i < len(voices) - 1:
+                        ttk.Separator(scrollable_frame, orient='horizontal').pack(fill='x', pady=5, padx=5)
             else:
                 # Message de chargement avec style cohérent
                 loading_frame = tk.Frame(scrollable_frame, height=60)
@@ -282,12 +287,13 @@ class VoiceSettingsWindow(tk.Toplevel):
 
         # Bouton Play
         if provider == "gemini" and self.play_gemini_sample:
-            play_btn = tk.Button(buttons_inner, text="▶", width=3, height=1,
-                                 command=lambda v=play_identifier: self.play_gemini_sample(v))
+            play_btn = tk.Button(buttons_inner, text="▶", width=3, height=1)
+            play_btn.config(command=lambda b=play_btn, v=play_identifier: self.play_gemini_sample(b, v))
             play_btn.pack(side=tk.LEFT, padx=(0, 5))
         elif provider == "elevenlabs" and self.play_elevenlabs_sample:
-            play_btn = tk.Button(buttons_inner, text="▶", width=3, height=1,
-                                 command=lambda i=voice_id, u=play_identifier: self.play_elevenlabs_sample(i, u))
+            play_btn = tk.Button(buttons_inner, text="▶", width=3, height=1)
+            play_btn.config(
+                command=lambda b=play_btn, i=voice_id, u=play_identifier: self.play_elevenlabs_sample(b, i, u))
             play_btn.pack(side=tk.LEFT, padx=(0, 5))
 
         # Bouton Add
