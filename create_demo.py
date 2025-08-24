@@ -79,7 +79,7 @@ def _setup_mfa_models(dictionary: str, acoustic_model: str, mfa_base_command: li
     _download_mfa_model_if_needed("dictionary", dictionary, mfa_base_command, status_callback)
     _download_mfa_model_if_needed("acoustic", acoustic_model, mfa_base_command, status_callback)
 
-def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Podcast Demo", status_callback=print):
+def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Podcast Demo", output_dir: str = None, status_callback=print):
     """
     Génère une démo HTML synchronisée depuis un script et son audio.
     Utilise Montreal Forced Aligner (MFA) pour aligner mot à mot.
@@ -105,7 +105,7 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
             raise RuntimeError(f"Your installed MFA version ({version_str}) is too old. Version 2.0 or higher is required for automatic model downloads.")
         logger.info(f"Found compatible MFA version: {version_str}")
     except Exception as e:
-        # Check for specific, common errors to provide better guidance.
+        # Check for specific,  common errors to provide better guidance.
         if isinstance(e, subprocess.CalledProcessError) and "No such option: --version" in e.stderr:
             error_msg = (
                 "Your installed MFA version is too old (v1.x) and does not support modern commands.\n"
@@ -139,7 +139,7 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
         return
 
     # Use temporary directories that are automatically cleaned up
-    with tempfile.TemporaryDirectory() as corpus_dir, tempfile.TemporaryDirectory() as output_dir:
+    with tempfile.TemporaryDirectory() as corpus_dir, tempfile.TemporaryDirectory() as mfa_output_dir:
         try:
             # --- 2. Prepare Corpus for MFA ---
             status_callback("Preparing corpus for MFA...")
@@ -163,8 +163,11 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
 
             # --- 3. Run MFA Aligner ---
             mfa_command = mfa_base_command + [
-                "align", corpus_dir, dictionary_model, acoustic_model, output_dir,
-                "--clean", "--use_punctuation", "--case_sensitive"
+                "align", corpus_dir, dictionary_model, acoustic_model, mfa_output_dir,
+                "--clean", "--use_punctuation", "--case_sensitive",
+                # Use a wider beam to make alignment more robust on difficult segments
+                # (e.g., non-speech sounds like laughter) at the cost of speed.
+                "--beam", "200", "--retry_beam", "400"
             ]
             logger.debug(f"Executing MFA: {' '.join(mfa_command)}")
             # Run MFA and stream its output to the console to show progress.
@@ -174,7 +177,7 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
             status_callback("MFA alignment successful.")
 
             # --- 4. Parse TextGrid Output and Reconstruct HTML ---
-            textgrid_filepath = os.path.join(output_dir, f"{base_name}.TextGrid")
+            textgrid_filepath = os.path.join(mfa_output_dir, f"{base_name}.TextGrid")
             transcript_from_mfa = _parse_textgrid(textgrid_filepath)
             if not transcript_from_mfa:
                 raise RuntimeError("Failed to parse TextGrid output or no words were aligned.")
@@ -233,8 +236,17 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
             if not safe_filename:
                 # Fallback if the title contains only special characters
                 safe_filename = "podcast_demo"
-            output_directory = os.path.dirname(audio_filepath)
-            html_filepath = os.path.join(output_directory, f"{safe_filename}.html")
+            
+            # Determine the output directory for the demo files
+            if output_dir:
+                final_output_dir = output_dir
+                os.makedirs(final_output_dir, exist_ok=True)
+                # Copy the audio file to the output directory so the relative path works
+                shutil.copy(audio_filepath, final_output_dir)
+            else:
+                final_output_dir = os.path.dirname(audio_filepath)
+
+            html_filepath = os.path.join(final_output_dir, f"{safe_filename}.html")
 
             html_template = f"""<!DOCTYPE html>
 <html lang="en">
@@ -290,6 +302,10 @@ if __name__ == "__main__":
         default="Podcast Demo",
         help="The title for the generated HTML page. (default: %(default)s)"
     )
+    parser.add_argument(
+        "--output-dir",
+        help="Directory to save the generated HTML and audio file. (default: same as audio file)"
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.audio_file):
@@ -301,4 +317,4 @@ if __name__ == "__main__":
 
     # Set logging to DEBUG for detailed output, especially for Aeneas.
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    create_html_demo(args.script_file, args.audio_file, title=args.title)
+    create_html_demo(args.script_file, args.audio_file, title=args.title, output_dir=args.output_dir)
