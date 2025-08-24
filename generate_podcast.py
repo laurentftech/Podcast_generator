@@ -684,47 +684,94 @@ def parse_audio_mime_type(mime_type: str) -> Dict[str, int]:
     return {"bits_per_sample": bits_per_sample, "rate": rate}
 
 
+def sanitize_app_settings_for_backend(app_settings: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Creates a "clean" version of app_settings suitable for the backend.
+    - Flattens ElevenLabs voice data to only include the voice ID.
+    - Cleans Gemini voice names by removing descriptions.
+    """
+    app_settings_clean = {
+        "tts_provider": app_settings.get("tts_provider"),
+        "speaker_voices": app_settings.get("speaker_voices", {})
+    }
+
+    # Clean Gemini voices: convert "Name - Desc" -> "Name"
+    gemini_clean = {}
+    try:
+        for speaker, voice in app_settings_clean.get("speaker_voices", {}).items():
+            if isinstance(voice, str) and " - " in voice:
+                gemini_clean[speaker] = voice.split(" - ", 1)[0].strip()
+            else:
+                gemini_clean[speaker] = voice
+    except Exception:
+        gemini_clean = app_settings_clean.get("speaker_voices", {})
+    app_settings_clean["speaker_voices"] = gemini_clean
+
+    # Clean ElevenLabs voices: extract just the ID
+    elevenlabs_mapping_clean = {}
+    elevenlabs_mapping_raw = app_settings.get("speaker_voices_elevenlabs", {})
+    for speaker, data in elevenlabs_mapping_raw.items():
+        if isinstance(data, dict):
+            elevenlabs_mapping_clean[speaker] = data.get('id', '')
+        else:
+            # Legacy format: use the string as-is
+            elevenlabs_mapping_clean[speaker] = data
+
+    app_settings_clean["speaker_voices_elevenlabs"] = elevenlabs_mapping_clean
+    return app_settings_clean
+
+
 def create_html_demo(script_filepath: str, audio_filepath: str, status_callback=print):
     """
-    Generates a synchronized HTML demo from a script and its corresponding audio file.
-    Requires the 'aeneas' library and its dependencies (like espeak).
+    Génère une démo HTML synchronisée depuis un script et son audio.
+    Utilise Aeneas pour aligner mot à mot et détecte automatiquement la langue du script.
     """
+    import os
+    import json
+    import webbrowser
+    import logging
+
     logger = logging.getLogger("PodcastGenerator")
+
     try:
         from aeneas.executetask import ExecuteTask
         from aeneas.task import Task
     except ImportError:
-        status_callback("\n--- DEMO GENERATION FAILED ---")
-        status_callback("The 'aeneas' library is required for demo generation.")
-        status_callback("Please install it with: pip install aeneas")
-        logger.error("Aeneas library not found, cannot generate demo.")
+        status_callback("The 'aeneas' library is required for demo generation. Install with: pip install aeneas")
+        logger.error("Aeneas library not found")
         return
 
-    status_callback("\nGenerating synchronized demo with Aeneas...")
-
-    json_filepath = os.path.splitext(audio_filepath)[0] + ".json"
-    html_filepath = os.path.splitext(audio_filepath)[0] + ".html"
-
-    # Configure and run Aeneas task
-    # Note: The language is set to English ('eng'). For other languages, this would need to be adjusted.
-    config_string = "task_language=eng|is_text_type=plain|os_task_file_format=json"
-    task = Task(config_string=config_string)
-    task.audio_file_path = os.path.abspath(audio_filepath)
-    task.text_file_path = os.path.abspath(script_filepath)
-    task.sync_map_file_path = os.path.abspath(json_filepath)
-
     try:
+        # Lecture du script
+        with open(script_filepath, "r", encoding="utf-8") as f:
+            script_text = f.read()
+
+        # Détection automatique de la langue
+        try:
+            from langdetect import detect
+            detected_lang = detect(script_text)
+            lang_map = {"en": "eng", "fr": "fra", "es": "spa", "de": "deu", "it": "ita"}
+            task_language = lang_map.get(detected_lang, "eng")
+            status_callback(f"Detected script language: {detected_lang} (Aeneas: {task_language})")
+        except Exception:
+            task_language = "eng"
+            status_callback("Language detection failed, defaulting to English (eng)")
+
+        json_filepath = os.path.splitext(audio_filepath)[0] + ".json"
+        html_filepath = os.path.splitext(audio_filepath)[0] + ".html"
+
+        # Création et exécution de la tâche Aeneas
+        config_string = f"task_language={task_language}|is_text_type=plain|os_task_file_format=json"
+        task = Task(config_string=config_string)
+        task.audio_file_path = os.path.abspath(audio_filepath)
+        task.text_file_path = os.path.abspath(script_filepath)
+        task.sync_map_file_path = os.path.abspath(json_filepath)
+
         ExecuteTask(task).execute()
         task.output_sync_map_file()
         status_callback("Timestamps generated successfully.")
-    except Exception as e:
-        status_callback(f"\n--- ERROR during Aeneas alignment: {e} ---")
-        status_callback("Please ensure Aeneas and its dependencies (e.g., ffmpeg, espeak) are correctly installed and in your system's PATH.")
-        logger.error(f"Aeneas execution failed: {e}", exc_info=True)
-        return
 
-    # Build the HTML file
-    try:
+        # Lecture du JSON et préparation du transcript
         with open(json_filepath, "r", encoding="utf-8") as f:
             sync_map = json.load(f)
 
@@ -736,6 +783,7 @@ def create_html_demo(script_filepath: str, audio_filepath: str, status_callback=
                 end = float(fragment["end"])
                 transcript.append({"word": word, "start": start, "end": end})
 
+        # Génération du HTML
         html_template = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -764,6 +812,7 @@ def create_html_demo(script_filepath: str, audio_filepath: str, status_callback=
       span.onclick = () => {{ audio.currentTime = item.start; }};
       container.appendChild(span);
     }});
+
     const audio = document.getElementById("player");
     const words = document.querySelectorAll(".word");
     audio.addEventListener("timeupdate", () => {{
@@ -773,6 +822,11 @@ def create_html_demo(script_filepath: str, audio_filepath: str, status_callback=
         const end = parseFloat(w.dataset.end);
         w.classList.toggle("highlight", t >= start && t < end);
       }});
+      // Scroll automatique
+      const current = Array.from(words).find(w => w.classList.contains("highlight"));
+      if(current) {{
+        current.scrollIntoView({{behavior: "smooth", block: "center"}});
+      }}
     }});
   </script>
 </body>
@@ -782,13 +836,15 @@ def create_html_demo(script_filepath: str, audio_filepath: str, status_callback=
             f.write(html_template)
 
         webbrowser.open("file://" + os.path.abspath(html_filepath))
-        status_callback(f"Demo successfully generated and opened: {os.path.basename(html_filepath)}")
+        status_callback(f"Demo generated and opened: {os.path.basename(html_filepath)}")
+
     except Exception as e:
-        status_callback(f"\n--- ERROR during HTML generation: {e} ---")
+        status_callback(f"Demo generation failed: {e}")
         logger.error(f"HTML demo generation failed: {e}", exc_info=True)
     finally:
         if os.path.exists(json_filepath):
             os.remove(json_filepath)
+
 
 if __name__ == "__main__":
     logger = setup_logging()
@@ -913,27 +969,7 @@ Example usage:
 
     # --- Data Sanitization for backend ---
     # This logic mirrors the one in gui.py to ensure the backend receives clean data.
-    app_settings_clean = {
-        "tts_provider": app_settings.get("tts_provider"),
-        "speaker_voices": app_settings.get("speaker_voices", {})
-    }
-    gemini_clean = {}
-    for speaker, voice in app_settings_clean.get("speaker_voices", {}).items():
-        if isinstance(voice, str) and " - " in voice:
-            gemini_clean[speaker] = voice.split(" - ", 1)[0].strip()
-        else:
-            gemini_clean[speaker] = voice
-    app_settings_clean["speaker_voices"] = gemini_clean
-
-    elevenlabs_mapping_clean = {}
-    elevenlabs_mapping_raw = app_settings.get("speaker_voices_elevenlabs", {})
-    for speaker, data in elevenlabs_mapping_raw.items():
-        if isinstance(data, dict):
-            elevenlabs_mapping_clean[speaker] = data.get('id', '')
-        else:
-            # Legacy format: use the string as-is
-            elevenlabs_mapping_clean[speaker] = data
-    app_settings_clean["speaker_voices_elevenlabs"] = elevenlabs_mapping_clean
+    app_settings_clean = sanitize_app_settings_for_backend(app_settings)
 
     # --- Override speakers from CLI arguments ---
     if args.speaker:

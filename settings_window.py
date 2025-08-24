@@ -4,38 +4,7 @@ from tkinter import ttk
 import threading
 import json
 
-AVAILABLE_VOICES = {
-    "Zephyr": "Bright",
-    "Puck": "Upbeat",
-    "Charon": "Informative",
-    "Kore": "Firm",
-    "Fenrir": "Excitable",
-    "Leda": "Youthful",
-    "Orus": "Firm",
-    "Aoede": "Breezy",
-    "Callirrhoe": "Easy-going",
-    "Autonoe": "Bright",
-    "Enceladus": "Breathy",
-    "Iapetus": "Clear",
-    "Umbriel": "Easy-going",
-    "Algieba": "Smooth",
-    "Despina": "Smooth",
-    "Erinome": "Clear",
-    "Algenib": "Gravelly",
-    "Rasalgethi": "Informative",
-    "Laomedeia": "Upbeat",
-    "Achernar": "Soft",
-    "Alnilam": "Firm",
-    "Schedar": "Even",
-    "Gacrux": "Mature",
-    "Pulcherrima": "Forward",
-    "Achird": "Friendly",
-    "Zubenelgenubi": "Casual",
-    "Vindemiatrix": "Gentle",
-    "Sadachbia": "Lively",
-    "Sadaltager": "Knowledgeable",
-    "Sulafat": "Warm"
-}
+from gui import AVAILABLE_VOICES
 
 
 class VoiceSettingsWindow(tk.Toplevel):

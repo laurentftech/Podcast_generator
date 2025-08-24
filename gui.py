@@ -1340,20 +1340,6 @@ class AboutWindow(tk.Toplevel):
         self.bind('<Return>', lambda event: ok_button.invoke())
         self.protocol("WM_DELETE_WINDOW", self.destroy)
 
-def open_settings_window(self):
-        """Opens the settings management window."""
-        # Disable the button while the window is open to avoid duplicates
-        self.menubar.entryconfig("Settings", state="disabled")
-        from settings_window import VoiceSettingsWindow
-        VoiceSettingsWindow(
-            self.root,
-            current_settings=self.app_settings,
-            save_callback=self.save_settings,
-            close_callback=self.on_settings_window_close,
-            default_settings=self.DEFAULT_APP_SETTINGS,
-            preloaded_elevenlabs_voices=self.elevenlabs_voices_cache  # <-- passe le cache
-        )
-
 def main():
     # Initializes the application and starts the main Tkinter loop
     # Creates the root window but hides it for now.
