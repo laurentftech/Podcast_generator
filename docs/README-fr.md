@@ -7,7 +7,7 @@ Si vous appréciez ce projet et souhaitez soutenir mon travail, vous pouvez [m�
 
 ## 📖 Présentation
 
-Une application légère en Python qui vous permet de générer des podcasts multi-intervenants à partir de n’importe quel script grâce à la nouvelle API ElevenLabs v3 — simple, rapide et efficace.
+Une application légère en Python qui vous permet de générer des podcasts multi-intervenants à partir de n’importe quel script grâce aux API de haute qualité d'ElevenLabs et de Google Gemini — simple, rapide et efficace.
 
 ### 🔑 Pour commencer
 Obtenez votre clé API gratuite sur [ElevenLabs](https://try.elevenlabs.io/zobct2wsp98z) (ou Google Gemini).
@@ -22,10 +22,11 @@ Commencez à créer vos podcasts en quelques minutes.
 
 ## ✨ Fonctionnalités
 
-- **Génération audio** : Créez des podcasts multi-locuteurs avec des voix de haute qualité grâce à l’API Google Gemini.
+- **Génération audio** : Créez des podcasts multi-locuteurs avec des voix de haute qualité grâce aux API Google Gemini et ElevenLabs.
 - **Interface intuitive** : Interface graphique claire et simple à utiliser.
 - **Formats flexibles** : Export en **MP3** (par défaut) ou **WAV**.
 - **Personnalisation** : Sauvegarde des voix et paramètres pour chaque locuteur.
+- **Guides vocaux** : Explorez et écoutez toutes les voix disponibles de Gemini et ElevenLabs directement depuis les réglages. Ajoutez vos voix préférées à votre liste de locuteurs en un seul clic.
 - **Lecture intégrée** : Écoutez et arrêtez vos créations directement depuis l’application (**FFmpeg requis**).
 - **Stockage sécurisé de la clé API** : Votre clé API Google Gemini est demandée une seule fois et enregistrée de manière sécurisée dans le trousseau du système (`keyring`).
 - **Version automatique** : Synchronisation de la version de l’application avec les tags Git du projet.
@@ -34,7 +35,7 @@ Commencez à créer vos podcasts en quelques minutes.
 
 ## 🌍 Support multilingue
 
-Grâce à l’API Google Gemini, **Podcast Generator** permet :
+Grâce aux API Google Gemini et ElevenLabs, **Podcast Generator** permet :
 
 - De créer des podcasts multilingues avec des voix distinctes.
 - De produire du contenu pour un public international.

@@ -6,7 +6,7 @@ If you enjoy this project and want to support my work, feel free to [buy me a co
 ---
 
 ## 📖 Overview
-A lightweight Python app that lets you generate multi-speaker podcasts from any script using high-quality voices from the new ElevenLabs v3 API — simple, fast, and effective.
+A lightweight Python app that lets you generate multi-speaker podcasts from any script using high-quality voices from the ElevenLabs and Google Gemini APIs — simple, fast, and effective.
 
 ### 🔑 Getting Started
 Get your free API key from [ElevenLabs](https://try.elevenlabs.io/zobct2wsp98z) (or Google Gemini).
@@ -200,7 +200,7 @@ After doing this once, Windows will remember your choice and won’t show the wa
 
 ### First Launch: API Key
 
-On first launch, the application will request your **ElevenLabs API key** (and optionally your **Google ).  
+On first launch, the application will request your **ElevenLabs API key** (and optionally your **Google Gemini API key**).  
 It will be stored securely.
 
 ---
