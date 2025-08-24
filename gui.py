@@ -1510,4 +1510,9 @@ def main():
 
 
 if __name__ == "__main__":
+    # This is crucial for preventing infinite loops when the app is frozen
+    # with PyInstaller on macOS and Windows. It must be the first call
+    # in the main block.
+    import multiprocessing
+    multiprocessing.freeze_support()
     main()

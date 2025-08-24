@@ -289,6 +289,11 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
 
 
 if __name__ == "__main__":
+    # This is crucial for preventing infinite loops if this script were
+    # ever to be frozen with PyInstaller on macOS and Windows.
+    import multiprocessing
+    multiprocessing.freeze_support()
+
     parser = argparse.ArgumentParser(
         description="Generate a synchronized HTML demo from an audio file and a text script.",
         epilog="Example: python create_demo.py my_podcast.mp3 my_script.txt"
