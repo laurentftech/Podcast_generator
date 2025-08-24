@@ -39,7 +39,7 @@ dev = [
 Homepage = "https://github.com/laurentftech/Podcast_generator"
 
 [tool.setuptools]
-py-modules = ["gui", "generate_podcast"]
+py-modules = ["gui", "generate_podcast", "create_demo"]
 
 [tool.setuptools_scm]
 # This tool will automatically discover the version from git tags.

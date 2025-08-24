@@ -3,5 +3,4 @@ google-genai
 python-dotenv
 keyring
 elevenlabs
-aeneas
-langdetect
+textgrid
