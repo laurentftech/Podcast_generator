@@ -27,6 +27,7 @@ See also the [French README](docs/README-fr.md) for a version in French.
 - **User-Friendly Interface**: An intuitive graphical interface built with Tkinter.
 - **Flexible Formats**: Export your creations in **MP3** (default) or **WAV** formats.
 - **Customization**: Configure and save voices for each speaker in your scripts, with options for language and accent.
+- **Voice Guides**: Explore and listen to all available voices from Gemini and ElevenLabs directly within the settings. Add your favorite voices to your speaker list with a single click.
 - **Integrated Playback**: Listen to and stop audio playback directly from the application (requires FFmpeg).
 - **Secure API Key Storage**: Your Google Gemini API key is requested once and securely stored in your system's keychain (`keyring`).
 - **Automatic Versioning**: The application version is automatically synchronized with the project's Git tags.

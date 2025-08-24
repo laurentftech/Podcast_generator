@@ -38,10 +38,13 @@ AVAILABLE_VOICES = {
 }
 
 
-class SettingsWindow(tk.Toplevel):
+class VoiceSettingsWindow(tk.Toplevel):
     VOICE_DISPLAY_LIST = [f"{name} - {desc}" for name, desc in AVAILABLE_VOICES.items()]
 
-    def __init__(self, parent, current_settings, save_callback, close_callback, default_settings, preloaded_elevenlabs_voices=None):
+    def __init__(self, parent, current_settings, save_callback, close_callback, default_settings,
+                 preloaded_elevenlabs_voices=None,
+                 play_gemini_sample_callback=None,
+                 play_elevenlabs_sample_callback=None):
         super().__init__(parent)
         self.title("Voice settings")
         self.transient(parent)
@@ -56,6 +59,10 @@ class SettingsWindow(tk.Toplevel):
         self.save_callback = save_callback
         self.close_callback = close_callback
         self.protocol("WM_DELETE_WINDOW", self.cancel_and_close)
+        # Callbacks for playing voice samples
+        self.play_gemini_sample = play_gemini_sample_callback
+        self.play_elevenlabs_sample = play_elevenlabs_sample_callback
+
         self.entries = []
 
         # Cache pour les voix ElevenLabs - initialisation simple
@@ -98,43 +105,122 @@ class SettingsWindow(tk.Toplevel):
         main_frame = tk.Frame(self, padx=10, pady=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Headers
-        header_frame = tk.Frame(main_frame)
+        # --- Section 1: Speaker Configuration ---
+        speaker_config_frame = tk.LabelFrame(main_frame, text="My Speaker Voices", padx=10, pady=10)
+        speaker_config_frame.pack(fill=tk.X, pady=(0, 10))
+
+        self._create_speaker_headers(speaker_config_frame)
+
+        self.speaker_frame = tk.Frame(speaker_config_frame)
+        self.speaker_frame.pack(fill=tk.X, expand=True)
+
+        # --- Section 2: Voice Guides (Tabs) ---
+        # N'afficher cette section que si au moins une clé API est configurée.
+        if self.gemini_api_configured or self.elevenlabs_api_configured:
+            guides_frame = tk.LabelFrame(main_frame, text="Voice Guides", padx=10, pady=10)
+            guides_frame.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
+
+            notebook = ttk.Notebook(guides_frame)
+            notebook.pack(fill=tk.BOTH, expand=True)
+
+            if self.gemini_api_configured:
+                gemini_tab = ttk.Frame(notebook)
+                notebook.add(gemini_tab, text="Gemini Voices")
+                self._populate_guide_tab(gemini_tab, "gemini")
+
+            if self.elevenlabs_api_configured:
+                elevenlabs_tab = ttk.Frame(notebook)
+                notebook.add(elevenlabs_tab, text="ElevenLabs Voices")
+                self._populate_guide_tab(elevenlabs_tab, "elevenlabs")
+
+        # --- Section 3: Main Buttons ---
+        button_frame = tk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(15, 0))
+
+        tk.Button(button_frame, text="+ Add Speaker", command=self.add_row).pack(side=tk.LEFT)
+        tk.Button(button_frame, text="Save", command=self.save_and_close, font=('Helvetica', 10, 'bold')).pack(side=tk.RIGHT)
+        tk.Button(button_frame, text="Cancel", command=self.cancel_and_close).pack(side=tk.RIGHT, padx=(0, 5))
+        tk.Button(button_frame, text="Restore Defaults", command=self.restore_defaults).pack(side=tk.LEFT, padx=(10, 0))
+
+    def _create_speaker_headers(self, parent_frame):
+        """Creates the headers for the speaker configuration section."""
+        header_frame = tk.Frame(parent_frame)
         header_frame.pack(fill=tk.X, pady=(0, 5))
-        tk.Label(header_frame, text="Speaker name (in the script)",
-                 font=('Helvetica', 10, 'bold')).grid(row=0, column=0, sticky="w", pady=(2, 2))
+        tk.Label(header_frame, text="Speaker Name (in script)",
+                 font=('Helvetica', 10, 'bold')).grid(row=0, column=0, sticky="w", padx=(0, 10))
 
         next_column = 1
-
-        # Conditionally create Gemini header
         if self.gemini_api_configured:
-            tk.Label(
-                header_frame,
-                text="Voice (Gemini)",
-                font=('Helvetica', 10, 'bold')
-            ).grid(row=0, column=next_column, sticky="w", pady=(2, 2))
+            tk.Label(header_frame, text="Gemini Voice", font=('Helvetica', 10, 'bold')) \
+                .grid(row=0, column=next_column, sticky="w", padx=(0, 10))
             header_frame.columnconfigure(next_column, weight=1)
             next_column += 1
 
-        # Conditionally create ElevenLabs header
         if self.elevenlabs_api_configured:
-            tk.Label(
-                header_frame,
-                text="Voice (ElevenLabs)",
-                font=('Helvetica', 10, 'bold')
-            ).grid(row=0, column=next_column, sticky="w", pady=(2, 2))
+            tk.Label(header_frame, text="ElevenLabs Voice", font=('Helvetica', 10, 'bold')) \
+                .grid(row=0, column=next_column, sticky="w", padx=(0, 10))
             header_frame.columnconfigure(next_column, weight=1)
 
-        self.speaker_frame = tk.Frame(main_frame)
-        self.speaker_frame.pack(fill=tk.BOTH, expand=True)
+    def _populate_guide_tab(self, tab, provider):
+        """Populates a tab with voice samples."""
+        canvas = tk.Canvas(tab, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(tab, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
 
-        button_frame = tk.Frame(main_frame)
-        button_frame.pack(fill=tk.X, pady=(10, 0))
+        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
 
-        tk.Button(button_frame, text="+", command=self.add_row).pack(side=tk.LEFT)
-        tk.Button(button_frame, text="Save", command=self.save_and_close).pack(side=tk.RIGHT)
-        tk.Button(button_frame, text="Cancel", command=self.cancel_and_close).pack(side=tk.RIGHT, padx=(0, 5))
-        tk.Button(button_frame, text="Restore Defaults", command=self.restore_defaults).pack(side=tk.LEFT, padx=(10, 0))
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        if provider == "gemini":
+            for name, desc in AVAILABLE_VOICES.items():
+                self._create_guide_row(scrollable_frame, provider, name, f"{name} - {desc}", name)
+        elif provider == "elevenlabs":
+            if self.elevenlabs_voices_loaded and self.elevenlabs_voices:
+                for voice in self.elevenlabs_voices:
+                    self._create_guide_row(scrollable_frame, provider, voice['id'], voice['display_name'], voice['preview_url'])
+            else:
+                tk.Label(scrollable_frame, text="Loading ElevenLabs voices...").pack(pady=20)
+
+    def _create_guide_row(self, parent, provider, voice_id, display_name, play_identifier):
+        """Creates a single row in the voice guide."""
+        # Creates a single row using a grid layout for robust alignment.
+        row_frame = tk.Frame(parent)
+        row_frame.pack(fill=tk.X, pady=4, padx=5)
+
+        # Configure grid: column 0 for text (expands), column 1 for buttons (fixed).
+        row_frame.columnconfigure(0, weight=1)
+        row_frame.columnconfigure(1, weight=0)
+
+        # --- Column 1: Buttons ---
+        button_frame = tk.Frame(row_frame)
+        button_frame.grid(row=0, column=1, sticky="e", padx=(10, 0))
+
+        if provider == "gemini" and self.play_gemini_sample:
+            tk.Button(button_frame, text="▶", command=lambda v=play_identifier: self.play_gemini_sample(v)).pack(side=tk.LEFT)
+        elif provider == "elevenlabs" and self.play_elevenlabs_sample:
+            tk.Button(button_frame, text="▶", command=lambda i=voice_id, u=play_identifier: self.play_elevenlabs_sample(i, u)).pack(side=tk.LEFT)
+
+        tk.Button(button_frame, text="Add", command=lambda p=provider, d=display_name, i=voice_id: self.add_voice_to_speakers(p, d, i)).pack(side=tk.LEFT, padx=(5,0))
+
+        # --- Column 0: Text Content ---
+        text_frame = tk.Frame(row_frame)
+        text_frame.grid(row=0, column=0, sticky="w")
+
+        # Split display_name into name and description for better formatting
+        if " - " in display_name:
+            name, description = display_name.split(" - ", 1)
+        else:
+            name = display_name
+            description = ""
+
+        tk.Label(text_frame, text=name, font=('Helvetica', 10, 'bold'), anchor="w").pack(anchor="w")
+
+        if description:
+            # Use wraplength for the description to handle long text
+            tk.Label(text_frame, text=description, anchor="w", justify=tk.LEFT, wraplength=400, fg="grey").pack(anchor="w")
 
     def safe_update_button(self, state, text):
         """Met à jour le bouton de manière sécurisée."""
@@ -191,6 +277,7 @@ class SettingsWindow(tk.Toplevel):
                         name = voice.get('name', 'Unknown')
                         category = voice.get('category', '')
                         labels = voice.get('labels', {}) if voice.get('labels') else {}
+                        preview_url = voice.get('preview_url', '')
 
                         accent = labels.get('accent', '') if isinstance(labels, dict) else ''
                         age = labels.get('age', '') if isinstance(labels, dict) else ''
@@ -212,7 +299,8 @@ class SettingsWindow(tk.Toplevel):
                             'name': name,
                             'display_name': display_name,
                             'category': category,
-                            'labels': labels
+                            'labels': labels,
+                            'preview_url': preview_url
                         })
 
                     voices.sort(key=lambda x: x.get('name', ''))
@@ -248,6 +336,35 @@ class SettingsWindow(tk.Toplevel):
     def populate_fields_delayed(self):
         """Populate les champs après que les voix ElevenLabs aient été chargées (ou échoué)."""
         self.populate_fields()
+
+    def add_voice_to_speakers(self, provider, voice_display_name, voice_id):
+        """Adds a selected voice from the guide to the speaker list."""
+        # Find the first empty speaker row, or create a new one
+        target_row = None
+        for row in self.entries:
+            if not row['speaker'].get().strip():
+                target_row = row
+                break
+
+        if not target_row:
+            self.add_row()
+            target_row = self.entries[-1]
+
+        # Generate a unique default speaker name
+        existing_names = {r['speaker'].get().strip() for r in self.entries if r['speaker'].get().strip()}
+        i = 1
+        while f"Speaker {i}" in existing_names:
+            i += 1
+        target_row['speaker'].delete(0, tk.END)
+        target_row['speaker'].insert(0, f"Speaker {i}")
+
+        # Set the voice in the correct combobox
+        if provider == 'gemini' and target_row.get('gemini_voice'):
+            # For Gemini, the display name is what we store.
+            target_row['gemini_voice'].set(voice_display_name)
+        elif provider == 'elevenlabs' and target_row.get('elevenlabs_voice'):
+            # For ElevenLabs, we also use the display name for the combobox.
+            target_row['elevenlabs_voice'].set(voice_display_name)
 
     def update_elevenlabs_comboboxes(self):
         """Met à jour toutes les comboboxes ElevenLabs avec les nouvelles voix chargées."""
@@ -379,7 +496,7 @@ class SettingsWindow(tk.Toplevel):
         speaker_entry.insert(0, speaker_name)
 
         row_data = {
-            'frame': row_frame,
+            'frame': row_frame, # Keep a reference to the frame for removal
             'speaker': speaker_entry,
             'gemini_voice': None,
             'elevenlabs_voice': None
@@ -406,7 +523,7 @@ class SettingsWindow(tk.Toplevel):
             row_data['elevenlabs_voice'] = elevenlabs_combo
 
         remove_btn = tk.Button(row_frame, text="-", width=3,
-                               command=lambda r=row_frame: self.remove_row(r))
+                               command=lambda r=row_frame: self.remove_row(r)) # Pass the frame to identify the row
         remove_btn.pack(side=tk.LEFT)
 
         row_data['remove_btn'] = remove_btn
