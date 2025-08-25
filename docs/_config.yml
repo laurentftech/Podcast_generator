@@ -1,3 +1,26 @@
-title: 🎙️ Podcast Generator
-description: "Home"
-theme: minima
+# _config.yml
+
+title: "Podcast Generator"
+description: "Transformez vos scripts en podcasts multi-voix captivants"
+url: "https://laurentftech.github.io/Podcast_generator"
+
+# Langue par défaut
+lang: fr
+
+# Layout par défaut si non précisé
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "page"
+
+# Plugins utiles (GitHub Pages en supporte une liste limitée)
+plugins:
+  - jekyll-seo-tag   # Améliore le référencement SEO
+  - jekyll-sitemap   # Génère un sitemap.xml automatiquement
+
+# Exclusions (fichiers à ne pas publier)
+exclude:
+  - Gemfile
+  - Gemfile.lock
