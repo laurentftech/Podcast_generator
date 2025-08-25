@@ -44,7 +44,7 @@ Un extrait de podcast généré avec Podcast Generator :
   Votre navigateur ne supporte pas l'élément audio.
 </audio>
 
-[Voir la démo complète ici](who_am_i.html)
+[Voir la démo complète ici](assets/who_am_i.html)
 
 <div style="text-align:center; margin-top:2rem;">
   <a href="https://github.com/laurentftech/Podcast_generator" class="cta-button">🚀 Découvrir sur GitHub</a>  
@@ -79,7 +79,7 @@ A podcast excerpt generated with Podcast Generator:
   Your browser does not support the audio element.
 </audio>
 
-[See the full demo here](who_am_i.html)
+[See the full demo here](assets/who_am_i.html)
 
 <div style="text-align:center; margin-top:2rem;">
   <a href="https://github.com/laurentftech/Podcast_generator" class="cta-button">🚀 Discover on GitHub</a>  
