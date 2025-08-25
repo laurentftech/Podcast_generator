@@ -33,7 +33,7 @@ Créez des podcasts engageants sans effort technique.
 - Parfait pour les cours, tutoriels et contenus pédagogiques  
 - Expérience immersive et dynamique pour les auditeurs  
 
-![Exemple de Podcast Generator](podcast_creator_screenshot.png){: .screenshot }
+![Exemple de Podcast Generator](assets/podcast_creator_screenshot.png){: .screenshot }
 
 ### 🎧 Écoutez la démo
 
@@ -68,7 +68,7 @@ Create engaging podcasts effortlessly using the ElevenLabs or Gemini APIs.
 - Perfect for courses, tutorials, and educational content  
 - Immersive and dynamic experience for listeners  
 
-![Podcast Generator Example](podcast_creator_screenshot.png){: .screenshot }
+![Podcast Generator Example](assets/podcast_creator_screenshot.png){: .screenshot }
 
 ### 🎧 Listen to the demo
 
