@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Redirection vers Podcast Generator</title>
+  <link rel="canonical" href="https://laurentftech.github.io/Podcast_generator/fr/">
+  <meta name="robots" content="index, follow">
+  <script>
+    // Détecte la langue du navigateur
+    const lang = navigator.language || navigator.userLanguage;
+
+    if (lang.startsWith('fr')) {
+      window.location.href = 'fr/';
+    } else {
+      window.location.href = 'en/';
+    }
+  </script>
+</head>
+<body>
+  <p>Si vous n’êtes pas redirigé automatiquement, choisissez votre langue :
+    <a href="fr/">Français</a> | <a href="en/">English</a>
+  </p>
+</body>
+</html>
