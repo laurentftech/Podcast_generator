@@ -142,9 +142,9 @@ def create_word_mapping(source_text: str, mfa_transcript: list, debug: bool = Fa
             continue
 
         # Détection des annotations (format: [annotation] ou <annotation>)
-        annotation_match = re.match(r'[<\[]([^>\]]+)[>\]]', source_text[i:])
+        annotation_match = re.match(r'([<\[]([^>\]]+)[>\]])', source_text[i:])
         if annotation_match:
-            annotation_text = annotation_match.group(0)
+            annotation_text = annotation_match.group(1)  # groupe 1 = annotation complète avec crochets
             segments.append({
                 'type': 'annotation',
                 'text': annotation_text,
@@ -242,6 +242,7 @@ def create_word_mapping(source_text: str, mfa_transcript: list, debug: bool = Fa
 def reconstruct_html_with_timing(segments):
     """Reconstruit le HTML à partir des segments analysés."""
     html_parts = []
+    word_counter = 0  # Compteur unique pour éviter les conflits de timing
 
     for segment in segments:
         if segment['type'] == 'speaker':
@@ -251,11 +252,12 @@ def reconstruct_html_with_timing(segments):
             # Annotation en italique
             html_parts.append(f"<em>{segment['text']}</em>")
         elif segment['type'] == 'word' and segment.get('timing'):
-            # Mot avec timing pour l'effet karaoke
+            # Mot avec timing pour l'effet karaoke - ID unique pour éviter les conflits
             timing = segment['timing']
             html_parts.append(
-                f'<span class="word" data-start="{timing["start"]}" data-end="{timing["end"]}">{segment["text"]}</span>'
+                f'<span class="word" data-start="{timing["start"]}" data-end="{timing["end"]}" data-word-id="{word_counter}">{segment["text"]}</span>'
             )
+            word_counter += 1
         else:
             # Texte simple (mots sans timing, espaces, ponctuation)
             text = segment['text']
