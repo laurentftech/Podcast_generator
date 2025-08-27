@@ -8,6 +8,9 @@ import re
 import tempfile
 import shutil
 import subprocess
+import re
+import unicodedata
+from difflib import SequenceMatcher
 
 
 def _prepare_scripts(original_script_text: str) -> tuple[str, str]:
@@ -17,7 +20,7 @@ def _prepare_scripts(original_script_text: str) -> tuple[str, str]:
     2. A display version for the final HTML (speaker names and annotations preserved).
     """
     # The display version is the original text with normalized apostrophes.
-    display_text_normalized = original_script_text.replace("’", "'").replace("`", "'")
+    display_text_normalized = original_script_text.replace("â€™", "'").replace("`", "'")
 
     # The MFA version is created by cleaning the display version.
     # 1. Remove annotations.
@@ -26,6 +29,7 @@ def _prepare_scripts(original_script_text: str) -> tuple[str, str]:
     mfa_text_normalized = re.sub(r'^\s*[\w\s]+:\s*', '', mfa_text_intermediate, flags=re.MULTILINE)
 
     return mfa_text_normalized, display_text_normalized
+
 
 def _parse_textgrid(textgrid_filepath: str) -> list:
     """Parses a TextGrid file from MFA to extract word timings."""
@@ -57,6 +61,7 @@ def _parse_textgrid(textgrid_filepath: str) -> list:
             })
     return transcript
 
+
 def _download_mfa_model_if_needed(model_type: str, model_name: str, mfa_base_command: list, status_callback=print):
     """Helper to check for an MFA model and download it if missing."""
     logger = logging.getLogger("PodcastGenerator.Demo")
@@ -74,12 +79,196 @@ def _download_mfa_model_if_needed(model_type: str, model_name: str, mfa_base_com
     else:
         logger.info(f"MFA {model_type} model '{model_name}' already installed.")
 
+
 def _setup_mfa_models(dictionary: str, acoustic_model: str, mfa_base_command: list, status_callback=print):
     """Checks for MFA models and downloads them if not present."""
     _download_mfa_model_if_needed("dictionary", dictionary, mfa_base_command, status_callback)
     _download_mfa_model_if_needed("acoustic", acoustic_model, mfa_base_command, status_callback)
 
-def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Podcast Demo", subtitle: str = None, output_dir: str = None, status_callback=print):
+
+def _get_html_template() -> str:
+    """Loads the HTML template from a file."""
+    logger = logging.getLogger("PodcastGenerator.Demo")
+    # Assumes the template is in a 'docs' folder relative to this script
+    script_dir = os.path.dirname(__file__)
+    template_path = os.path.join(script_dir, 'docs', 'demo_template.html')
+    try:
+        with open(template_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        logger.error(f"HTML template file not found at {template_path}. Cannot generate demo.")
+        raise
+
+
+def normalize_word(word):
+    """Normalise un mot pour comparaison tolérante."""
+    word = word.lower()
+    word = word.replace("â€™", "'")  # uniformiser les apostrophes
+    word = unicodedata.normalize("NFKD", word).encode("ascii", "ignore").decode("utf-8")
+    return re.sub(r"[^a-z0-9]", "", word)
+
+
+def similar(a, b, threshold=0.7):
+    """Retourne True si deux mots sont similaires (tolérance aux petites différences)."""
+    return SequenceMatcher(None, normalize_word(a), normalize_word(b)).ratio() >= threshold
+
+
+def create_word_mapping(source_text: str, mfa_transcript: list, debug: bool = False):
+    """
+    Crée un mapping entre texte original et MFA.
+    Retourne les segments du texte avec leur type et timing éventuel.
+    """
+    segments = []
+    mfa_index = 0
+    i = 0
+
+    # Statistiques pour debugging
+    total_mfa_words = len(mfa_transcript)
+    matched_words = 0
+    unmatched_words = 0
+
+    while i < len(source_text):
+        # Détection des noms de locuteurs (format: "Nom: ")
+        speaker_match = re.match(r'^([A-Z][a-zA-Z\s]+):\s*', source_text[i:], re.MULTILINE)
+        if speaker_match:
+            speaker_text = speaker_match.group(0)
+            segments.append({
+                'type': 'speaker',
+                'text': speaker_text,
+                'start_pos': i,
+                'end_pos': i + len(speaker_text)
+            })
+            i += len(speaker_text)
+            continue
+
+        # Détection des annotations (format: [annotation] ou <annotation>)
+        annotation_match = re.match(r'[<\[]([^>\]]+)[>\]]', source_text[i:])
+        if annotation_match:
+            annotation_text = annotation_match.group(0)
+            segments.append({
+                'type': 'annotation',
+                'text': annotation_text,
+                'start_pos': i,
+                'end_pos': i + len(annotation_text)
+            })
+            i += len(annotation_text)
+            continue
+
+        # Détection des mots
+        word_match = re.match(r"\b[\w'â€™-]+\b", source_text[i:])
+        if word_match:
+            word_text = word_match.group(0)
+
+            # Essayer de mapper avec MFA
+            timing_info = None
+
+            # Recherche du meilleur match dans une fenêtre autour de mfa_index
+            best_match_index = None
+            best_similarity = 0
+            search_window = 3  # Chercher dans un rayon de 3 mots
+
+            # Définir les limites de recherche
+            start_search = max(0, mfa_index - search_window)
+            end_search = min(len(mfa_transcript), mfa_index + search_window + 1)
+
+            for search_idx in range(start_search, end_search):
+                if search_idx < len(mfa_transcript):
+                    mfa_word = mfa_transcript[search_idx]["word"]
+                    if mfa_word != "<unk>":
+                        similarity = SequenceMatcher(None, normalize_word(word_text), normalize_word(mfa_word)).ratio()
+                        if similarity > best_similarity and similarity >= 0.6:  # Seuil plus bas
+                            best_similarity = similarity
+                            best_match_index = search_idx
+
+            # Si on a trouvé un bon match
+            if best_match_index is not None:
+                timing_info = {
+                    "start": mfa_transcript[best_match_index]["start"],
+                    "end": mfa_transcript[best_match_index]["end"]
+                }
+                mfa_index = best_match_index + 1
+                matched_words += 1
+
+                if debug and best_match_index != mfa_index - 1:
+                    print(
+                        f"Fenêtre de recherche utilisée: '{word_text}' -> '{mfa_transcript[best_match_index]['word']}' (similarity: {best_similarity:.2f}, offset: {best_match_index - (mfa_index - 1)})")
+
+            # Si aucun match trouvé et qu'il reste des mots MFA, avancer d'un cran
+            elif mfa_index < len(mfa_transcript):
+                if debug:
+                    current_mfa = mfa_transcript[mfa_index]["word"] if mfa_index < len(mfa_transcript) else "END"
+                    print(
+                        f"No match found: source='{word_text}' vs mfa='{current_mfa}' (position {i}, mfa_index {mfa_index})")
+                unmatched_words += 1
+
+                # Stratégie adaptative : si on a trop de mots non-matchés consécutifs,
+                # on avance dans MFA pour essayer de resynchroniser
+                if unmatched_words % 3 == 0 and mfa_index < len(mfa_transcript) - 1:
+                    mfa_index += 1
+                    if debug:
+                        print(f"Advancing MFA index for resync: {mfa_index}")
+
+            segments.append({
+                'type': 'word',
+                'text': word_text,
+                'start_pos': i,
+                'end_pos': i + len(word_text),
+                'timing': timing_info
+            })
+            i += len(word_text)
+            continue
+
+        # Caractère simple (espaces, ponctuation, etc.)
+        segments.append({
+            'type': 'text',
+            'text': source_text[i],
+            'start_pos': i,
+            'end_pos': i + 1
+        })
+        i += 1
+
+    # Afficher les statistiques si debug activé
+    if debug:
+        print(f"\n=== Statistiques d'alignement ===")
+        print(f"Mots MFA disponibles: {total_mfa_words}")
+        print(f"Mots matchés: {matched_words}")
+        print(f"Mots non-matchés: {unmatched_words}")
+        print(f"Taux de réussite: {matched_words / (matched_words + unmatched_words) * 100:.1f}%")
+        print(f"MFA index final: {mfa_index}")
+
+    return segments
+
+
+def reconstruct_html_with_timing(segments):
+    """Reconstruit le HTML à partir des segments analysés."""
+    html_parts = []
+
+    for segment in segments:
+        if segment['type'] == 'speaker':
+            # Nom de locuteur en gras
+            html_parts.append(f"<strong>{segment['text']}</strong>")
+        elif segment['type'] == 'annotation':
+            # Annotation en italique
+            html_parts.append(f"<em>{segment['text']}</em>")
+        elif segment['type'] == 'word' and segment.get('timing'):
+            # Mot avec timing pour l'effet karaoke
+            timing = segment['timing']
+            html_parts.append(
+                f'<span class="word" data-start="{timing["start"]}" data-end="{timing["end"]}">{segment["text"]}</span>'
+            )
+        else:
+            # Texte simple (mots sans timing, espaces, ponctuation)
+            text = segment['text']
+            # Convertir les retours à la ligne en <br>
+            if '\n' in text:
+                text = text.replace('\n', '<br>')
+            html_parts.append(text)
+
+    return ''.join(html_parts)
+
+
+def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Podcast Demo", subtitle: str = None,
+                     output_dir: str = None, status_callback=print):
     """
     Génère une démo HTML synchronisée depuis un script et son audio.
     Utilise Montreal Forced Aligner (MFA) pour aligner mot à mot.
@@ -177,54 +366,11 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
             if not transcript_from_mfa:
                 raise RuntimeError("Failed to parse TextGrid output or no words were aligned.")
 
-            # Reconstruct the final HTML body by mapping timed words back to the cleaned script text.
-            # This preserves all original formatting (casing, line breaks, extra spaces).
-            html_body_parts = []
-            text_pointer = 0
-            source_text = display_script_text # Use the script with speaker names for reconstruction
+            # Analyser le texte en segments avec debug activé
+            segments = create_word_mapping(display_script_text, transcript_from_mfa, debug=True)
 
-            for timed_item in transcript_from_mfa:
-                word_to_find = timed_item['word']
-                # MFA can output <unk> for words it doesn't recognize (like emojis). Skip them.
-                if word_to_find == '<unk>':
-                    continue
-                try:
-                    # Find the next occurrence of the word from MFA in our source text, case-insensitively.
-                    # This is crucial for matching MFA's lowercase output to the original script's casing.
-                    found_at = source_text.lower().index(word_to_find.lower(), text_pointer)
-
-                    # Append the text (whitespace, etc.) between the last word and this one
-                    leading_text = source_text[text_pointer:found_at]
-                    # Format for HTML: escape special chars, convert newlines, and bold speaker names
-                    processed_leading_text = leading_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                    processed_leading_text = processed_leading_text.replace("\n", "<br>\n")
-                    processed_leading_text = re.sub(r'(^|<br>\n)(\s*)([\w\s]+:)', r'\1\2<strong>\3</strong>', processed_leading_text)
-                    html_body_parts.append(
-                        processed_leading_text
-                    )
-
-                    # Append the timed word as a span
-                    start, end = timed_item['start'], timed_item['end']
-                    original_word = source_text[found_at:found_at + len(word_to_find)] # Get the word with original casing
-                    word_html = f'<span class="word" data-start="{start}" data-end="{end}" onclick="audio.currentTime = {start};">{original_word}</span>'
-                    html_body_parts.append(word_html)
-
-                    # Move the pointer to the end of the found word
-                    text_pointer = found_at + len(word_to_find)
-                except ValueError:
-                    logger.warning(f"Could not find word '{word_to_find}' in the original script after position {text_pointer}. Appending as plain text.")
-                    # Append the word as plain, non-interactive text so it's not lost.
-                    html_body_parts.append(word_to_find)
-
-            # Append any remaining text after the last aligned word
-            trailing_text = source_text[text_pointer:]
-            processed_trailing_text = trailing_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            processed_trailing_text = processed_trailing_text.replace("\n", "<br>\n")
-            processed_trailing_text = re.sub(r'(^|<br>\n)(\s*)([\w\s]+:)', r'\1\2<strong>\3</strong>', processed_trailing_text)
-            html_body_parts.append(
-                processed_trailing_text
-            )
-            final_html_body = "".join(html_body_parts)
+            # Reconstruire le HTML final
+            final_html_body = reconstruct_html_with_timing(segments)
 
             # --- 5. Generate HTML ---
             # Sanitize the title to create a safe filename
@@ -233,7 +379,7 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
             if not safe_filename:
                 # Fallback if the title contains only special characters
                 safe_filename = "podcast_demo"
-            
+
             # Determine the output directory for the demo files
             if output_dir:
                 final_output_dir = output_dir
@@ -247,48 +393,16 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
 
             subtitle_html = f'<h2>{subtitle.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")}</h2>' if subtitle else ""
 
-            html_template = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>{title}</title>
-  <style>
-    body {{ font-family: system-ui, sans-serif; max-width:800px; margin:2rem auto; line-height:1.6; }}
-    h1 {{ margin-bottom: 0.5rem; }}
-    h2 {{ margin-top: 0; color: #666; font-weight: normal; font-size: 1.2rem; }}
-    audio {{ width:100%; margin:1rem 0; }}
-    .word {{ padding:0 2px; transition:background 0.2s; cursor: pointer; }}
-    .highlight {{ background:#ffe08a; border-radius:3px; }}
-    footer {{ margin-top: 2rem; text-align: center; font-size: 0.9rem; color: #888; }}
-    footer a {{ color: #555; text-decoration: none; }}
-    footer a:hover {{ text-decoration: underline; }}
-  </style>
-</head>
-<body>
-  <h1>{title}</h1>
-  {subtitle_html}
-  <audio id="player" controls src="{os.path.basename(audio_filepath)}"></audio>
-  <p id="transcript">{final_html_body}</p>
-  <script>
-    const audio = document.getElementById("player");
-    const words = document.querySelectorAll(".word");
-    audio.addEventListener("timeupdate", () => {{
-      const t = audio.currentTime;
-      words.forEach(w => {{
-        const start = parseFloat(w.dataset.start);
-        const end = parseFloat(w.dataset.end);
-        w.classList.toggle("highlight", t >= start && t < end);
-      }});
-    }});
-  </script>
-  <footer>
-    <p>Generated by <a href="https://laurentftech.github.io/Podcast_generator" target="_blank">Podcast Generator</a></p>
-  </footer>
-</body>
-</html>"""
+            html_template = _get_html_template()
+            html_content = html_template.format(
+                title=title,
+                subtitle_html=subtitle_html,
+                audio_filename=os.path.basename(audio_filepath),
+                final_html_body=final_html_body
+            )
 
             with open(html_filepath, "w", encoding="utf-8") as f:
-                f.write(html_template)
+                f.write(html_content)
 
             webbrowser.open("file://" + os.path.abspath(html_filepath))
             status_callback(f"Demo generated and opened: {os.path.basename(html_filepath)}")
@@ -302,6 +416,7 @@ if __name__ == "__main__":
     # This is crucial for preventing infinite loops if this script were
     # ever to be frozen with PyInstaller on macOS and Windows.
     import multiprocessing
+
     multiprocessing.freeze_support()
 
     parser = argparse.ArgumentParser(
@@ -334,4 +449,5 @@ if __name__ == "__main__":
 
     # Set logging to DEBUG for detailed output, especially for Aeneas.
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    create_html_demo(args.script_file, args.audio_file, title=args.title, subtitle=args.subtitle, output_dir=args.output_dir)
+    create_html_demo(args.script_file, args.audio_file, title=args.title, subtitle=args.subtitle,
+                     output_dir=args.output_dir)
