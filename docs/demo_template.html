@@ -2,24 +2,199 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{title}</title>
   <style>
-    body {{ font-family: system-ui, sans-serif; max-width:800px; margin:2rem auto; line-height:1.6; }}
-    h1 {{ margin-bottom: 0.5rem; }}
-    h2 {{ margin-top: 0; color: #666; font-weight: normal; font-size: 1.2rem; }}
-    audio {{ width:100%; margin:1rem 0; }}
-    .word {{ padding:0 2px; transition:background 0.2s; cursor: pointer; }}
-    .highlight {{ background-color: #ffc107; color: #000; border-radius:3px; }}
-    footer {{ margin-top: 2rem; text-align: center; font-size: 0.9rem; color: #888; }}
-    footer a {{ color: #555; text-decoration: none; }}
-    footer a:hover {{ text-decoration: underline; }}
+    * {{
+      box-sizing: border-box;
+    }}
+
+    body {{
+      font-family: system-ui, sans-serif;
+      max-width: 800px;
+      margin: 1rem auto;
+      padding: 0 1rem;
+      line-height: 1.6;
+      font-size: 16px;
+    }}
+
+    h1 {{
+      margin-bottom: 0.5rem;
+      font-size: 1.8rem;
+    }}
+
+    h2 {{
+      margin-top: 0;
+      color: #666;
+      font-weight: normal;
+      font-size: 1.1rem;
+    }}
+
+    audio {{
+      width: 100%;
+      margin: 1rem 0;
+      min-height: 40px;
+      background-color: #f5f5f5;
+      border-radius: 8px;
+    }}
+
+    #transcript {{
+      font-size: 1rem;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }}
+
+    .word {{
+      padding: 2px 4px;
+      margin: 0 1px;
+      transition: background 0.2s;
+      cursor: pointer;
+      border-radius: 3px;
+      display: inline-block;
+    }}
+
+    .highlight {{
+      background-color: #ffc107;
+      color: #000;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(255, 193, 7, 0.3);
+    }}
+
+    strong {{
+      color: #000;
+      font-weight: 600;
+    }}
+
+    em {{
+      color: #666;
+      font-style: italic;
+      font-size: 0.9em;
+    }}
+
+    footer {{
+      margin-top: 3rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: #888;
+      padding-bottom: 1rem;
+    }}
+
+    footer a {{
+      color: #555;
+      text-decoration: none;
+    }}
+
+    footer a:hover {{
+      text-decoration: underline;
+    }}
+
+    /* Améliorations pour mobile */
+    @media (max-width: 768px) {{
+      body {{
+        margin: 0.5rem auto;
+        padding: 0 0.75rem;
+        font-size: 15px;
+      }}
+
+      h1 {{
+        font-size: 1.5rem;
+        margin-bottom: 0.3rem;
+      }}
+
+      h2 {{
+        font-size: 1rem;
+        margin-bottom: 1rem;
+      }}
+
+      audio {{
+        margin: 0.75rem 0;
+        min-height: 45px;
+        border-radius: 12px;
+        /* Force une hauteur minimum pour éviter la coupure */
+        height: 45px;
+      }}
+
+      #transcript {{
+        font-size: 0.95rem;
+        line-height: 1.6;
+      }}
+
+      .word {{
+        padding: 3px 5px;
+        margin: 1px 2px;
+        /* Améliorer la zone de touch sur mobile */
+        min-height: 24px;
+        display: inline-flex;
+        align-items: center;
+      }}
+
+      .highlight {{
+        box-shadow: 0 3px 6px rgba(255, 193, 7, 0.4);
+        transform: scale(1.05);
+      }}
+
+      strong {{
+        display: block;
+        margin: 0.5rem 0 0.2rem 0;
+        font-size: 1rem;
+      }}
+
+      em {{
+        font-size: 0.85rem;
+        margin-right: 0.5rem;
+      }}
+
+      footer {{
+        margin-top: 2rem;
+        font-size: 0.8rem;
+      }}
+    }}
+
+    /* Très petits écrans */
+    @media (max-width: 480px) {{
+      body {{
+        padding: 0 0.5rem;
+        font-size: 14px;
+      }}
+
+      h1 {{
+        font-size: 1.3rem;
+      }}
+
+      audio {{
+        height: 50px;
+        border-radius: 8px;
+      }}
+
+      #transcript {{
+        font-size: 0.9rem;
+      }}
+
+      .word {{
+        padding: 2px 4px;
+        margin: 1px;
+      }}
+    }}
+
+    /* Amélioration pour les contrôles audio sur tous les navigateurs */
+    audio::-webkit-media-controls-panel {{
+      background-color: #f8f9fa;
+    }}
+
+    audio::-webkit-media-controls-play-button,
+    audio::-webkit-media-controls-pause-button {{
+      background-color: #2c5aa0;
+      border-radius: 50%;
+    }}
   </style>
 </head>
 <body>
   <h1>{title}</h1>
   {subtitle_html}
-  <audio id="player" controls src="{audio_filename}"></audio>
-  <p id="transcript">{final_html_body}</p>
+  <audio id="player" controls src="{audio_filename}" preload="metadata">
+    <p>Votre navigateur ne supporte pas l'élément audio. <a href="{audio_filename}">Télécharger le fichier audio</a>.</p>
+  </audio>
+  <div id="transcript">{final_html_body}</div>
   <script>
     const audio = document.getElementById("player");
     const words = document.querySelectorAll(".word");
@@ -32,7 +207,15 @@
       wordId: w.dataset.wordId || Math.random() // fallback pour compatibilité
     }}));
 
+    // Optimisation pour mobile : limiter la fréquence des mises à jour
+    let lastUpdateTime = 0;
+    const updateThrottle = 100; // ms
+
     audio.addEventListener("timeupdate", () => {{
+      const now = Date.now();
+      if (now - lastUpdateTime < updateThrottle) return;
+      lastUpdateTime = now;
+
       const currentTime = audio.currentTime;
 
       // Enlever tous les highlights actuels
@@ -54,18 +237,52 @@
       // Surligner uniquement le mot courant
       if (currentWord) {{
         currentWord.element.classList.add("highlight");
+
+        // Défilement automatique sur mobile pour garder le mot visible
+        if (window.innerWidth <= 768) {{
+          currentWord.element.scrollIntoView({{
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest'
+          }});
+        }}
       }}
     }});
 
     // Permettre de cliquer sur les mots pour naviguer dans l'audio
     words.forEach(word => {{
-      word.addEventListener("click", () => {{
+      word.addEventListener("click", (e) => {{
+        e.preventDefault();
         const start = parseFloat(word.dataset.start);
         if (!isNaN(start)) {{
           audio.currentTime = start;
-          audio.play();
+          if (audio.paused) {{
+            audio.play().catch(err => console.log("Lecture automatique bloquée:", err));
+          }}
         }}
       }});
+
+      // Amélioration tactile pour mobile
+      word.addEventListener("touchstart", (e) => {{
+        e.target.style.transform = "scale(1.1)";
+      }});
+
+      word.addEventListener("touchend", (e) => {{
+        setTimeout(() => {{
+          e.target.style.transform = "";
+        }}, 150);
+      }});
+    }});
+
+    // Gérer les erreurs audio
+    audio.addEventListener("error", (e) => {{
+      console.error("Erreur audio:", e);
+      const transcript = document.getElementById("transcript");
+      transcript.insertAdjacentHTML("beforebegin",
+        '<div style="background: #ffe6e6; color: #d63031; padding: 1rem; border-radius: 8px; margin: 1rem 0;">' +
+        'Impossible de charger le fichier audio. Vérifiez que le fichier existe et est accessible.' +
+        '</div>'
+      );
     }});
   </script>
   <footer>

@@ -249,7 +249,8 @@ def reconstruct_html_with_timing(segments):
             # Nom de locuteur en gras
             html_parts.append(f"<strong>{segment['text']}</strong>")
         elif segment['type'] == 'annotation':
-            # Annotation en italique
+            # Extraire le contenu sans les délimiteurs < > ou [ ]
+            annotation_content = re.sub(r'[<>\[\]]', '', segment['text'])
             html_parts.append(f"<em>{segment['text']}</em>")
         elif segment['type'] == 'word' and segment.get('timing'):
             # Mot avec timing pour l'effet karaoke - ID unique pour éviter les conflits
