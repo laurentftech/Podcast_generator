@@ -894,7 +894,14 @@ Example usage:
         sys.exit(1)
 
     if result and args.demo:
-        create_html_demo(script_filepath_for_demo, result, status_callback=print)
+        # Create a default title from the output filename for the demo page
+        demo_title = os.path.splitext(os.path.basename(output_filepath))[0].replace('_', ' ').replace('-', ' ').title()
+        create_html_demo(
+            script_filepath=script_filepath_for_demo,
+            audio_filepath=result,
+            title=demo_title,
+            status_callback=print
+        )
 
     if temp_script_file_path:
         os.remove(temp_script_file_path)

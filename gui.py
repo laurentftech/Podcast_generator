@@ -10,6 +10,9 @@ import webbrowser
 import tempfile
 from datetime import datetime
 from typing import Optional
+
+from about_window import AboutWindow
+from api_keys_window import APIKeysWindow
 from generate_podcast import validate_speakers, update_elevenlabs_quota
 from create_demo import create_html_demo
 
@@ -20,7 +23,6 @@ try:
 except Exception:
     # Fallback développement: quand _version.py n'est pas encore généré
     __version__ = "0.0.0-dev"
-
 
 AVAILABLE_VOICES = {
     "Zephyr": "Bright",
@@ -55,20 +57,6 @@ AVAILABLE_VOICES = {
     "Sulafat": "Warm"
 }
 
-SERVICE_CONFIG = {
-    "elevenlabs": {
-        "title": "ElevenLabs API Key",
-        "account": "elevenlabs_api_key",
-        "url": "https://try.elevenlabs.io/zobct2wsp98z"
-    },
-    "gemini": {
-        "title": "Gemini API Key",
-        "account": "gemini_api_key",
-        "url": "https://aistudio.google.com/app/apikey"
-    }
-}
-
-
 def get_app_version() -> str:
     """Gets the application version from the _version.py file."""
     return __version__
@@ -91,7 +79,6 @@ def get_asset_path(filename: str) -> Optional[str]:
 
 
 class PodcastGeneratorApp:
-    DEFAULT_SPEAKER_SETTINGS = {"John": "Schedar - Even", "Samantha": "Zephyr - Bright"}
     DEFAULT_APP_SETTINGS = {
         "tts_provider": "elevenlabs",
         "speaker_voices": {"John": "Schedar - Even", "Samantha": "Zephyr - Bright"},
@@ -126,14 +113,14 @@ class PodcastGeneratorApp:
         self.api_key = api_key
         self.log_queue = queue.Queue()
         self.playback_obj = None  # To keep a reference to the playback process
-        self.sample_playback_obj = None # For voice sample playback
+        self.sample_playback_obj = None  # For voice sample playback
         self._active_play_button: Optional[tk.Button] = None
-        self.sample_poll_id = None # For polling playback status
+        self.sample_poll_id = None  # For polling playback status
         self.last_generated_filepath = None
-        self.last_generated_script = None # To store script for demo generation
+        self.last_generated_script = None  # To store script for demo generation
         self.ffplay_path = find_ffplay_path()
         self.is_mfa_available = self.check_mfa_availability()
-        self.elevenlabs_quota_text = None # New state variable
+        self.elevenlabs_quota_text = None  # New state variable
 
         self.app_settings = self.load_settings()
         self.provider_var = tk.StringVar(value=self.app_settings.get("tts_provider", "elevenlabs").lower())
@@ -183,7 +170,6 @@ class PodcastGeneratorApp:
         except (subprocess.CalledProcessError, FileNotFoundError, NotADirectoryError):
             self.logger.warning("MFA not found or installation is broken. Demo generation will be disabled.")
             return False
-
 
     def _setup_menu(self):
         """Sets up the main application menu bar."""
@@ -270,7 +256,6 @@ class PodcastGeneratorApp:
         script_frame = tk.LabelFrame(main_frame, text="Script to read", padx=5, pady=5)
         script_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
 
-
         self.script_text = scrolledtext.ScrolledText(script_frame, wrap=tk.WORD, height=15, width=80)
         self.script_text.pack(fill=tk.BOTH, expand=True)
         self.script_text.insert(tk.END, default_script)
@@ -331,7 +316,8 @@ class PodcastGeneratorApp:
 
             if sys.platform == "win32":
                 import winreg
-                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize')
+                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                                     r'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize')
                 value, _ = winreg.QueryValueEx(key, 'AppsUseLightTheme')
                 winreg.CloseKey(key)
                 return value == 0
@@ -349,6 +335,7 @@ class PodcastGeneratorApp:
 
     def _start_theme_watcher(self, interval_ms: int = 2000):
         """Surveille le mode sombre (macOS/Windows) et met à jour la couleur du provider_label si l'état change."""
+
         def _tick():
             try:
                 current = self._is_system_dark_mode()
@@ -359,10 +346,10 @@ class PodcastGeneratorApp:
                 # Replanifie la prochaine vérification
                 if self.root and self.root.winfo_exists():
                     self.root.after(interval_ms, _tick)
+
         # Premier tick après interval_ms
         if self.root and self.root.winfo_exists():
             self.root.after(interval_ms, _tick)
-
 
     def on_provider_selected(self):
         """Handles selection from the TTS Provider radio button menu."""
@@ -406,7 +393,7 @@ class PodcastGeneratorApp:
             self.log_status(f"API key acquisition for {provider_title} failed. Provider switch cancelled.")
             # Revert the radio button to the previous valid setting
             self.provider_var.set(self.app_settings.get("tts_provider", "elevenlabs"))
-            return # Do not show a warning, as the user has already interacted with a dialog.
+            return  # Do not show a warning, as the user has already interacted with a dialog.
 
         # If successful, update the API key in memory and in the settings.
         self.api_key = new_api_key
@@ -492,8 +479,6 @@ class PodcastGeneratorApp:
             # Entrée simple désactivée (pas de flèche)
             self.tts_submenu = None
 
-
-
         # 5) Manage API Keys...
         self.settings_menu.add_command(label="Manage API Keys...", command=self.open_api_keys_window)
 
@@ -513,7 +498,7 @@ class PodcastGeneratorApp:
             # Protéger l'accès au bouton si l'initialisation n'est pas terminée.
             if hasattr(self, "generate_button") and self.generate_button:
                 self.generate_button.config(state='normal' if has_any_key else 'disabled')
-        
+
     def _find_menu_index_by_label(self, menu: tk.Menu, label: str):
         """Retourne l'index d'une entrée de menu par son label, ou None si absent."""
         try:
@@ -557,9 +542,10 @@ class PodcastGeneratorApp:
                 # The data will be flattened only when needed (right before generation).
                 tts_provider = settings.get("tts_provider", self.DEFAULT_APP_SETTINGS["tts_provider"])
                 speaker_voices = settings.get("speaker_voices", self.DEFAULT_APP_SETTINGS["speaker_voices"].copy())
-                speaker_voices_elevenlabs = settings.get("speaker_voices_elevenlabs", self.DEFAULT_APP_SETTINGS["speaker_voices_elevenlabs"].copy())
+                speaker_voices_elevenlabs = settings.get("speaker_voices_elevenlabs",
+                                                         self.DEFAULT_APP_SETTINGS["speaker_voices_elevenlabs"].copy())
                 elevenlabs_quota_cache = settings.get("elevenlabs_quota_cache", None)
-                
+
                 return {
                     "tts_provider": tts_provider,
                     "speaker_voices": speaker_voices,
@@ -577,7 +563,7 @@ class PodcastGeneratorApp:
             os.makedirs(self.app_data_dir, exist_ok=True)  # Ensures the directory exists
             with open(self.settings_filepath, 'w') as f:
                 json.dump(self.app_settings, f, indent=4)
-            #self.log_status("Settings saved successfully.")
+            # self.log_status("Settings saved successfully.")
         except IOError as e:
             messagebox.showerror("Saving Error", f"Cannot save settings to file:\n{e}", parent=self.root)
             self.logger.error(f"Saving error for settings: {e}")
@@ -628,9 +614,30 @@ class PodcastGeneratorApp:
         threading.Thread(target=fetch_and_update, daemon=True).start()
 
     def open_settings_window(self):
-        """Opens the settings management window."""
         # Disable the button while the window is open to avoid duplicates
         self.menubar.entryconfig("Settings", state="disabled")
+
+        # If the ElevenLabs voice cache is not yet populated, wait for it.
+        # This prevents a race condition in the settings window where a late
+        # arrival of the voice list could trigger a buggy UI refresh.
+        if self.provider_var.get() == "elevenlabs" and not self.elevenlabs_voices_cache:
+            self.log_status("Loading available voices from ElevenLabs...")
+
+            def _wait_for_cache():
+                if self.elevenlabs_voices_cache:
+                    self.log_status("Voices loaded. Opening settings...")
+                    self._show_settings_window()
+                else:
+                    # Check again in 200ms
+                    self.root.after(200, _wait_for_cache)
+
+            _wait_for_cache()
+        else:
+            # If not using ElevenLabs or cache is ready, open immediately.
+            self._show_settings_window()
+
+    def _show_settings_window(self):
+        """Creates and displays the actual settings window."""
         from settings_window import VoiceSettingsWindow
         VoiceSettingsWindow(
             self.root,
@@ -645,7 +652,7 @@ class PodcastGeneratorApp:
 
     def show_about_window(self):
         """Displays the 'About' window."""
-        AboutWindow(self.root)
+        AboutWindow(self.root, version=get_app_version())
 
     def open_documentation(self):
         """Opens the link to the documentation or the repository."""
@@ -711,7 +718,7 @@ class PodcastGeneratorApp:
                                    parent=self.root)
             return
 
-        self.last_generated_script = script_content # Store script for demo
+        self.last_generated_script = script_content  # Store script for demo
 
         # --- Validate Speaker Voices ---
         try:
@@ -774,7 +781,7 @@ class PodcastGeneratorApp:
 
     def run_generation(self, script_content, output_filepath, app_settings, api_key):
         """The function executed by the thread."""
-        
+
         # --- Data Sanitization ---
         # Create a "clean" version of app_settings for the backend.
         # This ensures we only pass the voice ID to ElevenLabs, not the whole object.
@@ -782,7 +789,7 @@ class PodcastGeneratorApp:
             "tts_provider": app_settings.get("tts_provider"),
             "speaker_voices": app_settings.get("speaker_voices", {})
         }
-        
+
         # Nettoyage des voix Gemini: convertir "Name - Desc" -> "Name"
         gemini_clean = {}
         try:
@@ -804,7 +811,7 @@ class PodcastGeneratorApp:
             else:
                 # Legacy format: use the string as-is
                 elevenlabs_mapping_clean[speaker] = data
-        
+
         app_settings_clean["speaker_voices_elevenlabs"] = elevenlabs_mapping_clean
         # --- End of Data Sanitization ---
 
@@ -845,7 +852,8 @@ class PodcastGeneratorApp:
                 self.show_button.config(state='normal')
                 self.play_button.config(state='normal')
             # Enable demo button only if MFA is available
-            self.actions_menu.entryconfig("Generate HTML Demo...", state='normal' if self.is_mfa_available else 'disabled')
+            self.actions_menu.entryconfig("Generate HTML Demo...",
+                                          state='normal' if self.is_mfa_available else 'disabled')
             if self.app_settings.get("tts_provider").lower() == "elevenlabs":
                 self.update_elevenlabs_quota_in_status()
 
@@ -858,32 +866,49 @@ class PodcastGeneratorApp:
         self.log_text.config(state='disabled')  # Disable the log area at the very end
 
     def start_demo_generation_thread(self):
-        """Starts the HTML demo generation in a separate thread."""
+        """Opens a dialog to get demo settings, then starts the generation."""
         if not self.last_generated_filepath or not self.last_generated_script:
-            messagebox.showwarning("No Data", "Please generate a podcast first before creating a demo.", parent=self.root)
+            messagebox.showwarning("No Data", "Please generate a podcast first before creating a demo.",
+                                   parent=self.root)
             return
 
+        # Create a default title from the audio filename
+        base_name = os.path.splitext(os.path.basename(self.last_generated_filepath))[0]
+        default_title = base_name.replace('_', ' ').replace('-', ' ').title()
+
+        # Open the settings dialog and pass the callback
+        DemoSettingsWindow(self.root, self._on_demo_settings_confirmed, default_title=default_title)
+
+    def _on_demo_settings_confirmed(self, title: str, subtitle: str, output_dir: str):
+        """Callback that receives settings from the dialog and starts the thread."""
         self.log_status("Starting HTML demo generation...")
         self.actions_menu.entryconfig("Generate HTML Demo...", state='disabled')
 
         thread = threading.Thread(
             target=self.run_demo_generation,
-            args=(self.last_generated_script, self.last_generated_filepath)
+            args=(self.last_generated_script, self.last_generated_filepath, title, subtitle, output_dir)
         )
         thread.daemon = True
         thread.start()
 
-    def run_demo_generation(self, script_content: str, audio_filepath: str):
+    def run_demo_generation(self, script_content: str, audio_filepath: str, title: str, subtitle: str, output_dir: str):
         """The function executed by the demo generation thread."""
         temp_script_file = None
         try:
-            # aeneas requires a file, so we create a temporary one
+            # MFA requires a file, so we create a temporary one
             with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix=".txt", encoding='utf-8') as f:
                 f.write(script_content)
                 temp_script_file = f.name
 
-            # Call the function from generate_podcast
-            create_html_demo(temp_script_file, audio_filepath, self.log_status)
+            # Call the function from create_demo
+            create_html_demo(
+                script_filepath=temp_script_file,
+                audio_filepath=audio_filepath,
+                title=title,
+                subtitle=subtitle,
+                output_dir=output_dir,
+                status_callback=self.log_status
+            )
 
         except Exception as e:
             self.logger.error(f"Error during demo generation: {e}", exc_info=True)
@@ -891,7 +916,8 @@ class PodcastGeneratorApp:
         finally:
             # Re-enable the button on the main thread
             if self.root.winfo_exists():
-                self.root.after(0, lambda: self.actions_menu.entryconfig("Generate HTML Demo...", state='normal'))
+                self.root.after(0, lambda: self.actions_menu.entryconfig("Generate HTML Demo...",
+                                                                         state='normal' if self.is_mfa_available else 'disabled'))
             # Clean up the temporary file
             if temp_script_file and os.path.exists(temp_script_file):
                 os.remove(temp_script_file)
@@ -1007,7 +1033,7 @@ class PodcastGeneratorApp:
                     self.sample_poll_id = None
             else:  # Still playing, schedule next check
                 self.sample_poll_id = self.root.after(250, self._poll_sample_playback)
-        elif self.sample_poll_id: # No process but polling is scheduled, so cancel it
+        elif self.sample_poll_id:  # No process but polling is scheduled, so cancel it
             self.root.after_cancel(self.sample_poll_id)
             self.sample_poll_id = None
 
@@ -1033,7 +1059,8 @@ class PodcastGeneratorApp:
             return
 
         if not self.ffplay_path:
-            messagebox.showwarning("Player Not Found", "ffplay (part of FFmpeg) is required to play voice samples.", parent=self.root)
+            messagebox.showwarning("Player Not Found", "ffplay (part of FFmpeg) is required to play voice samples.",
+                                   parent=self.root)
             self._reset_active_button()
             return
 
@@ -1044,7 +1071,7 @@ class PodcastGeneratorApp:
 
             command = [self.ffplay_path, "-nodisp", "-autoexit", "-loglevel", "quiet", sample_source]
             self.sample_playback_obj = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                                         creationflags=creation_flags)
+                                                        creationflags=creation_flags)
             # Start polling for completion
             self._poll_sample_playback()
         except Exception as e:
@@ -1066,329 +1093,182 @@ class PodcastGeneratorApp:
         current_provider_raw = self.app_settings.get("tts_provider", "elevenlabs")
         current_provider_display = current_provider_raw.title()
         text_to_display = f"TTS Provider: {current_provider_display}"
-        
+
         # Si ElevenLabs est actif et qu’un quota est connu, afficher le quota
         if current_provider_raw.lower() == "elevenlabs" and self.elevenlabs_quota_text:
             text_to_display = self.elevenlabs_quota_text
-        
+
         if hasattr(self, 'provider_label'):
             self.provider_label.config(text=text_to_display)
 
     def _schedule_provider_label_refresh(self, delay_ms=2000, retries=5):
         """Planifie des rafraîchissements du provider_label après un délai, avec quelques tentatives."""
+
         def _try_refresh(attempt=1):
             # Met à jour le label avec l’info la plus récente disponible
             self._update_provider_label()
             # Si ElevenLabs est actif et que le quota n'est pas encore connu, retente plus tard
             if (
-                attempt < retries
-                and self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs"
-                and not self.elevenlabs_quota_text
+                    attempt < retries
+                    and self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs"
+                    and not self.elevenlabs_quota_text
             ):
                 self.root.after(delay_ms, lambda: _try_refresh(attempt + 1))
+
         # Premier essai après delay_ms
         self.root.after(delay_ms, _try_refresh)
 
-
-class APIKeysWindow(tk.Toplevel):
-    def __init__(self, parent, close_callback):
-        super().__init__(parent)
-        self.title("Welcome to Podcast Generator!")
-        self.transient(parent)
-        self.grab_set()
-        self.resizable(False, False)
-        self.close_callback = close_callback
-        self.protocol("WM_DELETE_WINDOW", self.on_close)
-
-        main_frame = tk.Frame(self, padx=20, pady=15)
-        main_frame.pack(fill=tk.BOTH, expand=True)
-
-        tk.Label(main_frame, text="Manage API Keys", font=('Helvetica', 12, 'bold')).pack(pady=(0, 15))
-        # Message de bienvenue (en anglais) pour guider l'utilisateur
-        welcome_text = (
-            "Welcome!\n"
-            "Podcast Generator is a tool that generates podcasts using AI.\n"
-            "To use it, you need to configure at least one API key for TTS (Text-to-Speech).\n"
-            "You can set your ElevenLabs (and/or Google Gemini)  API keys below. They will be stored securely in your system.\n"
-        )
-        tk.Label(
-            main_frame,
-            text=welcome_text,
-            justify="left",
-            wraplength=520
-        ).pack(anchor="w", pady=(0, 12))
-
-        # ElevenLabs API Key section
-        elevenlabs_frame = tk.LabelFrame(main_frame, text="ElevenLabs API", padx=10, pady=10)
-        elevenlabs_frame.pack(fill=tk.X, pady=(0, 10))
-
-        # Note sur les permissions minimales requises
-        tk.Label(
-            elevenlabs_frame,
-            text="Minimum required permissions in ElevenLabs API settings:\n"
-                 "• Text to Speech: Has access\n"
-                 "• User: Read only\n"
-                 "• Voices: Read only",
-            justify="left",
-            wraplength=520
-        ).pack(anchor="w", pady=(0, 6))
-        # Lien cliquable vers la page pour obtenir la clé ElevenLabs
-        elevenlabs_link = tk.Label(elevenlabs_frame, text="Get an ElevenLabs API key (affiliate)", fg="blue", cursor="hand2")
-        elevenlabs_link.pack(anchor="w", pady=(0, 6))
-        elevenlabs_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://try.elevenlabs.io/zobct2wsp98z"))
-
-        self.elevenlabs_status_label = tk.Label(elevenlabs_frame, text="", fg="green")
-        self.elevenlabs_status_label.pack(anchor="w", pady=(0, 5))
-
-        elevenlabs_button_frame = tk.Frame(elevenlabs_frame)
-        elevenlabs_button_frame.pack(fill=tk.X)
-
-        tk.Button(elevenlabs_button_frame, text="Set/Update Key", command=lambda: self.set_api_key("elevenlabs")).pack(
-            side=tk.LEFT, padx=(0, 5))
-        tk.Button(elevenlabs_button_frame, text="Remove Key", command=lambda: self.remove_api_key("elevenlabs")).pack(
-            side=tk.LEFT, padx=(0, 5))
-        tk.Button(elevenlabs_button_frame, text="Test Key", command=lambda: self.test_api_key("elevenlabs")).pack(
-            side=tk.LEFT)
-
-        # Gemini API Key section
-        gemini_frame = tk.LabelFrame(main_frame, text="Google Gemini API", padx=10, pady=10)
-        gemini_frame.pack(fill=tk.X, pady=(0, 10))
-
-        gemini_link = tk.Label(gemini_frame, text="Get a Gemini API key", fg="blue", cursor="hand2")
-        gemini_link.pack(anchor="w", pady=(0, 6))
-        gemini_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://aistudio.google.com/app/apikey"))
-        self.gemini_status_label = tk.Label(gemini_frame, text="", fg="green")
-        self.gemini_status_label.pack(anchor="w", pady=(0, 5))
-
-        gemini_button_frame = tk.Frame(gemini_frame)
-        gemini_button_frame.pack(fill=tk.X)
-
-        tk.Button(gemini_button_frame, text="Set/Update Key", command=lambda: self.set_api_key("gemini")).pack(
-            side=tk.LEFT, padx=(0, 5))
-        tk.Button(gemini_button_frame, text="Remove Key", command=lambda: self.remove_api_key("gemini")).pack(
-            side=tk.LEFT, padx=(0, 5))
-        tk.Button(gemini_button_frame, text="Test Key", command=lambda: self.test_api_key("gemini")).pack(side=tk.LEFT)
-
-        # Close button
-        tk.Button(main_frame, text="Close", command=self.on_close).pack(pady=(15, 0))
-
-        # Update status on window creation
-        self.update_status()
-
-    def on_close(self):
-        """Handle window close event."""
-        if self.close_callback:
-            self.close_callback()
-        self.destroy()
-
-    def update_status(self):
-        """Update the status labels for both APIs."""
+    def perform_startup_tasks(self):
+        """
+        Handles tasks that need to run after the main window is initialized,
+        like checking for API keys and pre-fetching data.
+        """
+        # --- API key check at startup ---
         import keyring
+        current_provider = self.app_settings.get("tts_provider", "elevenlabs")
+        account_name = "elevenlabs_api_key" if current_provider == "elevenlabs" else "gemini_api_key"
+        api_key = keyring.get_password("PodcastGenerator", account_name)
 
-        # Check Gemini key
-        gemini_key = keyring.get_password("PodcastGenerator", "gemini_api_key")
-        if gemini_key:
-            self.gemini_status_label.config(text="✓ API key is configured", fg="green")
-        else:
-            self.gemini_status_label.config(text="✗ No API key configured", fg="red")
+        if not api_key:
+            # Open the API key management window and wait for it to close
+            win = self.open_api_keys_window()
+            self.root.deiconify()  # Ensure the parent window is visible for the dialog
+            self.root.wait_window(win)
 
-        # Check ElevenLabs key
-        elevenlabs_key = keyring.get_password("PodcastGenerator", "elevenlabs_api_key")
-        if elevenlabs_key:
-            self.elevenlabs_status_label.config(text="✓ API key is configured", fg="green")
-        else:
-            self.elevenlabs_status_label.config(text="✗ No API key configured", fg="red")
+            # Re-check the key after the dialog is closed
+            api_key = keyring.get_password("PodcastGenerator", account_name)
+            if not api_key:
+                self.logger.info("Application closed because no API key was provided at startup.")
+                messagebox.showwarning("API Key Required", "The application cannot start without an API key.",
+                                       parent=self.root)
+                self.root.destroy()
+                return False  # Indicate failure
 
-    def set_api_key(self, service: str):
-        """Set or update an API key for the specified service."""
-        import keyring
-        from tkinter import simpledialog
+        # Now that we have the key, assign it to the app and update the UI.
+        self.api_key = api_key
+        self.update_provider_menu_state()
+        self.update_voice_settings_enabled()
 
-        config = SERVICE_CONFIG.get(service)
-        if not config: return
-
-        new_key = simpledialog.askstring(config["title"], f"Enter your {config['title']}:", parent=self, show="*")
-        if new_key and new_key.strip():
-            keyring.set_password("PodcastGenerator", config["account"], new_key.strip())
-            messagebox.showinfo("Success", f"{config['title']} has been saved securely.", parent=self)
-            self.update_status()
-        elif new_key is not None:  # User clicked OK but entered empty key
-            messagebox.showwarning("Invalid Key", "API key cannot be empty.", parent=self)
-
-    def remove_api_key(self, service: str):
-        """Remove an API key for the specified service."""
-        import keyring
-        config = SERVICE_CONFIG.get(service)
-        if not config: return
-
-        if messagebox.askyesno("Confirm Removal", f"Are you sure you want to remove the {config['title']}?", parent=self):
+        # --- Pre-fetch ElevenLabs voices ---
+        def _prefetch_elevenlabs():
+            """Prefetches ElevenLabs voices using the v1 API."""
             try:
-                keyring.delete_password("PodcastGenerator", config["account"])
-                messagebox.showinfo("Success", f"{config['title']} has been removed.", parent=self)
-            except keyring.errors.PasswordDeleteError:
-                messagebox.showinfo("Info", f"No {config['title']} was stored.", parent=self)
-            self.update_status()
+                import keyring, requests
+                key = keyring.get_password("PodcastGenerator", "elevenlabs_api_key")
+                if not key:
+                    self.elevenlabs_voices_cache = []
+                    return
 
-    def test_api_key(self, service: str):
-        """Test an API key for the specified service."""
-        import keyring
-        import requests
-        from tkinter import messagebox
-
-        if service == "elevenlabs":
-            key = keyring.get_password("PodcastGenerator", "elevenlabs_api_key")
-            if not key:
-                messagebox.showwarning("No Key", "No ElevenLabs API key is configured.", parent=self)
-                return
-
-            # Test ElevenLabs API
-            try:
                 headers = {"xi-api-key": key}
-                response = requests.get("https://api.elevenlabs.io/v1/user", headers=headers, timeout=10)
+                resp = requests.get("https://api.elevenlabs.io/v1/voices", headers=headers, timeout=15)
 
-                if response.status_code == 200:
-                    user_data = response.json()
-                    subscription = user_data.get('subscription', {}).get('tier', 'Unknown')
-                    char_count = user_data.get('subscription', {}).get('character_count', 'Unknown')
-                    char_limit = user_data.get('subscription', {}).get('character_limit', 'Unknown')
-                    
-                    messagebox.showinfo("Success",  # Restoring more detailed message
-                                        f"ElevenLabs API key is valid! (API v1)\n\n"
-                                        f"Subscription: {subscription}\n"
-                                        f"Usage: {char_count} / {char_limit} characters\n\n"
-                                        f"⚠ Using v1 compatibility mode",
-                                        parent=self)
+                if resp.status_code != 200:
+                    self.elevenlabs_voices_cache = []
+                    return
 
-                elif response.status_code == 401:
-                    try:
-                        error_detail = response.json().get('detail', {})
-                        if isinstance(error_detail, dict):
-                            error_msg = error_detail.get('message', 'Invalid API key')
-                        else:
-                            error_msg = str(error_detail)
-                    except:
-                        error_msg = "Invalid or expired API key"
+                data = resp.json()
+                voices = []
+                for voice in data.get('voices', []):
+                    labels = voice.get('labels', {}) if voice.get('labels') else {}
+                    desc_parts = [p.title() for p in [labels.get('gender'), labels.get('age'), labels.get('accent')] if p]
+                    description = ', '.join(desc_parts) or str(voice.get('category', '')).title()
+                    display_name = f"{voice.get('name', 'Unknown')} - {description}" if description else voice.get('name', 'Unknown')
+                    voices.append({'id': voice.get('voice_id', ''), 'name': voice.get('name', 'Unknown'),
+                                   'display_name': display_name, 'category': voice.get('category', ''),
+                                   'labels': labels, 'preview_url': voice.get('preview_url', '')})
+                voices.sort(key=lambda x: x.get('name', ''))
+                self.elevenlabs_voices_cache = voices
+            except Exception:
+                self.elevenlabs_voices_cache = []
 
-                    messagebox.showerror("Authentication Error",
-                                         f"ElevenLabs API key test failed (401 Unauthorized):\n\n"
-                                         f"{error_msg}\n\n"
-                                         f"Please check:\n"
-                                         f"• Key is correct and complete\n"
-                                         f"• Key hasn't expired\n"
-                                         f"• Account is active on elevenlabs.io", parent=self)
-                else:
-                    try:
-                        error_detail = response.json()
-                        error_msg = str(error_detail)
-                    except:
-                        error_msg = response.text[:200] if response.text else "Unknown error"
+        threading.Thread(target=_prefetch_elevenlabs, daemon=True).start()
+        return True  # Indicate success
 
-                    messagebox.showerror("Error",
-                                         f"ElevenLabs API key test failed: {response.status_code}\n\n"
-                                         f"Details: {error_msg}", parent=self)
-
-            except requests.exceptions.RequestException as e:
-                messagebox.showerror("Network Error", f"Failed to connect to ElevenLabs API:\n{str(e)}", parent=self)
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to test ElevenLabs API key: {str(e)}", parent=self)
-
-        else:
-            # Gemini testing code
-            key = keyring.get_password("PodcastGenerator", "gemini_api_key")
-            if not key:
-                messagebox.showwarning("No Key", "No Gemini API key is configured.", parent=self)
-                return
-
-            # Test Gemini API
-            try:
-                from google import genai
-                client = genai.Client(api_key=key)
-                # Simple test request
-                models = list(client.models.list())
-                if models:
-                    messagebox.showinfo("Success", f"Gemini API key is valid!", parent=self)
-                else:
-                    messagebox.showwarning("Warning", "Gemini API key appears valid but no models accessible.",
-                                           parent=self)
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to test Gemini API key: {str(e)}", parent=self)
-
-    def on_close(self):
-        """Handle window closing."""
-        self.close_callback()
-        self.destroy()
-
-
-# ... existing code ...
-
-class AboutWindow(tk.Toplevel):
-    def __init__(self, parent):
+class DemoSettingsWindow(tk.Toplevel):
+    def __init__(self, parent, callback, default_title=""):
         super().__init__(parent)
-        self.title("About Podcast Generator")
+        self.title("HTML Demo Settings")
         self.transient(parent)
         self.grab_set()
         self.resizable(False, False)
+        self.callback = callback
 
         main_frame = tk.Frame(self, padx=20, pady=15)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        tk.Label(main_frame, text=f"Podcast Generator v{get_app_version()}", font=('Helvetica', 12, 'bold')).pack(
-            pady=(0, 5))
-        tk.Label(main_frame, text=f"Copyright (c) {datetime.now().year} Laurent FRANCOISE").pack()
-        tk.Label(main_frame, text="Licence : MIT License").pack(pady=(0, 15))
+        # --- Fields ---
+        fields_frame = tk.Frame(main_frame)
+        fields_frame.pack(fill=tk.X)
 
-        support_frame = tk.LabelFrame(main_frame, text="Support the projet", padx=10, pady=10)
-        support_frame.pack(fill=tk.X, pady=(0, 10))
+        # Title
+        tk.Label(fields_frame, text="Title:").grid(row=0, column=0, sticky="w", pady=2)
+        self.title_var = tk.StringVar(value=default_title)
+        self.title_entry = tk.Entry(fields_frame, textvariable=self.title_var, width=50)
+        self.title_entry.grid(row=0, column=1, sticky="ew", pady=2, padx=5)
 
-        tk.Label(support_frame, text="If this application is useful to you, you can support its development:").pack(
-            pady=(0, 5))
+        # Subtitle
+        tk.Label(fields_frame, text="Subtitle:").grid(row=1, column=0, sticky="w", pady=2)
+        self.subtitle_var = tk.StringVar()
+        self.subtitle_entry = tk.Entry(fields_frame, textvariable=self.subtitle_var, width=50)
+        self.subtitle_entry.grid(row=1, column=1, sticky="ew", pady=2, padx=5)
 
-        coffee_link = tk.Label(support_frame, text="❤️ Buy Me a Coffee", fg="blue", cursor="hand2",
-                               font=('Helvetica', 10, 'bold'))
-        coffee_link.pack(pady=(0, 5))
-        coffee_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://buymeacoffee.com/laurentftech"))
+        # Output Directory
+        tk.Label(fields_frame, text="Output Directory:").grid(row=2, column=0, sticky="w", pady=2)
+        self.output_dir_var = tk.StringVar(value=os.path.expanduser("~/Downloads"))
+        dir_frame = tk.Frame(fields_frame)
+        dir_frame.grid(row=2, column=1, sticky="ew", pady=2, padx=5)
+        self.output_dir_entry = tk.Entry(dir_frame, textvariable=self.output_dir_var)
+        self.output_dir_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        credits_frame = tk.LabelFrame(main_frame, text="Credits and Acknowledgements", padx=10, pady=10)
-        credits_frame.pack(fill=tk.X, pady=(0, 10))
+        browse_button = tk.Button(dir_frame, text="Browse...", command=self.browse_directory)
+        browse_button.pack(side=tk.LEFT, padx=(5, 0))
 
-        # Gemini API link
-        gemini_frame = tk.Frame(credits_frame)
-        gemini_frame.pack(fill=tk.X, pady=2)
-        tk.Label(gemini_frame, text="- Google Gemini API:").pack(side=tk.LEFT)
-        link_label = tk.Label(gemini_frame, text="ai.google.dev/gemini-api", fg="blue", cursor="hand2")
-        link_label.pack(side=tk.LEFT, padx=5)
-        link_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://ai.google.dev/gemini-api"))
+        fields_frame.grid_columnconfigure(1, weight=1)
 
-        # ElevenLabs API link
-        elevenlabs_frame = tk.Frame(credits_frame)
-        elevenlabs_frame.pack(fill=tk.X, pady=2)
-        tk.Label(elevenlabs_frame, text="- ElevenLabs API:").pack(side=tk.LEFT)
-        link_label2 = tk.Label(elevenlabs_frame, text="elevenlabs.io", fg="blue", cursor="hand2")
-        link_label2.pack(side=tk.LEFT, padx=5)
-        link_label2.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://elevenlabs.io"))
+        # --- Buttons ---
+        button_frame = tk.Frame(main_frame)
+        button_frame.pack(pady=(15, 0))
 
-        tk.Label(credits_frame, text="- Tkinter for the graphical interface", anchor="w").pack(fill=tk.X, pady=2)
+        ok_button = tk.Button(button_frame, text="Generate Demo", command=self.on_ok)
+        ok_button.pack(side=tk.LEFT, padx=5)
+        cancel_button = tk.Button(button_frame, text="Cancel", command=self.destroy)
+        cancel_button.pack(side=tk.LEFT, padx=5)
 
-        # Flaticon link
-        flaticon_frame = tk.Frame(credits_frame)
-        flaticon_frame.pack(fill=tk.X, pady=2)
-        tk.Label(flaticon_frame, text="- Icon by Smashicons from").pack(side=tk.LEFT)
-        flaticon_link = tk.Label(flaticon_frame, text="flaticon.com", fg="blue", cursor="hand2")
-        flaticon_link.pack(side=tk.LEFT, padx=5)
-        flaticon_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://www.flaticon.com"))
-
-        ok_button = tk.Button(main_frame, text="OK", command=self.destroy, width=10)
-        ok_button.pack(pady=(10, 0))
-
-        self.bind('<Return>', lambda event: ok_button.invoke())
         self.protocol("WM_DELETE_WINDOW", self.destroy)
+        self.bind('<Return>', lambda event: ok_button.invoke())
+        self.bind('<Escape>', lambda event: cancel_button.invoke())
+
+        self.title_entry.focus_set()
+
+    def browse_directory(self):
+        directory = filedialog.askdirectory(
+            title="Select Output Directory",
+            initialdir=self.output_dir_var.get(),
+            parent=self
+        )
+        if directory:
+            self.output_dir_var.set(directory)
+
+    def on_ok(self):
+        title = self.title_var.get().strip()
+        subtitle = self.subtitle_var.get().strip()
+        output_dir = self.output_dir_var.get().strip()
+
+        if not title:
+            messagebox.showerror("Validation Error", "Title cannot be empty.", parent=self)
+            return
+        if not output_dir:
+            messagebox.showerror("Validation Error", "Output directory cannot be empty.", parent=self)
+            return
+
+        self.callback(title, subtitle, output_dir)
+        self.destroy()
 
 def main():
     # Initializes the application and starts the main Tkinter loop
     # Creates the root window but hides it for now.
     # This allows for reliable display of error dialogs
     # even if the full interface initialization fails.
-
 
     root = tk.Tk()
     root.withdraw()
@@ -1426,91 +1306,11 @@ def main():
     # The window remains hidden for now. We pass a placeholder for the api_key.
     app = PodcastGeneratorApp(root, generate_func=generate, logger=logger, api_key="", default_script=PODCAST_SCRIPT)
 
-    # --- API key check at startup (remplace l'ancien get_api_key) ---
-    import keyring
-    current_provider = app.app_settings.get("tts_provider", "elevenlabs")
-    account_name = "elevenlabs_api_key" if current_provider == "elevenlabs" else "gemini_api_key"
-    api_key = keyring.get_password("PodcastGenerator", account_name)
-
-    if not api_key:
-        # Ouvrir directement la fenêtre de gestion des clés et attendre sa fermeture
-        win = app.open_api_keys_window()
-        root.deiconify()  # s'assurer que la fenêtre parent est visible
-        root.wait_window(win)
-
-        # Re-vérifier la clé après fermeture
-        api_key = keyring.get_password("PodcastGenerator", account_name)
-        if not api_key:
-            logger.info("Application closed because no API key was provided at startup.")
-            messagebox.showwarning("API Key Required", "The application cannot start without an API key.", parent=root)
-            root.destroy()
-            return
-
-    # Now that we have the key, assign it to the app and show the main window.
-    app.api_key = api_key
-    # Met à jour immédiatement l'état des contrôles dépendants des clés
-    app.update_provider_menu_state()
-    app.update_voice_settings_enabled()
-
-    # Précharger les voix ElevenLabs au démarrage (si la clé est configurée)
-    def _prefetch_elevenlabs():
-        """Prefetches ElevenLabs voices using the v1 API."""
-        try:
-            import keyring, requests
-            key = keyring.get_password("PodcastGenerator", "elevenlabs_api_key")
-            if not key:
-                app.elevenlabs_voices_cache = []
-                return
-
-            headers = {"xi-api-key": key}
-
-            resp = requests.get("https://api.elevenlabs.io/v1/voices", headers=headers, timeout=15)
-            if resp.status_code != 200:
-                app.elevenlabs_voices_cache = []
-                return
-
-            data = resp.json()
-            voices = []
-
-            for voice in data.get('voices', []):
-                voice_id = voice.get('voice_id', '')
-                name = voice.get('name', 'Unknown')
-                category = voice.get('category', '')
-                labels = voice.get('labels', {}) if voice.get('labels') else {}
-                preview_url = voice.get('preview_url', '')
-
-                accent = labels.get('accent', '')
-                age = labels.get('age', '')
-                gender = labels.get('gender', '')
-
-                desc_parts = []
-                if gender: desc_parts.append(str(gender).title())
-                if age: desc_parts.append(str(age).title())
-                if accent: desc_parts.append(str(accent))
-
-                description = ', '.join(desc_parts) if desc_parts else str(category).title()
-                display_name = f"{name} - {description}" if description else name
-
-                voices.append({
-                    'id': voice_id,
-                    'name': name,
-                    'display_name': display_name,
-                    'category': category,
-                    'labels': labels,
-                    'preview_url': preview_url
-                })
-
-            voices.sort(key=lambda x: x.get('name', ''))
-            app.elevenlabs_voices_cache = voices
-
-        except Exception:
-            app.elevenlabs_voices_cache = []
-
-    import threading as _th
-    _th.Thread(target=_prefetch_elevenlabs, daemon=True).start()
-
-    root.deiconify()
-    root.mainloop()
+    # Perform startup tasks (API key check, pre-fetching, etc.)
+    if app.perform_startup_tasks():
+        # If startup is successful, show the main window and start the event loop
+        root.deiconify()
+        root.mainloop()
 
 
 if __name__ == "__main__":
@@ -1518,5 +1318,6 @@ if __name__ == "__main__":
     # with PyInstaller on macOS and Windows. It must be the first call
     # in the main block.
     import multiprocessing
+
     multiprocessing.freeze_support()
     main()

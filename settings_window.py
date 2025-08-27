@@ -107,7 +107,7 @@ class VoiceSettingsWindow(tk.Toplevel):
         button_frame.pack(fill=tk.X, pady=(15, 0))
 
         tk.Button(button_frame, text="+ Add Speaker", command=self.add_row).pack(side=tk.LEFT)
-        tk.Button(button_frame, text="Save", command=self.save_and_close, font=('Helvetica', 10, 'bold')).pack(side=tk.RIGHT)
+        tk.Button(button_frame, text="Save", command=self.save_and_close).pack(side=tk.RIGHT)
         tk.Button(button_frame, text="Cancel", command=self.cancel_and_close).pack(side=tk.RIGHT, padx=(0, 5))
         tk.Button(button_frame, text="Restore Defaults", command=self.restore_defaults).pack(side=tk.LEFT, padx=(10, 0))
 
@@ -487,6 +487,10 @@ class VoiceSettingsWindow(tk.Toplevel):
     def populate_fields(self):
         """Remplit les champs avec les paramètres actuels."""
 
+        # Si des lignes existent déjà dans l'UI, ne pas les écraser
+        if self.entries:
+            return
+
         speaker_voices = self.current_settings.get('speaker_voices', {})
         speaker_voices_elevenlabs = self.current_settings.get('speaker_voices_elevenlabs', {})
 
@@ -532,6 +536,8 @@ class VoiceSettingsWindow(tk.Toplevel):
                     elevenlabs_voice=elevenlabs_voice_display
                 )
         else:
+            # Seulement ajouter une ligne par défaut si aucune configuration n'existe
+            # ET si aucune ligne n'est déjà présente dans l'UI
             self.add_row()
 
     def add_row(self, speaker_name='', gemini_voice='', elevenlabs_voice=''):
