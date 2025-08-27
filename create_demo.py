@@ -141,10 +141,10 @@ def create_word_mapping(source_text: str, mfa_transcript: list, debug: bool = Fa
             i += len(speaker_text)
             continue
 
-        # Détection des annotations (format: [annotation] ou <annotation>)
-        annotation_match = re.match(r'([<\[]([^>\]]+)[>\]])', source_text[i:])
+        # Détection des annotations (format: <annotation> ou [annotation])
+        annotation_match = re.match(r'(<[^>]+>|\[[^\]]+\])', source_text[i:])
         if annotation_match:
-            annotation_text = annotation_match.group(1)  # groupe 1 = annotation complète avec crochets
+            annotation_text = annotation_match.group(1)  # groupe 1 = annotation complète
             segments.append({
                 'type': 'annotation',
                 'text': annotation_text,
