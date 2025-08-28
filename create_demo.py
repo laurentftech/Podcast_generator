@@ -12,6 +12,133 @@ import re
 import unicodedata
 from difflib import SequenceMatcher
 
+def interpolate_missing_words(segments):
+    """Interpole les timings des mots manqués entre des mots alignés."""
+    interpolated_count = 0
+    failed_count = 0
+
+    for i, segment in enumerate(segments):
+        if segment['type'] == 'word' and not segment.get('timing'):
+            prev_word, next_word = find_adjacent_timed_words(segments, i)
+
+            if prev_word and next_word:
+                # Calculer la position relative du mot dans la séquence
+                words_between = next_word['index'] - prev_word['index'] - 1
+                word_position = i - prev_word['index']
+
+                # Interpolation linéaire
+                prev_end = prev_word['timing']['end']
+                next_start = next_word['timing']['start']
+                total_duration = next_start - prev_end
+
+                # Répartir le temps entre les mots manqués
+                word_duration = total_duration / (words_between + 1)
+                word_start = prev_end + (word_position * word_duration)
+                word_end = word_start + word_duration
+
+                segment['timing'] = {
+                    'start': round(word_start, 3),
+                    'end': round(word_end, 3)
+                }
+
+                interpolated_count += 1
+                # ✅ CORRECTION: Éviter les accolades qui interfèrent avec .format()
+                prev_timing = f"{prev_word['timing']['start']:.3f}-{prev_word['timing']['end']:.3f}s"
+                next_timing = f"{next_word['timing']['start']:.3f}-{next_word['timing']['end']:.3f}s"
+                new_timing = f"{segment['timing']['start']:.3f}-{segment['timing']['end']:.3f}s"
+                print(f"INTERPOLÉ: '{segment['text']}' -> {new_timing} (entre {prev_timing} et {next_timing})")
+            else:
+                failed_count += 1
+                prev_text = f"{prev_word['timing']['start']:.3f}s" if prev_word else "NONE"
+                next_text = f"{next_word['timing']['start']:.3f}s" if next_word else "NONE"
+                print(f"ÉCHEC interpolation: '{segment['text']}' (prev: {prev_text}, next: {next_text})")
+
+    print(f"Interpolation: {interpolated_count} réussies, {failed_count} échecs")
+    return segments  # ✅ AJOUT DU RETURN
+
+
+def find_adjacent_timed_words(segments, current_index):
+    """Trouve le mot précédent et suivant avec timing."""
+    prev_word = None
+    next_word = None
+
+    # Chercher le mot précédent avec timing
+    for i in range(current_index - 1, -1, -1):
+        if segments[i]['type'] == 'word' and segments[i].get('timing'):
+            prev_word = {'index': i, 'timing': segments[i]['timing']}
+            break
+
+    # Chercher le mot suivant avec timing
+    for i in range(current_index + 1, len(segments)):
+        if segments[i]['type'] == 'word' and segments[i].get('timing'):
+            next_word = {'index': i, 'timing': segments[i]['timing']}
+            break
+
+    return prev_word, next_word
+
+
+def fix_word_timings(segments):
+    """Corrige les timings incohérents et trop courts."""
+    word_segments = [s for s in segments if s['type'] == 'word' and s.get('timing')]
+    corrections_made = 0
+
+    # 1. PREMIÈRE PASSE: Corriger les timings inversés (start > end)
+    for segment in word_segments:
+        timing = segment['timing']
+        if timing['start'] > timing['end']:
+            # Inverser start et end
+            timing['start'], timing['end'] = timing['end'], timing['start']
+            corrections_made += 1
+            print(f"TIMING INVERSÉ CORRIGÉ: '{segment['text']}' -> {timing['start']:.3f}-{timing['end']:.3f}s")
+
+    # 2. DEUXIÈME PASSE: Durées minimales et chevauchements
+    for i, segment in enumerate(word_segments):
+        timing = segment['timing']
+        original_end = timing['end']
+
+        # 2a. Durée minimale de 0.15s
+        duration = timing['end'] - timing['start']
+        if duration < 0.15:
+            timing['end'] = timing['start'] + 0.15
+            corrections_made += 1
+            print(f"DURÉE CORRIGÉE: '{segment['text']}' {duration:.3f}s -> 0.150s")
+
+        # 2b. Éviter les chevauchements avec le mot suivant
+        if i < len(word_segments) - 1:
+            next_timing = word_segments[i + 1]['timing']
+            if timing['end'] > next_timing['start']:
+                # Calculer un compromis: partager l'espace disponible
+                overlap_zone = timing['end'] - next_timing['start']
+                gap_duration = 0.02  # 20ms de pause minimum
+
+                # Répartir l'espace entre les deux mots
+                available_space = timing['end'] - timing['start'] + next_timing['end'] - next_timing['start']
+                mid_point = (timing['start'] + next_timing['end']) / 2
+
+                # Ajuster intelligemment
+                new_end = mid_point - gap_duration
+                if new_end > timing['start'] + 0.1:  # Durée minimum de 100ms
+                    timing['end'] = new_end
+                    next_timing['start'] = mid_point + gap_duration
+                    corrections_made += 2
+                    print(f"CHEVAUCHEMENT INTELLIGENT: '{segment['text']}' {original_end:.3f}s -> {timing['end']:.3f}s")
+                else:
+                    # Fallback: juste éviter le chevauchement
+                    timing['end'] = next_timing['start'] - 0.01
+                    corrections_made += 1
+                    print(f"CHEVAUCHEMENT SIMPLE: '{segment['text']}' {original_end:.3f}s -> {timing['end']:.3f}s")
+
+    # 3. TROISIÈME PASSE: Vérifier qu'aucun mot n'a une durée trop courte après corrections
+    for segment in word_segments:
+        timing = segment['timing']
+        duration = timing['end'] - timing['start']
+        if duration < 0.05:  # Moins de 50ms = invisible
+            timing['end'] = timing['start'] + 0.15
+            corrections_made += 1
+            print(f"DURÉE TROP COURTE APRÈS CORRECTION: '{segment['text']}' -> 0.150s")
+
+    print(f"Corrections de timing: {corrections_made} ajustements effectués")
+    return segments
 
 def _prepare_scripts(original_script_text: str) -> tuple[str, str]:
     """
@@ -27,6 +154,8 @@ def _prepare_scripts(original_script_text: str) -> tuple[str, str]:
     mfa_text_intermediate = re.sub(r'[<\[][^>\]]*[>\]]', '', display_text_normalized)
     # 2. Remove speaker names.
     mfa_text_normalized = re.sub(r'^\s*[\w\s]+:\s*', '', mfa_text_intermediate, flags=re.MULTILINE)
+
+    mfa_text_normalized = normalize_text_for_mfa(mfa_text_normalized)
 
     return mfa_text_normalized, display_text_normalized
 
@@ -176,7 +305,7 @@ def create_word_mapping(source_text: str, mfa_transcript: list, debug: bool = Fa
                     mfa_word = mfa_transcript[search_idx]["word"]
                     if mfa_word != "<unk>":
                         similarity = SequenceMatcher(None, normalize_word(word_text), normalize_word(mfa_word)).ratio()
-                        if similarity > best_similarity and similarity >= 0.6:  # Seuil plus bas
+                        if similarity > best_similarity and similarity >= 0.5:  # Seuil plus bas
                             best_similarity = similarity
                             best_match_index = search_idx
 
@@ -251,7 +380,7 @@ def reconstruct_html_with_timing(segments):
         elif segment['type'] == 'annotation':
             # Extraire le contenu sans les délimiteurs < > ou [ ]
             annotation_content = re.sub(r'[<>\[\]]', '', segment['text'])
-            html_parts.append(f"<em>{segment['text']}</em>")
+            html_parts.append(f"<em>{annotation_content}</em>")  # FIX: utiliser annotation_content
         elif segment['type'] == 'word' and segment.get('timing'):
             # Mot avec timing pour l'effet karaoke - ID unique pour éviter les conflits
             timing = segment['timing']
@@ -269,6 +398,15 @@ def reconstruct_html_with_timing(segments):
 
     return ''.join(html_parts)
 
+
+def normalize_text_for_mfa(text):
+    # Normaliser les apostrophes
+    text = text.replace("'", "'")
+    text = text.replace("'", "'")
+    # Normaliser les guillemets si nécessaire
+    text = text.replace(""", '"')
+    text = text.replace(""", '"')
+    return text
 
 def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Podcast Demo", subtitle: str = None,
                      output_dir: str = None, status_callback=print):
@@ -344,6 +482,7 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
             mfa_script_text, display_script_text = _prepare_scripts(original_script_text)
             temp_script_filepath = os.path.join(corpus_dir, f"{base_name}.txt")
             with open(temp_script_filepath, "w", encoding="utf-8") as f:
+
                 f.write(mfa_script_text)
 
             status_callback("Corpus prepared. Starting alignment with MFA (this may take a moment)...")
@@ -371,6 +510,10 @@ def create_html_demo(script_filepath: str, audio_filepath: str, title: str = "Po
 
             # Analyser le texte en segments avec debug activé
             segments = create_word_mapping(display_script_text, transcript_from_mfa, debug=True)
+
+            # Appliquer les corrections en chaîne
+            segments = interpolate_missing_words(segments)  # ✅ RÉCUPÉRER LE RÉSULTAT
+            segments = fix_word_timings(segments)  # ✅ RÉCUPÉRER LE RÉSULTAT
 
             # Reconstruire le HTML final
             final_html_body = reconstruct_html_with_timing(segments)
