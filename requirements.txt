@@ -5,3 +5,5 @@ keyring
 elevenlabs
 textgrid
 customtkinter
+beautifulsoup4
+ttkbootstrap

@@ -1,13 +1,13 @@
 import logging
 import tkinter as tk
-from tkinter import ttk
 import threading
 import json
+import customtkinter
 
 from gui import AVAILABLE_VOICES
 
 
-class VoiceSettingsWindow(tk.Toplevel):
+class VoiceSettingsWindow(customtkinter.CTkToplevel):
     VOICE_DISPLAY_LIST = [f"{name} - {desc}" for name, desc in AVAILABLE_VOICES.items()]
 
     def __init__(self, parent, current_settings, save_callback, close_callback, default_settings,
@@ -15,6 +15,10 @@ class VoiceSettingsWindow(tk.Toplevel):
                  play_gemini_sample_callback=None,
                  play_elevenlabs_sample_callback=None):
         super().__init__(parent)
+
+        # --- Hide window during setup to prevent flickering ---
+        self.withdraw()
+
         self.title("Voice settings")
         self.transient(parent)
         self.grab_set()
@@ -60,6 +64,14 @@ class VoiceSettingsWindow(tk.Toplevel):
         # Démarrer la vérification périodique
         self.check_voices_update()
 
+        # --- Center and show the fully-built window ---
+        self.update_idletasks()  # Ensure all widgets are drawn and have a size
+        # Center the window on the parent
+        x = parent.winfo_x() + (parent.winfo_width() - self.winfo_width()) // 2
+        y = parent.winfo_y() + (parent.winfo_height() - self.winfo_height()) // 2
+        self.geometry(f"+{x}+{y}")
+        self.deiconify()  # Show the window
+
     def check_voices_update(self):
         """Vérifie périodiquement si les voix ont besoin d'être mises à jour."""
         if self._voices_need_update and self.elevenlabs_voices_loaded:
@@ -71,111 +83,76 @@ class VoiceSettingsWindow(tk.Toplevel):
 
     def create_interface(self):
         """Crée l'interface utilisateur de base."""
-        main_frame = tk.Frame(self, padx=10, pady=10)
+        main_frame = customtkinter.CTkFrame(self, fg_color="transparent")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         # --- Section 1: Speaker Configuration ---
-        speaker_config_frame = tk.LabelFrame(main_frame, text="My Speaker Voices", padx=10, pady=10)
-        speaker_config_frame.pack(fill=tk.X, pady=(0, 10))
+        speaker_section = customtkinter.CTkFrame(main_frame, fg_color="transparent")
+        speaker_section.pack(fill=tk.X, padx=10, pady=10)
+        customtkinter.CTkLabel(speaker_section, text="My Speaker Voices",
+                               font=customtkinter.CTkFont(weight="bold")).pack(anchor="w")
+        speaker_config_frame = customtkinter.CTkFrame(speaker_section, border_width=1, fg_color="transparent")
+        speaker_config_frame.pack(fill=tk.X, pady=(5, 0))
 
         self._create_speaker_headers(speaker_config_frame)
 
-        self.speaker_frame = tk.Frame(speaker_config_frame)
-        self.speaker_frame.pack(fill=tk.X, expand=True)
+        self.speaker_frame = customtkinter.CTkFrame(speaker_config_frame, fg_color="transparent")
+        self.speaker_frame.pack(fill=tk.X, expand=True, padx=10, pady=(0, 5))
 
         # --- Section 2: Voice Guides (Tabs) ---
         # N'afficher cette section que si au moins une clé API est configurée.
         if self.gemini_api_configured or self.elevenlabs_api_configured:
-            guides_frame = tk.LabelFrame(main_frame, text="Voice Guides", padx=10, pady=10)
-            guides_frame.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
+            guides_section = customtkinter.CTkFrame(main_frame, fg_color="transparent")
+            guides_section.pack(fill=tk.BOTH, expand=True, padx=10, pady=(5, 0))
+            customtkinter.CTkLabel(guides_section, text="Voice Guides",
+                                   font=customtkinter.CTkFont(weight="bold")).pack(anchor="w")
 
-            notebook = ttk.Notebook(guides_frame)
-            notebook.pack(fill=tk.BOTH, expand=True)
+            notebook = customtkinter.CTkTabview(guides_section, border_width=1)
+            notebook.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
 
             if self.gemini_api_configured:
-                gemini_tab = ttk.Frame(notebook)
-                notebook.add(gemini_tab, text="Gemini Voices")
+                gemini_tab = notebook.add("Gemini Voices")
                 self._populate_guide_tab(gemini_tab, "gemini")
 
             if self.elevenlabs_api_configured:
-                elevenlabs_tab = ttk.Frame(notebook)
-                notebook.add(elevenlabs_tab, text="ElevenLabs Voices")
+                elevenlabs_tab = notebook.add("ElevenLabs Voices")
                 self._populate_guide_tab(elevenlabs_tab, "elevenlabs")
 
         # --- Section 3: Main Buttons ---
-        button_frame = tk.Frame(main_frame)
-        button_frame.pack(fill=tk.X, pady=(15, 0))
+        button_frame = customtkinter.CTkFrame(main_frame, fg_color="transparent")
+        button_frame.pack(fill=tk.X, padx=10, pady=(15, 10))
+        button_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
 
-        tk.Button(button_frame, text="+ Add Speaker", command=self.add_row).pack(side=tk.LEFT)
-        tk.Button(button_frame, text="Save", command=self.save_and_close).pack(side=tk.RIGHT)
-        tk.Button(button_frame, text="Cancel", command=self.cancel_and_close).pack(side=tk.RIGHT, padx=(0, 5))
-        tk.Button(button_frame, text="Restore Defaults", command=self.restore_defaults).pack(side=tk.LEFT, padx=(10, 0))
+        customtkinter.CTkButton(button_frame, text="+ Add Speaker", command=self.add_row).grid(
+            row=0, column=0, sticky="ew", padx=(0, 5))
+        customtkinter.CTkButton(button_frame, text="Restore Defaults", command=self.restore_defaults).grid(
+            row=0, column=1, sticky="ew", padx=5)
+        customtkinter.CTkButton(button_frame, text="Cancel", command=self.cancel_and_close,
+                                fg_color="transparent", border_width=1).grid(
+            row=0, column=2, sticky="ew", padx=5)
+        customtkinter.CTkButton(button_frame, text="Save", command=self.save_and_close).grid(
+            row=0, column=3, sticky="ew", padx=(5, 0))
 
     def _create_speaker_headers(self, parent_frame):
         """Creates the headers for the speaker configuration section."""
-        header_frame = tk.Frame(parent_frame)
-        header_frame.pack(fill=tk.X, pady=(0, 5))
+        header_frame = customtkinter.CTkFrame(parent_frame, fg_color="transparent")
+        header_frame.pack(fill=tk.X, padx=10, pady=(5, 5))
 
-        # Speaker Name header - ajuster la largeur pour correspondre aux Entry
-        speaker_label = tk.Label(header_frame, text="Speaker Name (in script)",
-                                 font=('Helvetica', 10, 'bold'), anchor="w", width=30)
-        speaker_label.pack(side=tk.LEFT, padx=(0, 10))
+        customtkinter.CTkLabel(header_frame, text="Speaker Name (in script)",
+                               font=customtkinter.CTkFont(weight="bold"), width=220).pack(side=tk.LEFT, padx=(0, 10))
 
-        # Gemini Voice header (si API configurée)
         if self.gemini_api_configured:
-            gemini_label = tk.Label(header_frame, text="Gemini Voice",
-                                    font=('Helvetica', 10, 'bold'), anchor="w", width=30)
-            gemini_label.pack(side=tk.LEFT, padx=(0, 10))
+            customtkinter.CTkLabel(header_frame, text="Gemini Voice",
+                                   font=customtkinter.CTkFont(weight="bold"), width=220).pack(side=tk.LEFT, padx=(0, 10))
 
-        # ElevenLabs Voice header (si API configurée)
         if self.elevenlabs_api_configured:
-            elevenlabs_label = tk.Label(header_frame, text="ElevenLabs Voice",
-                                        font=('Helvetica', 10, 'bold'), anchor="w", width=30)
-            elevenlabs_label.pack(side=tk.LEFT, padx=(0, 10))
+            customtkinter.CTkLabel(header_frame, text="ElevenLabs Voice",
+                                   font=customtkinter.CTkFont(weight="bold"), width=220).pack(side=tk.LEFT, padx=(0, 10))
 
     def _populate_guide_tab(self, tab, provider):
-        """Populates a tab with voice samples with improved scrolling."""
-        # Frame principal pour contenir le canvas et la scrollbar
-        main_frame = tk.Frame(tab)
-        main_frame.pack(fill="both", expand=True)
-
-        # Canvas avec scrollbar
-        canvas = tk.Canvas(main_frame, highlightthickness=0)
-        scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
-
-        # Frame scrollable
-        scrollable_frame = tk.Frame(canvas)
-
-        # Fonction pour mettre à jour la région de scroll
-        def configure_scroll_region(event=None):
-            canvas.configure(scrollregion=canvas.bbox("all"))
-
-        # Fonction pour synchroniser la largeur du frame scrollable avec le canvas
-        def configure_canvas_width(event=None):
-            canvas_width = canvas.winfo_width()
-            canvas.itemconfig(canvas_window, width=canvas_width)
-
-        # Lier les événements
-        scrollable_frame.bind("<Configure>", configure_scroll_region)
-        canvas.bind("<Configure>", configure_canvas_width)
-
-        # Créer la fenêtre dans le canvas
-        canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-
-        # Configurer le scrolling avec la molette de la souris
-        def on_mousewheel(event):
-            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-
-        canvas.bind("<MouseWheel>", on_mousewheel)  # Windows
-        canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # Linux
-        canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))  # Linux
-
-        # Configurer le canvas pour le scrolling
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        # Pack le canvas et la scrollbar
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        """Populates a tab with voice samples using CTkScrollableFrame."""
+        scrollable_frame = customtkinter.CTkScrollableFrame(tab, label_text="")
+        scrollable_frame.pack(fill="both", expand=True)
 
         # Remplir le contenu selon le provider
         if provider == "gemini":
@@ -183,91 +160,61 @@ class VoiceSettingsWindow(tk.Toplevel):
             for i, (name, desc) in enumerate(voices):
                 self._create_guide_row(scrollable_frame, provider, name, f"{name} - {desc}", name)
                 if i < len(voices) - 1:
-                    ttk.Separator(scrollable_frame, orient='horizontal').pack(fill='x', pady=5, padx=5)
+                    separator = customtkinter.CTkFrame(scrollable_frame, height=1, fg_color=("gray80", "gray25"))
+                    separator.pack(fill='x', pady=5, padx=5)
         elif provider == "elevenlabs":
             if self.elevenlabs_voices_loaded and self.elevenlabs_voices:
                 voices = self.elevenlabs_voices
                 for i, voice in enumerate(voices):
                     self._create_guide_row(scrollable_frame, provider, voice['id'], voice['display_name'], voice['preview_url'])
                     if i < len(voices) - 1:
-                        ttk.Separator(scrollable_frame, orient='horizontal').pack(fill='x', pady=5, padx=5)
+                        separator = customtkinter.CTkFrame(scrollable_frame, height=1, fg_color=("gray80", "gray25"))
+                        separator.pack(fill='x', pady=5, padx=5)
             else:
-                # Message de chargement avec style cohérent
-                loading_frame = tk.Frame(scrollable_frame, height=60)
-                loading_frame.pack(fill="x", pady=20, padx=5)
-                loading_frame.pack_propagate(False)
-
-                tk.Label(loading_frame, text="Loading ElevenLabs voices...",
-                         font=('Helvetica', 10), fg="grey").pack(expand=True)
-
-        # Mettre le focus sur le canvas pour permettre le scrolling au clavier
-        canvas.focus_set()
-
-        # Lier les touches fléchées pour le scrolling
-        canvas.bind("<Up>", lambda e: canvas.yview_scroll(-1, "units"))
-        canvas.bind("<Down>", lambda e: canvas.yview_scroll(1, "units"))
-        canvas.bind("<Prior>", lambda e: canvas.yview_scroll(-10, "units"))  # Page Up
-        canvas.bind("<Next>", lambda e: canvas.yview_scroll(10, "units"))
+                customtkinter.CTkLabel(scrollable_frame, text="Loading ElevenLabs voices...").pack(pady=20)
 
     def _create_guide_row(self, parent, provider, voice_id, display_name, play_identifier):
         """Creates a single row in the voice guide with perfect button alignment."""
-        # Créer un frame principal pour la ligne avec une hauteur minimale fixe
-        row_frame = tk.Frame(parent, height=60)  # Hauteur minimale fixe
-        row_frame.pack(fill=tk.X, pady=4, padx=5)
-        row_frame.pack_propagate(False)  # Empêche le frame de se redimensionner selon son contenu
-
-        # Configuration du grid: colonne 0 pour le texte (expandable), colonne 1 pour les boutons (fixe)
+        row_frame = customtkinter.CTkFrame(parent, fg_color="transparent")
+        row_frame.pack(fill=tk.X, pady=2)
         row_frame.columnconfigure(0, weight=1)
-        row_frame.columnconfigure(1, weight=0, minsize=120)  # Largeur minimale fixe pour les boutons
 
         # --- Colonne 0: Contenu texte ---
-        text_frame = tk.Frame(row_frame)
+        text_frame = customtkinter.CTkFrame(row_frame, fg_color="transparent")
         text_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
 
-        # Séparer le nom d'affichage en nom et description pour un meilleur formatage
         if " - " in display_name:
             name, description = display_name.split(" - ", 1)
         else:
             name = display_name
             description = ""
 
-        # Nom de la voix (en gras)
-        name_label = tk.Label(text_frame, text=name, font=('Helvetica', 10, 'bold'),
-                              anchor="w", justify=tk.LEFT)
-        name_label.pack(anchor="w", fill="x")
+        customtkinter.CTkLabel(text_frame, text=name, font=customtkinter.CTkFont(weight="bold"),
+                               anchor="w").pack(anchor="w", fill="x")
 
-        # Description (si présente)
         if description:
-            desc_label = tk.Label(text_frame, text=description, anchor="w", justify=tk.LEFT,
-                                  wraplength=400, fg="grey", font=('Helvetica', 9))
-            desc_label.pack(anchor="w", fill="x")
+            customtkinter.CTkLabel(text_frame, text=description, anchor="w", wraplength=400,
+                                   font=customtkinter.CTkFont(size=11)).pack(anchor="w", fill="x")
 
         # --- Colonne 1: Boutons (alignés à droite et centrés verticalement) ---
-        button_frame = tk.Frame(row_frame)
-        button_frame.grid(row=0, column=1, sticky="ns", padx=(10, 0))
-
-        # Créer un conteneur pour centrer verticalement les boutons
-        buttons_container = tk.Frame(button_frame)
-        buttons_container.pack(expand=True, fill="both")
-
-        # Frame pour les boutons avec centrage vertical
-        buttons_inner = tk.Frame(buttons_container)
-        buttons_inner.pack(expand=True, anchor="center")  # Centre verticalement
+        buttons_inner = customtkinter.CTkFrame(row_frame, fg_color="transparent")
+        buttons_inner.grid(row=0, column=1, sticky="e")
 
         # Bouton Play
         if provider == "gemini" and self.play_gemini_sample:
-            play_btn = tk.Button(buttons_inner, text="▶", width=3, height=1)
-            play_btn.config(command=lambda b=play_btn, v=play_identifier: self.play_gemini_sample(b, v))
+            play_btn = customtkinter.CTkButton(buttons_inner, text="▶", width=30, height=30)
+            play_btn.configure(command=lambda b=play_btn, v=play_identifier: self.play_gemini_sample(b, v))
             play_btn.pack(side=tk.LEFT, padx=(0, 5))
         elif provider == "elevenlabs" and self.play_elevenlabs_sample:
-            play_btn = tk.Button(buttons_inner, text="▶", width=3, height=1)
-            play_btn.config(
+            play_btn = customtkinter.CTkButton(buttons_inner, text="▶", width=30, height=30)
+            play_btn.configure(
                 command=lambda b=play_btn, i=voice_id, u=play_identifier: self.play_elevenlabs_sample(b, i, u))
             play_btn.pack(side=tk.LEFT, padx=(0, 5))
 
         # Bouton Add
-        add_btn = tk.Button(buttons_inner, text="Add", width=6, height=1,
-                            command=lambda p=provider, d=display_name, i=voice_id: self.add_voice_to_speakers(p, d, i))
+        add_btn = customtkinter.CTkButton(buttons_inner, text="Add", width=60, height=30,
+                                          command=lambda p=provider, d=display_name,
+                                                         i=voice_id: self.add_voice_to_speakers(p, d, i))
         add_btn.pack(side=tk.LEFT)
 
     def safe_update_button(self, state, text):
@@ -542,12 +489,12 @@ class VoiceSettingsWindow(tk.Toplevel):
 
     def add_row(self, speaker_name='', gemini_voice='', elevenlabs_voice=''):
         """Ajoute une nouvelle ligne de paramètres."""
-        row_frame = tk.Frame(self.speaker_frame)
+        row_frame = customtkinter.CTkFrame(self.speaker_frame, fg_color="transparent")
         row_frame.pack(fill=tk.X, pady=2)
 
         # Entry pour le nom du speaker - largeur augmentée pour correspondre aux headers
-        speaker_entry = tk.Entry(row_frame, width=30)
-        speaker_entry.pack(side=tk.LEFT, padx=(0, 10))
+        speaker_entry = customtkinter.CTkEntry(row_frame, width=220, border_width=1)
+        speaker_entry.pack(side=tk.LEFT, padx=(0, 10), fill='x')
         speaker_entry.insert(0, speaker_name)
 
         row_data = {
@@ -559,9 +506,9 @@ class VoiceSettingsWindow(tk.Toplevel):
 
         # Combobox Gemini (si API configurée)
         if self.gemini_api_configured:
-            gemini_combo = ttk.Combobox(row_frame, values=self.VOICE_DISPLAY_LIST,
-                                        width=30, state="readonly")
-            gemini_combo.pack(side=tk.LEFT, padx=(0, 10))
+            gemini_combo = customtkinter.CTkComboBox(row_frame, values=self.VOICE_DISPLAY_LIST, width=220,
+                                                     state="readonly")
+            gemini_combo.pack(side=tk.LEFT, padx=(0, 10), fill='x')
             if gemini_voice:
                 gemini_combo.set(gemini_voice)
             row_data['gemini_voice'] = gemini_combo
@@ -572,16 +519,15 @@ class VoiceSettingsWindow(tk.Toplevel):
             if self.elevenlabs_voices_loaded and self.elevenlabs_voices:
                 elevenlabs_values = [voice['display_name'] for voice in self.elevenlabs_voices]
 
-            elevenlabs_combo = ttk.Combobox(row_frame, values=elevenlabs_values,
-                                            width=30, state="readonly")
-            elevenlabs_combo.pack(side=tk.LEFT, padx=(0, 10))
+            elevenlabs_combo = customtkinter.CTkComboBox(row_frame, values=elevenlabs_values, width=220,
+                                                         state="readonly")
+            elevenlabs_combo.pack(side=tk.LEFT, padx=(0, 10), fill='x')
             if elevenlabs_voice:
                 elevenlabs_combo.set(elevenlabs_voice)
             row_data['elevenlabs_voice'] = elevenlabs_combo
 
         # Bouton de suppression
-        remove_btn = tk.Button(row_frame, text="-", width=3,
-                               command=lambda r=row_frame: self.remove_row(r))
+        remove_btn = customtkinter.CTkButton(row_frame, text="-", width=30, command=lambda r=row_frame: self.remove_row(r))
         remove_btn.pack(side=tk.RIGHT)
 
         row_data['remove_btn'] = remove_btn

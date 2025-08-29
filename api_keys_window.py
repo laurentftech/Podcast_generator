@@ -1,11 +1,13 @@
 import tkinter as tk
 import webbrowser
 from tkinter import messagebox
+import customtkinter
+from customtkinter.windows.ctk_input_dialog import CTkInputDialog
 
 from config import SERVICE_CONFIG
 
 
-class APIKeysWindow(tk.Toplevel):
+class APIKeysWindow(customtkinter.CTkToplevel):
     def __init__(self, parent, close_callback):
         super().__init__(parent)
         self.title("Welcome to Podcast Generator!")
@@ -15,78 +17,91 @@ class APIKeysWindow(tk.Toplevel):
         self.close_callback = close_callback
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        main_frame = tk.Frame(self, padx=20, pady=15)
+        main_frame = customtkinter.CTkFrame(self, fg_color="transparent")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        tk.Label(main_frame, text="Manage API Keys", font=('Helvetica', 12, 'bold')).pack(pady=(0, 15))
+        customtkinter.CTkLabel(main_frame, text="Manage API Keys",
+                               font=customtkinter.CTkFont(size=14, weight="bold")).pack(pady=(15, 15))
         # Message de bienvenue (en anglais) pour guider l'utilisateur
         welcome_text = (
             "Welcome!\n"
             "Podcast Generator is a tool that generates podcasts using AI.\n"
             "To use it, you need to configure at least one API key for TTS (Text-to-Speech).\n"
-            "You can set your ElevenLabs (and/or Google Gemini)  API keys below. They will be stored securely in your system.\n"
+            "You can set your ElevenLabs (and/or Google Gemini) API keys below. They will be stored securely in your system.\n"
         )
-        tk.Label(
+        customtkinter.CTkLabel(
             main_frame,
             text=welcome_text,
             justify="left",
             wraplength=520
-        ).pack(anchor="w", pady=(0, 12))
+        ).pack(anchor="w", padx=20, pady=(0, 12))
 
         # ElevenLabs API Key section
-        elevenlabs_frame = tk.LabelFrame(main_frame, text="ElevenLabs API", padx=10, pady=10)
-        elevenlabs_frame.pack(fill=tk.X, pady=(0, 10))
+        elevenlabs_section = customtkinter.CTkFrame(main_frame, fg_color="transparent")
+        elevenlabs_section.pack(fill=tk.X, padx=20, pady=(0, 10))
+        customtkinter.CTkLabel(elevenlabs_section, text="ElevenLabs API",
+                               font=customtkinter.CTkFont(weight="bold")).pack(anchor="w")
+        elevenlabs_frame = customtkinter.CTkFrame(elevenlabs_section, border_width=1)
+        elevenlabs_frame.pack(fill=tk.X, pady=(5, 0), ipady=5)
 
         # Note sur les permissions minimales requises
-        tk.Label(
+        customtkinter.CTkLabel(
             elevenlabs_frame,
             text="Minimum required permissions in ElevenLabs API settings:\n"
                  "• Text to Speech: Has access\n"
                  "• User: Read only\n"
                  "• Voices: Read only",
             justify="left",
-            wraplength=520
-        ).pack(anchor="w", pady=(0, 6))
+            wraplength=500
+        ).pack(anchor="w", padx=10, pady=(10, 6))
         # Lien cliquable vers la page pour obtenir la clé ElevenLabs
-        elevenlabs_link = tk.Label(elevenlabs_frame, text="Get an ElevenLabs API key (affiliate)", fg="blue",
-                                   cursor="hand2")
-        elevenlabs_link.pack(anchor="w", pady=(0, 6))
+        elevenlabs_link = customtkinter.CTkLabel(elevenlabs_frame, text="Get an ElevenLabs API key (affiliate)",
+                                                 text_color=("#3a7ebf", "#1f6aa5"), cursor="hand2")
+        elevenlabs_link.pack(anchor="w", padx=10, pady=(0, 6))
         elevenlabs_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://try.elevenlabs.io/zobct2wsp98z"))
 
-        self.elevenlabs_status_label = tk.Label(elevenlabs_frame, text="", fg="green")
-        self.elevenlabs_status_label.pack(anchor="w", pady=(0, 5))
+        self.elevenlabs_status_label = customtkinter.CTkLabel(elevenlabs_frame, text="")
+        self.elevenlabs_status_label.pack(anchor="w", padx=10, pady=(0, 5))
 
-        elevenlabs_button_frame = tk.Frame(elevenlabs_frame)
-        elevenlabs_button_frame.pack(fill=tk.X)
+        elevenlabs_button_frame = customtkinter.CTkFrame(elevenlabs_frame, fg_color="transparent")
+        elevenlabs_button_frame.pack(fill=tk.X, padx=10, pady=(5, 10))
+        elevenlabs_button_frame.grid_columnconfigure((0, 1, 2), weight=1)
 
-        tk.Button(elevenlabs_button_frame, text="Set/Update Key", command=lambda: self.set_api_key("elevenlabs")).pack(
-            side=tk.LEFT, padx=(0, 5))
-        tk.Button(elevenlabs_button_frame, text="Remove Key", command=lambda: self.remove_api_key("elevenlabs")).pack(
-            side=tk.LEFT, padx=(0, 5))
-        tk.Button(elevenlabs_button_frame, text="Test Key", command=lambda: self.test_api_key("elevenlabs")).pack(
-            side=tk.LEFT)
+        customtkinter.CTkButton(elevenlabs_button_frame, text="Set/Update Key", command=lambda: self.set_api_key("elevenlabs")).grid(
+            row=0, column=0, sticky="ew", padx=(0, 5))
+        customtkinter.CTkButton(elevenlabs_button_frame, text="Remove Key", command=lambda: self.remove_api_key("elevenlabs")).grid(
+            row=0, column=1, sticky="ew", padx=(0, 5))
+        customtkinter.CTkButton(elevenlabs_button_frame, text="Test Key", command=lambda: self.test_api_key("elevenlabs")).grid(
+            row=0, column=2, sticky="ew")
 
         # Gemini API Key section
-        gemini_frame = tk.LabelFrame(main_frame, text="Google Gemini API", padx=10, pady=10)
-        gemini_frame.pack(fill=tk.X, pady=(0, 10))
+        gemini_section = customtkinter.CTkFrame(main_frame, fg_color="transparent")
+        gemini_section.pack(fill=tk.X, padx=20, pady=(0, 10))
+        customtkinter.CTkLabel(gemini_section, text="Google Gemini API",
+                               font=customtkinter.CTkFont(weight="bold")).pack(anchor="w")
+        gemini_frame = customtkinter.CTkFrame(gemini_section, border_width=1)
+        gemini_frame.pack(fill=tk.X, pady=(5, 0), ipady=5)
 
-        gemini_link = tk.Label(gemini_frame, text="Get a Gemini API key", fg="blue", cursor="hand2")
-        gemini_link.pack(anchor="w", pady=(0, 6))
+        gemini_link = customtkinter.CTkLabel(gemini_frame, text="Get a Gemini API key",
+                                             text_color=("#3a7ebf", "#1f6aa5"), cursor="hand2")
+        gemini_link.pack(anchor="w", padx=10, pady=(10, 6))
         gemini_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://aistudio.google.com/app/apikey"))
-        self.gemini_status_label = tk.Label(gemini_frame, text="", fg="green")
-        self.gemini_status_label.pack(anchor="w", pady=(0, 5))
+        self.gemini_status_label = customtkinter.CTkLabel(gemini_frame, text="")
+        self.gemini_status_label.pack(anchor="w", padx=10, pady=(0, 5))
 
-        gemini_button_frame = tk.Frame(gemini_frame)
-        gemini_button_frame.pack(fill=tk.X)
+        gemini_button_frame = customtkinter.CTkFrame(gemini_frame, fg_color="transparent")
+        gemini_button_frame.pack(fill=tk.X, padx=10, pady=(5, 10))
+        gemini_button_frame.grid_columnconfigure((0, 1, 2), weight=1)
 
-        tk.Button(gemini_button_frame, text="Set/Update Key", command=lambda: self.set_api_key("gemini")).pack(
-            side=tk.LEFT, padx=(0, 5))
-        tk.Button(gemini_button_frame, text="Remove Key", command=lambda: self.remove_api_key("gemini")).pack(
-            side=tk.LEFT, padx=(0, 5))
-        tk.Button(gemini_button_frame, text="Test Key", command=lambda: self.test_api_key("gemini")).pack(side=tk.LEFT)
+        customtkinter.CTkButton(gemini_button_frame, text="Set/Update Key", command=lambda: self.set_api_key("gemini")).grid(
+            row=0, column=0, sticky="ew", padx=(0, 5))
+        customtkinter.CTkButton(gemini_button_frame, text="Remove Key", command=lambda: self.remove_api_key("gemini")).grid(
+            row=0, column=1, sticky="ew", padx=(0, 5))
+        customtkinter.CTkButton(gemini_button_frame, text="Test Key", command=lambda: self.test_api_key("gemini")).grid(
+            row=0, column=2, sticky="ew")
 
         # Close button
-        tk.Button(main_frame, text="Close", command=self.on_close).pack(pady=(15, 0))
+        customtkinter.CTkButton(main_frame, text="Close", command=self.on_close).pack(pady=(15, 15))
 
         # Update status on window creation
         self.update_status()
@@ -104,26 +119,27 @@ class APIKeysWindow(tk.Toplevel):
         # Check Gemini key
         gemini_key = keyring.get_password("PodcastGenerator", "gemini_api_key")
         if gemini_key:
-            self.gemini_status_label.config(text="✓ API key is configured", fg="green")
+            self.gemini_status_label.configure(text="✓ API key is configured", text_color="green")
         else:
-            self.gemini_status_label.config(text="✗ No API key configured", fg="red")
+            self.gemini_status_label.configure(text="✗ No API key configured", text_color="red")
 
         # Check ElevenLabs key
         elevenlabs_key = keyring.get_password("PodcastGenerator", "elevenlabs_api_key")
         if elevenlabs_key:
-            self.elevenlabs_status_label.config(text="✓ API key is configured", fg="green")
+            self.elevenlabs_status_label.configure(text="✓ API key is configured", text_color="green")
         else:
-            self.elevenlabs_status_label.config(text="✗ No API key configured", fg="red")
+            self.elevenlabs_status_label.configure(text="✗ No API key configured", text_color="red")
 
     def set_api_key(self, service: str):
         """Set or update an API key for the specified service."""
         import keyring
-        from tkinter import simpledialog
 
         config = SERVICE_CONFIG.get(service)
         if not config: return
 
-        new_key = simpledialog.askstring(config["title"], f"Enter your {config['title']}:", parent=self, show="*")
+        dialog = CTkInputDialog(title=config["title"], text=f"Enter your {config['title']}:")
+        new_key = dialog.get_input()
+
         if new_key and new_key.strip():
             keyring.set_password("PodcastGenerator", config["account"], new_key.strip())
             messagebox.showinfo("Success", f"{config['title']} has been saved securely.", parent=self)

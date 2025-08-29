@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import scrolledtext, filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox
 import threading
 import os
 import subprocess
@@ -10,6 +10,9 @@ import webbrowser
 import tempfile
 from datetime import datetime
 from typing import Optional
+
+import customtkinter
+from customtkinter.windows.ctk_input_dialog import CTkInputDialog
 
 from about_window import AboutWindow
 from api_keys_window import APIKeysWindow
@@ -91,17 +94,22 @@ class PodcastGeneratorApp:
 
     def __init__(self, root: tk.Tk, generate_func, logger, api_key: str, default_script: str = ""):
         self.root = root
+        self.logger = logger
         self.root.title(f"Podcast Generator v{get_app_version()}")
         self.root.geometry("960x700")
+
+        # --- customtkinter Theme and Appearance ---
+        customtkinter.set_appearance_mode("dark" if self._is_system_dark_mode() else "light")
+        customtkinter.set_default_color_theme("blue")
+
         # --- Application Icon ---
         icon_path = get_asset_path("podcast.png")
         if icon_path:
             try:
                 img = tk.PhotoImage(file=icon_path)
                 self.root.tk.call('wm', 'iconphoto', self.root._w, img)
-            except tk.TclError:
-                # In case of format error, continue without icon
-                pass
+            except tk.TclError: # In case of format error, continue without icon
+                self.logger.warning("Could not set application icon.")
 
         # --- Define configuration paths ---
         from generate_podcast import get_app_data_dir, find_ffplay_path  # Local import
@@ -109,12 +117,11 @@ class PodcastGeneratorApp:
         self.settings_filepath = os.path.join(self.app_data_dir, "settings.json")
 
         self.generate_func = generate_func
-        self.logger = logger
         self.api_key = api_key
         self.log_queue = queue.Queue()
         self.playback_obj = None  # To keep a reference to the playback process
         self.sample_playback_obj = None  # For voice sample playback
-        self._active_play_button: Optional[tk.Button] = None
+        self._active_play_button: Optional[customtkinter.CTkButton] = None
         self.sample_poll_id = None  # For polling playback status
         self.last_generated_filepath = None
         self.last_generated_script = None  # To store script for demo generation
@@ -230,70 +237,71 @@ class PodcastGeneratorApp:
 
     def _setup_widgets(self, default_script: str):
         """Sets up the main UI widgets like text areas and buttons."""
+        self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_rowconfigure(0, weight=1)  # Make the main_frame expand vertically
+
         # --- Main Frame ---
-        main_frame = tk.Frame(self.root, padx=10, pady=10)
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        main_frame = customtkinter.CTkFrame(self.root, fg_color="transparent")
+        main_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        main_frame.grid_columnconfigure(0, weight=1)
+        main_frame.grid_rowconfigure(2, weight=1)  # Make script_text expand
+        main_frame.grid_rowconfigure(4, weight=1)  # Make log_text expand
 
         # --- TTS Provider Status Bar ---
-        status_frame = tk.Frame(main_frame, relief=tk.SUNKEN, bd=1)
-        status_frame.pack(fill=tk.X, pady=(0, 5))
+        status_frame = customtkinter.CTkFrame(main_frame, corner_radius=6, border_width=1)
+        status_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
 
         current_provider = self.app_settings.get("tts_provider", "elevenlabs").title()
-        # Couleur adaptative selon le mode sombre macOS
-        self._is_dark_mode = self._is_system_dark_mode()
-        text_color = "white" if self._is_dark_mode else "blue"
-        self.provider_label = tk.Label(status_frame, text=f"TTS Provider: {current_provider}", font=('Helvetica', 9),
-                                       fg=text_color)
-        self.provider_label.pack(side=tk.LEFT, padx=5, pady=2)
+        self.provider_label = customtkinter.CTkLabel(status_frame, text=f"TTS Provider: {current_provider}",
+                                                     font=customtkinter.CTkFont(size=12))
+        self.provider_label.pack(side=tk.LEFT, padx=10, pady=5)
         # Déclenche le rafraîchissement du quota immédiatement si ElevenLabs est actif
         if self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs":
             self._load_cached_quota()
             self.update_elevenlabs_quota_in_status()
-        # Lance le watcher de thème (actualise la couleur s'il y a bascule sombre/clair)
-        self._start_theme_watcher()
 
         # --- Script Text Area ---
-        script_frame = tk.LabelFrame(main_frame, text="Script to read", padx=5, pady=5)
-        script_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
-
-        self.script_text = scrolledtext.ScrolledText(script_frame, wrap=tk.WORD, height=15, width=80)
-        self.script_text.pack(fill=tk.BOTH, expand=True)
+        customtkinter.CTkLabel(main_frame, text="Script to read").grid(row=1, column=0, sticky="w", padx=5)
+        self.script_text = customtkinter.CTkTextbox(main_frame, wrap=tk.WORD, border_width=1)
+        self.script_text.grid(row=2, column=0, sticky="nsew", pady=(0, 10))
         self.script_text.insert(tk.END, default_script)
 
         # --- Log/Status Area ---
-        log_frame = tk.LabelFrame(main_frame, text="Generation status", padx=5, pady=5)
-        log_frame.pack(fill=tk.BOTH, expand=True)
+        customtkinter.CTkLabel(main_frame, text="Generation status").grid(row=3, column=0, sticky="w", padx=5)
+        self.log_text = customtkinter.CTkTextbox(main_frame, wrap=tk.WORD, state='disabled', border_width=1, fg_color="transparent")
+        self.log_text.grid(row=4, column=0, sticky="nsew")
 
-        self.log_text = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, height=10, state='disabled')
-        self.log_text.pack(fill=tk.BOTH, expand=True)
+        # --- Progress Bar Placeholder & Widget ---
+        # This frame reserves space for the progress bar to avoid window resizing.
+        progress_bar_height = 20
+        self.progress_bar_placeholder = customtkinter.CTkFrame(main_frame, fg_color="transparent", height=progress_bar_height)
+        self.progress_bar_placeholder.grid(row=5, column=0, sticky="ew")
+        # Prevent children from resizing the placeholder
+        self.progress_bar_placeholder.pack_propagate(False)
 
-        # --- Progress Bar (initially hidden) ---
-        self.progress_bar = ttk.Progressbar(main_frame, mode='indeterminate')
+        self.progress_bar = customtkinter.CTkProgressBar(self.progress_bar_placeholder, mode='indeterminate', progress_color="#4CAF50")
 
         # --- Button Frame ---
-        self.button_frame = tk.Frame(main_frame)
-        self.button_frame.pack(fill=tk.X, pady=(10, 0))
+        self.button_frame = customtkinter.CTkFrame(main_frame, fg_color="transparent")
+        self.button_frame.grid(row=6, column=0, sticky="ew", pady=(10, 0))
+        self.button_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
 
-        # Define a common width for visual consistency
-        common_button_width = 22
+        # --- Buttons ---
+        self.load_button = customtkinter.CTkButton(self.button_frame, text="Load a script (.txt)",
+                                                   command=self.load_script_from_file)
+        self.load_button.grid(row=0, column=0, sticky="ew", padx=(0, 5))
 
-        # --- Left-aligned buttons ---
-        self.load_button = tk.Button(self.button_frame, text="Load a script (.txt)", command=self.load_script_from_file,
-                                     width=common_button_width)
-        self.load_button.pack(side=tk.LEFT, padx=(0, 5))
+        self.generate_button = customtkinter.CTkButton(self.button_frame, text="Start generation",
+                                                       command=self.start_generation_thread)
+        self.generate_button.grid(row=0, column=1, sticky="ew", padx=5)
 
-        self.generate_button = tk.Button(self.button_frame, text="Start generation",
-                                         command=self.start_generation_thread, width=common_button_width)
-        self.generate_button.pack(side=tk.LEFT)
+        self.play_button = customtkinter.CTkButton(self.button_frame, text="▶️ Play",
+                                                   command=self.play_last_generated_file, state='disabled')
+        self.play_button.grid(row=0, column=2, sticky="ew", padx=5)
 
-        # --- Right-aligned buttons (packed in reverse order for correct display) ---
-        self.show_button = tk.Button(self.button_frame, text="Open file location", command=self.open_file_location,
-                                     state='disabled', width=common_button_width)
-        self.show_button.pack(side=tk.RIGHT, padx=(5, 0))
-
-        self.play_button = tk.Button(self.button_frame, text="▶️ Play", command=self.play_last_generated_file,
-                                     state='disabled', width=common_button_width)
-        self.play_button.pack(side=tk.RIGHT)
+        self.show_button = customtkinter.CTkButton(self.button_frame, text="Open file location",
+                                                   command=self.open_file_location, state='disabled')
+        self.show_button.grid(row=0, column=3, sticky="ew", padx=(5, 0))
 
     def _load_cached_quota(self):
         """Loads and displays the cached quota if available."""
@@ -326,28 +334,21 @@ class PodcastGeneratorApp:
             return False
         return False  # Pour les autres OS (Linux, etc.)
 
-    def _apply_provider_label_theme(self):
-        """Applique la bonne couleur au provider_label selon le mode sombre."""
-        if not hasattr(self, 'provider_label'):
-            return
-        # Blanc en mode sombre, bleu sinon
-        self.provider_label.config(fg=("white" if self._is_dark_mode else "blue"))
-
     def _start_theme_watcher(self, interval_ms: int = 2000):
-        """Surveille le mode sombre (macOS/Windows) et met à jour la couleur du provider_label si l'état change."""
+        """Surveille le mode sombre (macOS/Windows) et met à jour le thème de l'application si l'état change."""
 
         def _tick():
             try:
                 current = self._is_system_dark_mode()
-                if current != self._is_dark_mode:
-                    self._is_dark_mode = current
-                    self._apply_provider_label_theme()
+                current_app_mode = customtkinter.get_appearance_mode().lower()
+                if (current and current_app_mode != "dark") or (not current and current_app_mode != "light"):
+                    customtkinter.set_appearance_mode("dark" if current else "light")
             finally:
                 # Replanifie la prochaine vérification
                 if self.root and self.root.winfo_exists():
                     self.root.after(interval_ms, _tick)
 
-        # Premier tick après interval_ms
+        # Premier tick
         if self.root and self.root.winfo_exists():
             self.root.after(interval_ms, _tick)
 
@@ -497,7 +498,7 @@ class PodcastGeneratorApp:
             self.settings_menu.entryconfig(idx, state='normal' if has_any_key else 'disabled')
             # Protéger l'accès au bouton si l'initialisation n'est pas terminée.
             if hasattr(self, "generate_button") and self.generate_button:
-                self.generate_button.config(state='normal' if has_any_key else 'disabled')
+                self.generate_button.configure(state='normal' if has_any_key else 'disabled')
 
     def _find_menu_index_by_label(self, menu: tk.Menu, label: str):
         """Retourne l'index d'une entrée de menu par son label, ou None si absent."""
@@ -672,7 +673,7 @@ class PodcastGeneratorApp:
                 if msg_type == 'GENERATION_COMPLETE':
                     self.on_generation_complete(success=message[1])
                 elif msg_type == 'UPDATE_PLAY_BUTTON':
-                    self.play_button.config(text=message[1], state=message[2])
+                    self.play_button.configure(text=message[1], state=message[2])
             else:
                 self._update_log(message)
         except queue.Empty:
@@ -680,16 +681,16 @@ class PodcastGeneratorApp:
         self.root.after(100, self.poll_log_queue)  # Check the queue every 100 ms
 
     def _update_log(self, message):
-        self.log_text.config(state='normal')
+        self.log_text.configure(state='normal')
         self.log_text.insert(tk.END, message + "\n")
         self.log_text.see(tk.END)
-        self.log_text.config(state='disabled')
+        self.log_text.configure(state='disabled')
 
     def clear_log(self):
         """Clears the log text area."""
-        self.log_text.config(state='normal')
+        self.log_text.configure(state='normal')
         self.log_text.delete('1.0', tk.END)
-        self.log_text.config(state='disabled')
+        self.log_text.configure(state='disabled')
 
     def load_script_from_file(self):
         """Opens a dialog to load a .txt file into the script area."""
@@ -759,17 +760,17 @@ class PodcastGeneratorApp:
             return
 
         # Disable buttons during generation
-        self.generate_button.config(state='disabled')
-        self.load_button.config(state='disabled')
-        self.play_button.config(state='disabled')
-        self.show_button.config(state='disabled')
+        self.generate_button.configure(state='disabled')
+        self.load_button.configure(state='disabled')
+        self.play_button.configure(state='disabled')
+        self.show_button.configure(state='disabled')
         self.actions_menu.entryconfig("Generate HTML Demo...", state='disabled')
         self.menubar.entryconfig("Settings", state="disabled")
 
         # Show and start the progress bar
         self.clear_log()
 
-        self.progress_bar.pack(fill=tk.X, pady=(10, 0), before=self.button_frame)
+        self.progress_bar.pack(pady=5, padx=5, fill='x', expand=True)
         self.progress_bar.start()
 
         thread = threading.Thread(
@@ -849,8 +850,8 @@ class PodcastGeneratorApp:
         if success:
             self.root.bell()
             if self.ffplay_path:
-                self.show_button.config(state='normal')
-                self.play_button.config(state='normal')
+                self.show_button.configure(state='normal')
+                self.play_button.configure(state='normal')
             # Enable demo button only if MFA is available
             self.actions_menu.entryconfig("Generate HTML Demo...",
                                           state='normal' if self.is_mfa_available else 'disabled')
@@ -858,12 +859,12 @@ class PodcastGeneratorApp:
                 self.update_elevenlabs_quota_in_status()
 
         self.progress_bar.stop()
-        self.generate_button.config(state='normal')
-        self.load_button.config(state='normal')
-        self.menubar.entryconfig("Settings", state="normal")
+        self.generate_button.configure(state='normal')
+        self.load_button.configure(state='normal')
+        self.menubar.entryconfig("Settings", state="normal") # pyright: ignore
         if self.progress_bar.winfo_ismapped():
             self.progress_bar.pack_forget()
-        self.log_text.config(state='disabled')  # Disable the log area at the very end
+        self.log_text.configure(state='disabled')  # Disable the log area at the very end
 
     def start_demo_generation_thread(self):
         """Opens a dialog to get demo settings, then starts the generation."""
@@ -955,7 +956,7 @@ class PodcastGeneratorApp:
                 "The 'ffplay' command (part of FFmpeg) was not found.\n\n"
                 "Playback is disabled. Please ensure FFmpeg is properly installed."
             )
-            self.play_button.config(state='disabled')
+            self.play_button.configure(state='disabled')
             return
 
         if not self.last_generated_filepath or not os.path.exists(self.last_generated_filepath):
@@ -989,12 +990,12 @@ class PodcastGeneratorApp:
         if self._active_play_button:
             try:
                 if self._active_play_button.winfo_exists():
-                    self._active_play_button.config(text="▶")
+                    self._active_play_button.configure(text="▶")
             except (tk.TclError, AttributeError):
                 pass  # Widget might have been destroyed
         self._active_play_button = None
 
-    def play_gemini_voice_sample(self, button: tk.Button, voice_name: str):
+    def play_gemini_voice_sample(self, button: customtkinter.CTkButton, voice_name: str):
         """Plays a voice sample for the given Gemini voice name."""
         sample_filename = f"{voice_name}.mp3"
         sample_path = get_asset_path(os.path.join("samples", "gemini_voices", sample_filename))
@@ -1004,7 +1005,7 @@ class PodcastGeneratorApp:
             return
         self._play_sample(button, sample_path)
 
-    def play_elevenlabs_voice_sample(self, button: tk.Button, voice_id: str, preview_url: str):
+    def play_elevenlabs_voice_sample(self, button: customtkinter.CTkButton, voice_id: str, preview_url: str):
         """Plays a voice sample for ElevenLabs from a URL."""
         if not preview_url:
             self.log_status(f"No preview available for voice ID '{voice_id}'.")
@@ -1037,7 +1038,7 @@ class PodcastGeneratorApp:
             self.root.after_cancel(self.sample_poll_id)
             self.sample_poll_id = None
 
-    def _play_sample(self, button: tk.Button, sample_source: str):
+    def _play_sample(self, button: customtkinter.CTkButton, sample_source: str):
         """
         Plays a voice sample using a polling mechanism to update the UI,
         which is more robust than using a separate thread's finally block.
@@ -1053,7 +1054,7 @@ class PodcastGeneratorApp:
         self._active_play_button = button
         try:
             if button.winfo_exists():
-                button.config(text="⏸")
+                button.configure(text="⏸")
         except (tk.TclError, AttributeError):
             self._reset_active_button()
             return
@@ -1099,7 +1100,7 @@ class PodcastGeneratorApp:
             text_to_display = self.elevenlabs_quota_text
 
         if hasattr(self, 'provider_label'):
-            self.provider_label.config(text=text_to_display)
+            self.provider_label.configure(text=text_to_display)
 
     def _schedule_provider_label_refresh(self, delay_ms=2000, retries=5):
         """Planifie des rafraîchissements du provider_label après un délai, avec quelques tentatives."""
@@ -1184,7 +1185,7 @@ class PodcastGeneratorApp:
         threading.Thread(target=_prefetch_elevenlabs, daemon=True).start()
         return True  # Indicate success
 
-class DemoSettingsWindow(tk.Toplevel):
+class DemoSettingsWindow(customtkinter.CTkToplevel):
     def __init__(self, parent, callback, default_title=""):
         super().__init__(parent)
         self.title("HTML Demo Settings")
@@ -1193,52 +1194,53 @@ class DemoSettingsWindow(tk.Toplevel):
         self.resizable(False, False)
         self.callback = callback
 
-        main_frame = tk.Frame(self, padx=20, pady=15)
+        main_frame = customtkinter.CTkFrame(self, fg_color="transparent")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         # --- Fields ---
-        fields_frame = tk.Frame(main_frame)
-        fields_frame.pack(fill=tk.X)
+        fields_frame = customtkinter.CTkFrame(main_frame, fg_color="transparent")
+        fields_frame.pack(fill=tk.X, padx=20, pady=15)
 
         # Title
-        tk.Label(fields_frame, text="Title:").grid(row=0, column=0, sticky="w", pady=2)
+        customtkinter.CTkLabel(fields_frame, text="Title:").grid(row=0, column=0, sticky="w", pady=2)
         self.title_var = tk.StringVar(value=default_title)
-        self.title_entry = tk.Entry(fields_frame, textvariable=self.title_var, width=50)
+        self.title_entry = customtkinter.CTkEntry(fields_frame, textvariable=self.title_var, width=350)
         self.title_entry.grid(row=0, column=1, sticky="ew", pady=2, padx=5)
 
         # Subtitle
-        tk.Label(fields_frame, text="Subtitle:").grid(row=1, column=0, sticky="w", pady=2)
+        customtkinter.CTkLabel(fields_frame, text="Subtitle:").grid(row=1, column=0, sticky="w", pady=2)
         self.subtitle_var = tk.StringVar()
-        self.subtitle_entry = tk.Entry(fields_frame, textvariable=self.subtitle_var, width=50)
+        self.subtitle_entry = customtkinter.CTkEntry(fields_frame, textvariable=self.subtitle_var, width=350)
         self.subtitle_entry.grid(row=1, column=1, sticky="ew", pady=2, padx=5)
 
         # Output Directory
-        tk.Label(fields_frame, text="Output Directory:").grid(row=2, column=0, sticky="w", pady=2)
+        customtkinter.CTkLabel(fields_frame, text="Output Directory:").grid(row=2, column=0, sticky="w", pady=2)
         self.output_dir_var = tk.StringVar(value=os.path.expanduser("~/Downloads"))
-        dir_frame = tk.Frame(fields_frame)
+        dir_frame = customtkinter.CTkFrame(fields_frame, fg_color="transparent")
         dir_frame.grid(row=2, column=1, sticky="ew", pady=2, padx=5)
-        self.output_dir_entry = tk.Entry(dir_frame, textvariable=self.output_dir_var)
+        self.output_dir_entry = customtkinter.CTkEntry(dir_frame, textvariable=self.output_dir_var)
         self.output_dir_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        browse_button = tk.Button(dir_frame, text="Browse...", command=self.browse_directory)
+        browse_button = customtkinter.CTkButton(dir_frame, text="Browse...", command=self.browse_directory, width=80)
         browse_button.pack(side=tk.LEFT, padx=(5, 0))
 
         fields_frame.grid_columnconfigure(1, weight=1)
 
         # --- Buttons ---
-        button_frame = tk.Frame(main_frame)
+        button_frame = customtkinter.CTkFrame(main_frame, fg_color="transparent")
         button_frame.pack(pady=(15, 0))
 
-        ok_button = tk.Button(button_frame, text="Generate Demo", command=self.on_ok)
+        ok_button = customtkinter.CTkButton(button_frame, text="Generate Demo", command=self.on_ok)
         ok_button.pack(side=tk.LEFT, padx=5)
-        cancel_button = tk.Button(button_frame, text="Cancel", command=self.destroy)
+        cancel_button = customtkinter.CTkButton(button_frame, text="Cancel", command=self.destroy,
+                                                fg_color="transparent", border_width=1)
         cancel_button.pack(side=tk.LEFT, padx=5)
 
         self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.bind('<Return>', lambda event: ok_button.invoke())
         self.bind('<Escape>', lambda event: cancel_button.invoke())
 
-        self.title_entry.focus_set()
+        self.after(100, self.title_entry.focus_set)
 
     def browse_directory(self):
         directory = filedialog.askdirectory(
@@ -1270,7 +1272,7 @@ def main():
     # This allows for reliable display of error dialogs
     # even if the full interface initialization fails.
 
-    root = tk.Tk()
+    root = customtkinter.CTk()
     root.withdraw()
 
     # --- Import path correction ---
