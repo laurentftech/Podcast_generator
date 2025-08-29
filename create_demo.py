@@ -273,7 +273,7 @@ def create_word_mapping(source_text: str, mfa_transcript: list, debug: bool = Fa
         # Détection des annotations (format: <annotation> ou [annotation])
         annotation_match = re.match(r'(<[^>]+>|\[[^\]]+\])', source_text[i:])
         if annotation_match:
-            annotation_text = annotation_match.group(1)  # groupe 1 = annotation complète
+            annotation_text = annotation_match.group(1)
             segments.append({
                 'type': 'annotation',
                 'text': annotation_text,
@@ -283,8 +283,21 @@ def create_word_mapping(source_text: str, mfa_transcript: list, debug: bool = Fa
             i += len(annotation_text)
             continue
 
+        # NOUVELLE SECTION: Détection des séquences d'espaces blancs (incluant \n, \r\n, \t, etc.)
+        whitespace_match = re.match(r'\s+', source_text[i:])
+        if whitespace_match:
+            whitespace_text = whitespace_match.group(0)
+            segments.append({
+                'type': 'text',
+                'text': whitespace_text,
+                'start_pos': i,
+                'end_pos': i + len(whitespace_text)
+            })
+            i += len(whitespace_text)
+            continue
+
         # Détection des mots
-        word_match = re.match(r"\b[\w'â€™-]+\b", source_text[i:])
+        word_match = re.match(r"\b[\w'âˆ™â„¢-]+\b", source_text[i:])
         if word_match:
             word_text = word_match.group(0)
 
@@ -347,7 +360,7 @@ def create_word_mapping(source_text: str, mfa_transcript: list, debug: bool = Fa
             i += len(word_text)
             continue
 
-        # Caractère simple (espaces, ponctuation, etc.)
+        # Caractère simple (ponctuation, etc.) - maintenant que les espaces blancs sont gérés ci-dessus
         segments.append({
             'type': 'text',
             'text': source_text[i],
@@ -375,14 +388,15 @@ def reconstruct_html_with_timing(segments):
 
     for segment in segments:
         if segment['type'] == 'speaker':
-            # Nom de locuteur en gras
+            # Nom de locuteur en gras - PAS de classe word pour éviter le surlignage
             html_parts.append(f"<strong>{segment['text']}</strong>")
         elif segment['type'] == 'annotation':
             # Extraire le contenu sans les délimiteurs < > ou [ ]
             annotation_content = re.sub(r'[<>\[\]]', '', segment['text'])
-            html_parts.append(f"<em>{annotation_content}</em>")  # FIX: utiliser annotation_content
+            # Annotation en italique - PAS de classe word pour éviter le surlignage
+            html_parts.append(f"<em>{annotation_content}</em>")
         elif segment['type'] == 'word' and segment.get('timing'):
-            # Mot avec timing pour l'effet karaoke - ID unique pour éviter les conflits
+            # SEULEMENT les mots avec timing reçoivent la classe word pour l'effet karaoke
             timing = segment['timing']
             html_parts.append(
                 f'<span class="word" data-start="{timing["start"]}" data-end="{timing["end"]}" data-word-id="{word_counter}">{segment["text"]}</span>'
