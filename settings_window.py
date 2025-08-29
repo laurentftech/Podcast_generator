@@ -492,8 +492,12 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         row_frame = customtkinter.CTkFrame(self.speaker_frame, fg_color="transparent")
         row_frame.pack(fill=tk.X, pady=2)
 
+        # Harmonisation du style avec la zone de texte principale
+        # On récupère la couleur de fond par défaut d'un CTkTextbox pour l'appliquer
+        textbox_fg_color = customtkinter.ThemeManager.theme["CTkTextbox"]["fg_color"]
+
         # Entry pour le nom du speaker - largeur augmentée pour correspondre aux headers
-        speaker_entry = customtkinter.CTkEntry(row_frame, width=220, border_width=1)
+        speaker_entry = customtkinter.CTkEntry(row_frame, width=220, border_width=1, fg_color=textbox_fg_color)
         speaker_entry.pack(side=tk.LEFT, padx=(0, 10), fill='x')
         speaker_entry.insert(0, speaker_name)
 
