@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Who am I?</title>
   <style>
-    * {
+* {
       box-sizing: border-box;
     }
 
@@ -16,11 +16,16 @@
       padding: 0 1rem;
       line-height: 1.6;
       font-size: 16px;
+      letter-spacing: -0.01em; /* Réduction de l'espacement entre lettres */
+      background-color: #ffffff;
+      color: #333333;
+      transition: background-color 0.3s ease, color 0.3s ease;
     }
 
     h1 {
       margin-bottom: 0.5rem;
       font-size: 1.8rem;
+      letter-spacing: -0.02em;
     }
 
     h2 {
@@ -28,12 +33,13 @@
       color: #666;
       font-weight: normal;
       font-size: 1.1rem;
+      letter-spacing: -0.01em;
     }
 
     audio {
       width: 100%;
       margin: 1rem 0;
-      min-height: 40px;
+      height: 40px;
       background-color: #f5f5f5;
       border-radius: 8px;
     }
@@ -42,6 +48,7 @@
       font-size: 1rem;
       line-height: 1.7;
       margin-bottom: 2rem;
+      letter-spacing: -0.005em; /* Espacement très léger pour le texte */
     }
 
     .word {
@@ -51,6 +58,7 @@
       cursor: pointer;
       border-radius: 3px;
       display: inline-block;
+      letter-spacing: normal; /* Espacement normal pour les mots individuels */
     }
 
     .highlight {
@@ -63,12 +71,14 @@
     strong {
       color: #000;
       font-weight: 600;
+      letter-spacing: -0.01em;
     }
 
     em {
       color: #666;
       font-style: italic;
       font-size: 0.9em;
+      letter-spacing: normal;
     }
 
     footer {
@@ -88,17 +98,62 @@
       text-decoration: underline;
     }
 
+    /* MODE SOMBRE basé sur les préférences système */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+      }
+
+      h2 {
+        color: #b0b0b0;
+      }
+
+      audio {
+        background-color: #2a2a2a;
+        border: 1px solid #444;
+      }
+
+      .highlight {
+        background-color: #ffc107;
+        color: #000;
+        box-shadow: 0 2px 4px rgba(255, 193, 7, 0.4);
+      }
+
+      strong {
+        color: #ffffff;
+      }
+
+      em {
+        color: #b0b0b0;
+      }
+
+      footer {
+        color: #888;
+      }
+
+      footer a {
+        color: #aaa;
+      }
+
+      footer a:hover {
+        color: #fff;
+      }
+    }
+
     /* Améliorations pour mobile */
     @media (max-width: 768px) {
       body {
         margin: 0.5rem auto;
         padding: 0 0.75rem;
         font-size: 15px;
+        letter-spacing: -0.005em;
       }
 
       h1 {
         font-size: 1.5rem;
         margin-bottom: 0.3rem;
+        letter-spacing: -0.015em;
       }
 
       h2 {
@@ -107,11 +162,13 @@
       }
 
       audio {
-        margin: 0.75rem 0;
-        min-height: 45px;
-        border-radius: 12px;
-        /* Force une hauteur minimum pour éviter la coupure */
-        height: 45px;
+          width: 100%;
+          margin: 1rem 0;
+          min-height: 40px;
+          background-color: #f5f5f5;
+          border-radius: 8px;
+          border: none;
+          outline: none;
       }
 
       #transcript {
@@ -122,7 +179,6 @@
       .word {
         padding: 3px 5px;
         margin: 1px 2px;
-        /* Améliorer la zone de touch sur mobile */
         min-height: 24px;
         display: inline-flex;
         align-items: center;
@@ -155,6 +211,7 @@
       body {
         padding: 0 0.5rem;
         font-size: 14px;
+        letter-spacing: normal;
       }
 
       h1 {
@@ -174,17 +231,6 @@
         padding: 2px 4px;
         margin: 1px;
       }
-    }
-
-    /* Amélioration pour les contrôles audio sur tous les navigateurs */
-    audio::-webkit-media-controls-panel {
-      background-color: #f8f9fa;
-    }
-
-    audio::-webkit-media-controls-play-button,
-    audio::-webkit-media-controls-pause-button {
-      background-color: #2c5aa0;
-      border-radius: 50%;
     }
   </style>
 </head>
