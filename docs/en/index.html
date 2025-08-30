@@ -8,18 +8,11 @@ permalink: /en/
 
   <h1 style="margin-bottom:2rem;">🎙Podcast Generator 🎙</h1>
 
-  <h2>Why use it?</h2>
-  <p>Podcast Generator is perfect for teachers, trainers, and content creators who want to bring their scripts to life with natural and immersive voices. Create engaging podcasts effortlessly using the ElevenLabs or Gemini APIs.</p>
+  <p style="font-size: 1.2rem; color: #586069; max-width: 750px; margin: 0 auto 2rem auto; text-align: center;">
+    A lightweight desktop app with a modern UI that lets you generate multi-speaker podcasts from any script using high-quality voices from **ElevenLabs** and **Google Gemini**.
+  </p>
 
-  <h2>Main features</h2>
-  <ul>
-    <li>Realistic multi-voice with natural intonation</li>
-    <li>Automatic multilingual support</li>
-    <li>Perfect for courses, tutorials, and educational content</li>
-    <li>Immersive and dynamic experience for listeners</li>
-  </ul>
-
-  <img src="/Podcast_generator/assets/podcast_creator_screenshot.png" alt="Podcast Generator Example" style="max-width:100%; border-radius:6px; margin:1rem 0;">
+  <img class="screenshot" src="/Podcast_generator/assets/podcast_creator_screenshot.png" alt="Podcast Generator Screenshot">
 
   <div style="text-align:center; margin:2rem 0;">
     <h3>🎧 Listen to the demo</h3>
@@ -28,13 +21,42 @@ permalink: /en/
       <source src="/Podcast_generator/assets/sample2-gemini.mp3" type="audio/mpeg">
       Your browser does not support the audio element.
     </audio>
-    <a href="/Podcast_generator/assets/who_am_i.html" style="display:inline-block; margin-top:0.8rem; background-color:#24292e; color:white; padding:0.6rem 1.5rem; border-radius:4px; text-decoration:none; font-weight:600; transition: background-color 0.2s;">See the full demo here</a>
+    <a href="/Podcast_generator/assets/who_am_i.html" class="button button-secondary" style="margin-top:0.8rem;">View Synchronized Demo</a>
+  </div>
+
+  <h2 style="border-bottom: 1px solid #e1e4e8; padding-bottom: 0.3em;">How It Works</h2>
+  <div style="display: flex; justify-content: space-around; text-align: center; gap: 1rem; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 200px;">
+      <h3>1. Get API Key</h3>
+      <p>Grab a free key from ElevenLabs or Google Gemini and add it securely to the app.</p>
+    </div>
+    <div style="flex: 1; min-width: 200px;">
+      <h3>2. Write Script</h3>
+      <p>Format your text with speaker names (e.g., <code>John: Hello world!</code>).</p>
+    </div>
+    <div style="flex: 1; min-width: 200px;">
+      <h3>3. Generate</h3>
+      <p>Click a button to create your high-quality podcast in MP3 or WAV format.</p>
+    </div>
+  </div>
+
+  <h2 style="border-bottom: 1px solid #e1e4e8; padding-bottom: 0.3em; margin-top: 2.5rem;">Main Features</h2>
+  <ul style="list-style: none; padding-left: 0;">
+    <li style="margin-bottom: 0.8rem;">✨ **Modern UI**: A clean and responsive interface that adapts to your system's light or dark mode.</li>
+    <li style="margin-bottom: 0.8rem;">🎤 **Dual TTS Provider**: Choose between the high-quality voices of **Google Gemini** or **ElevenLabs**.</li>
+    <li style="margin-bottom: 0.8rem;">📄 **Synchronized HTML Demo**: Automatically generate a shareable HTML page with your podcast audio and a synchronized, highlighted transcript.</li>
+    <li style="margin-bottom: 0.8rem;">🔐 **Secure & Simple**: Your API keys are stored securely in your system's keychain, and the app guides you through the setup.</li>
+    <li style="margin-bottom: 0.8rem;">🎨 **Voice Customization**: Easily configure and save voices for each speaker in your scripts, with built-in voice guides and sample playback.</li>
+  </ul>
+
+  <div style="text-align:center; margin-top:2rem;">
+    <a href="https://github.com/laurentftech/Podcast_generator/releases/latest" class="button button-primary">Download Latest Release</a>
   </div>
 
   <div style="text-align:center; margin-top:2rem;">
-    <a href="https://github.com/laurentftech/Podcast_generator" style="display:inline-block; background-color:#24292e; color:white; padding:0.6rem 1.5rem; border-radius:4px; text-decoration:none; font-weight:600; transition: background-color 0.2s;">Discover on GitHub</a>
+    <a href="https://github.com/laurentftech/Podcast_generator" class="button button-secondary">Discover on GitHub</a>
     <div style="margin-top:1rem;">
-      ☕ <a href="https://www.buymeacoffee.com/laurentftech" target="_blank" style="display:inline-block; background-color:#f5f5f5; color:#24292e; padding:0.6rem 1.5rem; border-radius:4px; text-decoration:none; font-weight:600; transition: background-color 0.2s;">Offer me a coffee</a>
+      ☕ <a href="https://www.buymeacoffee.com/laurentftech" target="_blank" class="button button-tertiary">Offer me a coffee</a>
     </div>
   </div>
 
@@ -45,6 +67,49 @@ permalink: /en/
 </footer>
 
 <style>
+.screenshot {
+  max-width: 100%;
+  border-radius: 6px;
+  margin: 1rem 0;
+  border: 1px solid #d0d7de;
+  display: block;
+}
+
+.button {
+  display: inline-block;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 6px;
+  transition: background-color 0.2s, border-color 0.2s;
+  border: 1px solid transparent;
+}
+
+.button-primary {
+  background-color: #2da44e;
+  color: white;
+  padding: 0.8rem 2rem;
+  font-size: 1.1rem;
+  border-color: rgba(27, 31, 36, 0.15);
+}
+
+.button-secondary {
+  background-color: #f6f8fa;
+  color: #24292e;
+  padding: 0.7rem 1.6rem;
+  border-color: rgba(27, 31, 36, 0.15);
+}
+
+.button-tertiary {
+  background-color: transparent;
+  color: #57606a;
+  padding: 0.7rem 1.6rem;
+  border: none;
+}
+
+.button:hover {
+  filter: brightness(95%);
+}
+
 h1 {
   text-align: left;
   margin-bottom: 1.5rem;
@@ -74,20 +139,32 @@ body {
     color: #58a6ff;
   }
 
+  .screenshot {
+    border-color: #30363d;
+  }
+
   footer {
     color: #8b949e;
   }
 
-  /* Boutons sombres */
-  a[style*="background-color:#24292e"] {
-    background-color: #c9d1d9 !important;
-    color: #0d1117 !important;
+  .button-primary {
+    background-color: #3fb950;
+    color: white;
+    border-color: #3fb950;
   }
 
-  /* Bouton Buy me a coffee (clair) */
-  a[style*="background-color:#f5f5f5"] {
-    background-color: #161b22 !important;
-    color: #f0f6fc !important;
+  .button-secondary {
+    background-color: #21262d;
+    color: #c9d1d9;
+    border-color: #30363d;
+  }
+
+  .button-tertiary {
+    color: #8b949e;
+  }
+
+  .button:hover {
+    filter: brightness(110%);
   }
 }
 </style>
