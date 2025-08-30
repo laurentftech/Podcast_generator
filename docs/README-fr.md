@@ -7,29 +7,30 @@ Si vous appréciez ce projet et souhaitez soutenir mon travail, vous pouvez [m�
 
 ## 📖 Présentation
 
-Une application légère en Python qui vous permet de générer des podcasts multi-intervenants à partir de n’importe quel script grâce aux API de haute qualité d'ElevenLabs et de Google Gemini — simple, rapide et efficace.
+Une application Python légère avec une interface utilisateur moderne qui vous permet de générer des podcasts multi-intervenants à partir de n’importe quel script. Elle utilise les voix de haute qualité des API **ElevenLabs** et **Google Gemini**, et peut même créer des démos HTML synchronisées de vos podcasts.
 
 ### 🔑 Pour commencer
 Obtenez votre clé API gratuite sur [ElevenLabs](https://try.elevenlabs.io/zobct2wsp98z) (ou Google Gemini).
 Ajoutez-la de manière sécurisée dans l’application.
 Commencez à créer vos podcasts en quelques minutes.
 
-💡 Remarque : Je suis **affilié** à ElevenLabs. L’utilisation de ce lien peut me rapporter une commission, sans coût supplémentaire pour vous. ElevenLabs propose également un **niveau gratuit** avec des limites mensuelles de caractères pour les voix premium.
+💡 **Remarque** : Je suis **affilié** à ElevenLabs. L’utilisation de ce lien peut me rapporter une commission, sans coût supplémentaire pour vous. ElevenLabs propose également un **niveau gratuit** avec des limites mensuelles de caractères pour les voix premium.
 
-![Capture d'écran de l'application](../podcast_creator_screenshot.png)
+![Capture d'écran de l'application](assets/podcast_creator_screenshot.png)
 
 ---
 
 ## ✨ Fonctionnalités
 
-- **Génération audio** : Créez des podcasts multi-locuteurs avec des voix de haute qualité grâce aux API Google Gemini et ElevenLabs.
-- **Interface intuitive** : Interface graphique claire et simple à utiliser.
+- **Interface Moderne** : Une interface claire, moderne et réactive construite avec `customtkinter` qui s'adapte au mode clair ou sombre de votre système.
+- **Double Fournisseur TTS** : Choisissez entre les voix de haute qualité de **Google Gemini** ou **ElevenLabs**.
+- **Démo HTML Synchronisée** : Générez automatiquement une page HTML partageable avec l'audio de votre podcast et une transcription synchronisée et surlignée.
 - **Formats flexibles** : Export en **MP3** (par défaut) ou **WAV**.
 - **Personnalisation** : Sauvegarde des voix et paramètres pour chaque locuteur.
 - **Guides vocaux** : Explorez et écoutez toutes les voix disponibles de Gemini et ElevenLabs directement depuis les réglages. Ajoutez vos voix préférées à votre liste de locuteurs en un seul clic.
 - **Lecture intégrée** : Écoutez et arrêtez vos créations directement depuis l’application (**FFmpeg requis**).
 - **Stockage sécurisé de la clé API** : Votre clé API Google Gemini est demandée une seule fois et enregistrée de manière sécurisée dans le trousseau du système (`keyring`).
-- **Version automatique** : Synchronisation de la version de l’application avec les tags Git du projet.
+- **Support des accents et langues** : Créez des podcasts en plusieurs langues avec des voix et des accents distincts pour chaque langue (depuis les réglages des locuteurs avec l'API ElevenLabs ou depuis le prompt avec Gemini).
 
 ---
 
@@ -37,11 +38,28 @@ Commencez à créer vos podcasts en quelques minutes.
 
 Grâce aux API Google Gemini et ElevenLabs, **Podcast Generator** permet :
 
-- De créer des podcasts multilingues avec des voix distinctes.
+- De créer des podcasts multilingues avec des voix et des accents distincts pour chaque langue.
+- D'adapter le ton émotionnel à partir du script.
 - De produire du contenu pour un public international.
 - De faciliter l’apprentissage des langues avec des dialogues réalistes.
-- D’améliorer l’accessibilité grâce à l’audio.
+- D’améliorer l’accessibilité en adaptant la langue à votre public cible.
 
+---
+
+## 💡 Cas d'utilisation
+
+- **Enseignement et Formation**  
+  Transformez vos supports de cours ou tutoriels en podcasts audio multilingues pour engager vos apprenants.
+
+- **Création de Contenu**  
+  Automatisez la production de podcasts dans différentes langues pour toucher un public plus large.
+
+- **Accessibilité**  
+  Rendez votre contenu accessible à un public plus large grâce au support multilingue.
+
+- **Pratique des Langues**  
+  Créez des dialogues multilingues avec des voix distinctes pour chaque personnage.
+  
 ---
 
 ## 💡 Exemples d’utilisation
@@ -163,6 +181,34 @@ Une fois validé, Windows ne vous le demandera plus.
 
 Lors du premier démarrage, l’application vous demandera votre clé **API ElevenLabs** (et éventuellement votre clé **API Google Gemini**).  
 Elle sera stockée de manière sécurisée.
+
+---
+
+## 🚀 Fonctionnalité avancée : Génération de démo HTML (optionnel)
+
+L'application peut générer une page HTML partageable avec l'audio de votre podcast et une transcription synchronisée, mot par mot. C'est parfait pour partager des démos ou pour l'accessibilité.
+Voir un exemple de page HTML générée [ici](assets/who_am_i.html).
+
+### Installation des dépendances optionnelles pour la génération de démo
+
+Cette fonctionnalité repose sur whisperx pour l'alignement audio, qui nécessite PyTorch. Ce sont des dépendances lourdes, elles sont donc optionnelles. Pour activer cette fonctionnalité, vous devez les installer manuellement.
+
+1. Installez PyTorch
+
+Il est fortement recommandé d'installer la version CPU de PyTorch, car elle est beaucoup plus légère et suffisante pour cette application. Visitez le site officiel de PyTorch et sélectionnez les options appropriées pour votre système.
+Par exemple, en utilisant conda
+
+```Shell
+conda install pytorch torchaudio cpuonly -c pytorch
+```
+
+2. Installez WhisperX
+
+Une fois PyTorch installé, vous pouvez installer whisperx et ses autres dépendances en utilisant l'extra [demo] :
+
+```Shell
+pip install .[demo]
+```
 
 ---
 

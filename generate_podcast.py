@@ -7,7 +7,6 @@ from google.genai import errors, types
 from elevenlabs.client import ElevenLabs
 from elevenlabs.core import ApiError
 import os
-import shutil
 import subprocess
 import logging
 import getpass
@@ -16,10 +15,10 @@ import tempfile
 
 import json
 import keyring  # For secure credential storage
-from create_demo import create_html_demo_whisperx
 
 import re
 import requests
+from utils import get_app_data_dir, find_ffmpeg_path, sanitize_app_settings_for_backend
 
 # Global logger instance - initialized once when module is imported
 logger = logging.getLogger(__name__)
@@ -46,44 +45,6 @@ def setup_logging() -> logging.Logger:
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     return logger
-
-
-def get_app_data_dir() -> str:
-    """Returns the standard application data directory path for the current OS."""
-    app_name = "PodcastGenerator"
-    if sys.platform == "darwin":  # macOS
-        return os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', app_name)
-    elif sys.platform == "win32":  # Windows
-        return os.path.join(os.environ['APPDATA'], app_name)
-    else:  # Linux and others
-        return os.path.join(os.path.expanduser('~'), '.config', app_name)
-
-
-def _find_command_path(command: str) -> Optional[str]:
-    """
-    Finds the path to an executable.
-    Searches the system PATH first, then common Homebrew locations.
-    """
-    # 1. Search in the system PATH (which will work if the PATH is correctly configured)
-    path = shutil.which(command)
-    if path:
-        return path
-    # 2. If not found, search in known Homebrew locations
-    for brew_path in [f"/opt/homebrew/bin/{command}", f"/usr/local/bin/{command}"]:
-        if os.path.exists(brew_path):
-            return brew_path
-    return None
-
-
-def find_ffmpeg_path() -> Optional[str]:
-    """Finds the path to the FFmpeg executable."""
-    return _find_command_path("ffmpeg")
-
-
-def find_ffplay_path() -> Optional[str]:
-    """Finds the path to the ffplay executable."""
-    return _find_command_path("ffplay")
-
 
 def get_api_key(status_callback, logger: logging.Logger, parent_window=None, service: str = "gemini") -> Optional[str]:
     """
@@ -764,11 +725,6 @@ Example usage:
              'Example for ElevenLabs: --speaker "John:TX3LPaxmHKxFdv7VOQHJ"\n'
              'Example for Gemini: --speaker "Samantha:Zephyr"'
     )
-    parser.add_argument(
-        "--demo",
-        action="store_true",
-        help="Generate an HTML demo with a synchronized transcript after creating the audio."
-    )
     args = parser.parse_args()
 
     # --- Validate input and read script ---
@@ -892,16 +848,6 @@ Example usage:
         if temp_script_file_path:
             os.remove(temp_script_file_path)
         sys.exit(1)
-
-    if result and args.demo:
-        # Create a default title from the output filename for the demo page
-        demo_title = os.path.splitext(os.path.basename(output_filepath))[0].replace('_', ' ').replace('-', ' ').title()
-        create_html_demo(
-            script_filepath=script_filepath_for_demo,
-            audio_filepath=result,
-            title=demo_title,
-            status_callback=print
-        )
 
     if temp_script_file_path:
         os.remove(temp_script_file_path)

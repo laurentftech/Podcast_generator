@@ -9,12 +9,13 @@ import json
 import importlib.util
 import webbrowser
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import keyring
 import customtkinter
-from customtkinter.windows.ctk_input_dialog import CTkInputDialog
+
+from demo_window import DemoSettingsWindow
 
 try:
     import requests
@@ -24,6 +25,7 @@ except ImportError:
 from about_window import AboutWindow
 from api_keys_window import APIKeysWindow
 from generate_podcast import validate_speakers, update_elevenlabs_quota
+from utils import get_asset_path, sanitize_app_settings_for_backend, find_ffplay_path, get_app_data_dir
 from create_demo import create_html_demo_whisperx
 
 # --- Versioning ---
@@ -72,22 +74,6 @@ def get_app_version() -> str:
     return __version__
 
 
-def get_asset_path(filename: str) -> Optional[str]:
-    """
-    Gets the absolute path to an asset, handling running from source and from
-    a PyInstaller bundle.
-    """
-    if getattr(sys, 'frozen', False):
-        # The application is frozen (packaged with PyInstaller)
-        bundle_dir = sys._MEIPASS
-    else:
-        # The application is running in a normal Python environment
-        bundle_dir = os.path.dirname(os.path.abspath(__file__))
-
-    path = os.path.join(bundle_dir, filename)
-    return path if os.path.exists(path) else None
-
-
 class PodcastGeneratorApp:
     DEFAULT_APP_SETTINGS = {
         "tts_provider": "elevenlabs",
@@ -117,9 +103,7 @@ class PodcastGeneratorApp:
                 self.root.tk.call('wm', 'iconphoto', self.root._w, img)
             except tk.TclError: # In case of format error, continue without icon
                 self.logger.warning("Could not set application icon.")
-
-        # --- Define configuration paths ---
-        from generate_podcast import get_app_data_dir, find_ffplay_path  # Local import
+        
         self.app_data_dir = get_app_data_dir()
         self.settings_filepath = os.path.join(self.app_data_dir, "settings.json")
 
@@ -599,7 +583,7 @@ class PodcastGeneratorApp:
             try:
                 self.app_settings["elevenlabs_quota_cache"] = {
                     "text": text,
-                    "timestamp": datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z")
+                    "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
                 }
                 self.save_settings(self.app_settings)
             except Exception:
@@ -802,38 +786,8 @@ class PodcastGeneratorApp:
     def run_generation(self, script_content, output_filepath, app_settings, api_key):
         """The function executed by the thread."""
 
-        # --- Data Sanitization ---
-        # Create a "clean" version of app_settings for the backend.
-        # This ensures we only pass the voice ID to ElevenLabs, not the whole object.
-        app_settings_clean = {
-            "tts_provider": app_settings.get("tts_provider"),
-            "speaker_voices": app_settings.get("speaker_voices", {})
-        }
-
-        # Nettoyage des voix Gemini: convertir "Name - Desc" -> "Name"
-        gemini_clean = {}
-        try:
-            for speaker, voice in app_settings_clean.get("speaker_voices", {}).items():
-                if isinstance(voice, str) and " - " in voice:
-                    gemini_clean[speaker] = voice.split(" - ", 1)[0].strip()
-                else:
-                    gemini_clean[speaker] = voice
-        except Exception:
-            gemini_clean = app_settings_clean.get("speaker_voices", {})
-        app_settings_clean["speaker_voices"] = gemini_clean
-
-        elevenlabs_mapping_clean = {}
-        elevenlabs_mapping_raw = app_settings.get("speaker_voices_elevenlabs", {})
-        for speaker, data in elevenlabs_mapping_raw.items():
-            if isinstance(data, dict):
-                # New format: extract just the ID
-                elevenlabs_mapping_clean[speaker] = data.get('id', '')
-            else:
-                # Legacy format: use the string as-is
-                elevenlabs_mapping_clean[speaker] = data
-
-        app_settings_clean["speaker_voices_elevenlabs"] = elevenlabs_mapping_clean
-        # --- End of Data Sanitization ---
+        # Sanitize settings for the backend using the centralized function
+        app_settings_clean = sanitize_app_settings_for_backend(app_settings)
 
         generated_filepath = None
         try:
@@ -900,8 +854,12 @@ class PodcastGeneratorApp:
         base_name = os.path.splitext(os.path.basename(self.last_generated_filepath))[0]
         default_title = base_name.replace('_', ' ').replace('-', ' ').title()
 
+        # Suggest a "demo" subdirectory in the same folder as the audio file
+        default_output_dir = os.path.join(os.path.dirname(self.last_generated_filepath), "demo")
+
         # Open the settings dialog and pass the callback
-        DemoSettingsWindow(self.root, self._on_demo_settings_confirmed, default_title=default_title)
+        DemoSettingsWindow(self.root, self._on_demo_settings_confirmed, default_title=default_title,
+                           default_output_dir=default_output_dir)
 
     def _on_demo_settings_confirmed(self, title: str, subtitle: str, output_dir: str):
         """Callback that receives settings from the dialog and starts the thread."""
@@ -1211,88 +1169,6 @@ class PodcastGeneratorApp:
         threading.Thread(target=_prefetch_elevenlabs, daemon=True).start()
         return True  # Indicate success
 
-class DemoSettingsWindow(customtkinter.CTkToplevel):
-    def __init__(self, parent, callback, default_title=""):
-        super().__init__(parent)
-        self.title("HTML Demo Settings")
-        self.transient(parent)
-        self.grab_set()
-        self.resizable(False, False)
-        self.callback = callback
-
-        main_frame = customtkinter.CTkFrame(self, fg_color="transparent")
-        main_frame.pack(fill=tk.BOTH, expand=True)
-
-        # --- Fields ---
-        fields_frame = customtkinter.CTkFrame(main_frame, fg_color="transparent")
-        fields_frame.pack(fill=tk.X, padx=20, pady=15)
-
-        # Title
-        customtkinter.CTkLabel(fields_frame, text="Title:").grid(row=0, column=0, sticky="w", pady=2)
-        self.title_var = tk.StringVar(value=default_title)
-        self.title_entry = customtkinter.CTkEntry(fields_frame, textvariable=self.title_var, width=350)
-        self.title_entry.grid(row=0, column=1, sticky="ew", pady=2, padx=5)
-
-        # Subtitle
-        customtkinter.CTkLabel(fields_frame, text="Subtitle:").grid(row=1, column=0, sticky="w", pady=2)
-        self.subtitle_var = tk.StringVar()
-        self.subtitle_entry = customtkinter.CTkEntry(fields_frame, textvariable=self.subtitle_var, width=350)
-        self.subtitle_entry.grid(row=1, column=1, sticky="ew", pady=2, padx=5)
-
-        # Output Directory
-        customtkinter.CTkLabel(fields_frame, text="Output Directory:").grid(row=2, column=0, sticky="w", pady=2)
-        self.output_dir_var = tk.StringVar(value=os.path.expanduser("~/Downloads"))
-        dir_frame = customtkinter.CTkFrame(fields_frame, fg_color="transparent")
-        dir_frame.grid(row=2, column=1, sticky="ew", pady=2, padx=5)
-        self.output_dir_entry = customtkinter.CTkEntry(dir_frame, textvariable=self.output_dir_var)
-        self.output_dir_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-        browse_button = customtkinter.CTkButton(dir_frame, text="Browse...", command=self.browse_directory, width=80)
-        browse_button.pack(side=tk.LEFT, padx=(5, 0))
-
-        fields_frame.grid_columnconfigure(1, weight=1)
-
-        # --- Buttons ---
-        button_frame = customtkinter.CTkFrame(main_frame, fg_color="transparent")
-        button_frame.pack(pady=(15, 15))
-
-        ok_button = customtkinter.CTkButton(button_frame, text="Generate Demo", command=self.on_ok)
-
-        ok_button.pack(side=tk.LEFT, padx=5)
-        cancel_button = customtkinter.CTkButton(button_frame, text="Cancel", command=self.destroy,
-                                                fg_color="transparent", text_color = ("gray10", "gray90"), border_width=1)
-
-        cancel_button.pack(side=tk.LEFT, padx=5)
-
-        self.protocol("WM_DELETE_WINDOW", self.destroy)
-        self.bind('<Return>', lambda event: ok_button.invoke())
-        self.bind('<Escape>', lambda event: cancel_button.invoke())
-
-        self.after(100, self.title_entry.focus_set)
-
-    def browse_directory(self):
-        directory = filedialog.askdirectory(
-            title="Select Output Directory",
-            initialdir=self.output_dir_var.get(),
-            parent=self
-        )
-        if directory:
-            self.output_dir_var.set(directory)
-
-    def on_ok(self):
-        title = self.title_var.get().strip()
-        subtitle = self.subtitle_var.get().strip()
-        output_dir = self.output_dir_var.get().strip()
-
-        if not title:
-            messagebox.showerror("Validation Error", "Title cannot be empty.", parent=self)
-            return
-        if not output_dir:
-            messagebox.showerror("Validation Error", "Output directory cannot be empty.", parent=self)
-            return
-
-        self.callback(title, subtitle, output_dir)
-        self.destroy()
 
 def main():
     # Initializes the application and starts the main Tkinter loop
@@ -1316,8 +1192,8 @@ def main():
 
     # --- Importing dependencies ---
     try:
-        from generate_podcast import generate, PODCAST_SCRIPT, setup_logging, find_ffplay_path
-        # Note: on n'importe plus get_api_key ici pour remplacer la saisie par la fenêtre de gestion des clés.
+        from generate_podcast import generate, PODCAST_SCRIPT, setup_logging
+        # Note: find_ffplay_path is now imported from utils.py at the top level.
     except ImportError as e:
         messagebox.showerror(
             "Import Error",

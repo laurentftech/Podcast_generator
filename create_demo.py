@@ -11,6 +11,8 @@ import types
 from difflib import SequenceMatcher
 import unicodedata
 
+from utils import get_asset_path
+
 
 def interpolate_missing_words(segments):
     """Interpole les timings des mots manqués entre des mots alignés."""
@@ -390,14 +392,17 @@ def reconstruct_html_with_timing(segments):
 def _get_html_template() -> str:
     """Loads the HTML template from a file."""
     logger = logging.getLogger("PodcastGenerator.Demo")
-    script_dir = os.path.dirname(__file__)
-    template_path = os.path.join(script_dir, 'docs', 'demo_template.html')
+    template_path = get_asset_path(os.path.join('docs', 'demo_template.html'))
+    if not template_path:
+        logger.error("HTML template file not found. Cannot generate demo.")
+        raise FileNotFoundError("Could not find demo_template.html")
     try:
         with open(template_path, 'r', encoding='utf-8') as f:
             return f.read()
-    except FileNotFoundError:
-        logger.error(f"HTML template file not found at {template_path}. Cannot generate demo.")
+    except Exception as e:
+        logger.error(f"Error loading HTML template: {e}")
         raise
+
 
 
 def create_html_demo_whisperx(script_filepath: str, audio_filepath: str, title: str = "Podcast Demo",

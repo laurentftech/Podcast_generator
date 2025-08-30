@@ -1,4 +1,4 @@
-# 🎙️ Multi-Speaker Podcast Generator
+# 🎙️ Podcast Generator
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=000000)](https://www.buymeacoffee.com/laurentftech)
 
 If you enjoy this project and want to support my work, feel free to [buy me a coffee](https://www.buymeacoffee.com/laurentftech) ☕. Thank you for your support!
@@ -6,7 +6,8 @@ If you enjoy this project and want to support my work, feel free to [buy me a co
 ---
 
 ## 📖 Overview
-A lightweight Python app that lets you generate multi-speaker podcasts from any script using high-quality voices from the ElevenLabs and Google Gemini APIs — simple, fast, and effective.
+A lightweight Python app with a modern UI that lets you generate multi-speaker podcasts from any script. It uses high-quality voices from the **ElevenLabs** and **Google Gemini** APIs, and can even create synchronized HTML demos of your podcasts.
+
 
 ### 🔑 Getting Started
 Get your free API key from [ElevenLabs](https://try.elevenlabs.io/zobct2wsp98z) (or Google Gemini).
@@ -15,7 +16,7 @@ Start creating your own podcasts in minutes.
 
 💡 **Note**: I am an **affiliate of ElevenLabs**. Using this link may earn me a commission at no extra cost to you. ElevenLabs also offers a **free tier** with monthly character limits for premium voices.
 
-![Application Screenshot](podcast_creator_screenshot.png)
+![Application Screenshot](docs/assets/podcast_creator_screenshot.png)
 
 See also the [French README](docs/README-fr.md) for a version in French.
 
@@ -23,14 +24,14 @@ See also the [French README](docs/README-fr.md) for a version in French.
 
 ## ✨ Features
 
-- **Audio Generation**: Create multi-speaker podcasts using high-quality voices from the Google Gemini or ElevenLabs API.
-- **User-Friendly Interface**: An intuitive graphical interface built with Tkinter.
-- **Flexible Formats**: Export your creations in **MP3** (default) or **WAV** formats.
-- **Customization**: Configure and save voices for each speaker in your scripts, with options for language and accent.
-- **Voice Guides**: Explore and listen to all available voices from Gemini and ElevenLabs directly within the settings. Add your favorite voices to your speaker list with a single click.
+ - **Modern UI**: A clean, modern, and responsive interface built with `customtkinter` that adapts to your system's light or dark mode.
+ - **Dual TTS Provider**: Choose between the high-quality voices of **Google Gemini** or **ElevenLabs**.
+ - **Synchronized HTML Demo**: Automatically generate a shareable HTML page with your podcast audio and a synchronized, highlighted transcript.
+ - **Flexible Formats**: Export your creations in **MP3** (default) or **WAV** formats.
+ - **Customization**: Configure and save voices for each speaker in your scripts, with options for language and accent.
+ - **Voice Guides**: Explore and listen to all available voices from Gemini and ElevenLabs directly within the settings. Add your favorite voices to your speaker list with a single click.
 - **Integrated Playback**: Listen to and stop audio playback directly from the application (requires FFmpeg).
 - **Secure API Key Storage**: Your Google Gemini API key is requested once and securely stored in your system's keychain (`keyring`).
-- **Automatic Versioning**: The application version is automatically synchronized with the project's Git tags.
 - **Accent and Language Support**: Create podcasts in multiple languages with distinct voices and accents for each language (from the speaker settings with the ElevenLabs API or from the prompt with Gemini).
 
 ---
@@ -205,21 +206,39 @@ It will be stored securely.
 
 ---
 
+## 🚀 Advanced Feature: HTML Demo Generation (optional)
+ 
+ The app can generate a shareable HTML page with your podcast audio and a synchronized, word-by-word highlighted transcript. This is perfect for sharing demos or for accessibility.
+ 
+ See an example of a generated HTML page [here](docs/assets/who_am_i.html).
+ 
+ ### Installing Optional Dependencies for Demo Generation
+ 
+ This feature relies on `whisperx` for audio alignment, which requires PyTorch. These are heavy dependencies, so they are optional. To enable this feature, you need to install them manually.
+ 
+ **1. Install PyTorch**  
+ It is highly recommended to install the CPU-only version of PyTorch, as it is much lighter and sufficient for this application. Visit the official PyTorch website and select the appropriate options for your system.
+ 
+ For example, using `conda`:
+
+```bash
+conda install pytorch torchaudio cpuonly -c pytorch
+```
+
+ **2. Install WhisperX**  
+Once PyTorch is installed, you can install whisperx and its other dependencies using the [demo] extra:
+pip install .[demo]
+
+```bash
+pip install .[demo]
+```
+
+---
+
 ## 👨‍💻 For Developers
 To contribute to the project, run the code, or create your own build, please refer to the full developer guide:
 ➡️ [DEVELOPERS.md](docs/DEVELOPERS.md)
 
-### Generating a Synchronized HTML Demo (MFA required)
-
-You can generate a shareable HTML demo with synchronized audio and text from the command line.
-
-This completely optional feature require the installation of MFA [Montreal Forced Aligner](https://montreal-forced-aligner.readthedocs.io/en/latest)
-
-See an example of HTML page generated [here](https://laurentftech.github.io/Podcast_generator/who_am_i.html). 
-
-```bash
-python create_demo.py /path/to/audio.mp3 /path/to/script.txt --title "My Awesome Podcast" --subtitle "Episode 1" --output-dir docs
-```
 
 ---
 
