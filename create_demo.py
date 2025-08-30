@@ -530,6 +530,13 @@ def create_html_demo_whisperx(script_filepath: str, audio_filepath: str, title: 
         with open(script_filepath, "r", encoding="utf-8") as f:
             original_script_text = f.read()
 
+        # --- 3bis. Supprimer les instructions avant le premier locuteur ---
+        # Cherche la première occurrence d'une ligne de type "Nom: ..."
+        match = re.search(r'^[A-Z][a-zA-Z\s]+:\s', original_script_text, re.MULTILINE)
+        if match:
+            start_index = match.start()
+            original_script_text = original_script_text[start_index:]
+
         # --- 4. Créer le mapping ---
         status_callback("Création du mapping texte-audio...")
         segments = create_word_mapping_whisperx(original_script_text, result, debug=False)  # Désactiver debug verbose

@@ -126,7 +126,7 @@ class PodcastGeneratorApp:
         self.last_generated_filepath = None
         self.last_generated_script = None  # To store script for demo generation
         self.ffplay_path = find_ffplay_path()
-        self.is_mfa_available = self.check_mfa_availability()
+        self.is_whisperx_available = self.check_whisperx_availability()
         self.elevenlabs_quota_text = None  # New state variable
 
         self.app_settings = self.load_settings()
@@ -156,26 +156,14 @@ class PodcastGeneratorApp:
 
         self.logger.info("Main interface initialized.")
 
-    def check_mfa_availability(self) -> bool:
-        """Checks if MFA is installed and runnable, without showing errors to the user."""
-        # Using 'mfa' directly relies on it being in the system's PATH.
-        # This is the correct approach for an external dependency and avoids
-        # the infinite loop issue with frozen apps, where sys.executable
-        # would point to the app bundle itself.
-        mfa_base_command = ["mfa"]
+    def check_whisperx_availability(self) -> bool:
+        """Checks if WhisperX is installed and logs the result."""
         try:
-            # We only care about the return code. Using DEVNULL for output is efficient.
-            # The command is 'version' for MFA v3.x
-            subprocess.run(
-                mfa_base_command + ["version"],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-            self.logger.info("MFA installation found and verified. Demo generation is enabled.")
+            import whisperx
+            self.logger.info("WhisperX installation found. Demo generation is enabled.")
             return True
-        except (subprocess.CalledProcessError, FileNotFoundError, NotADirectoryError):
-            self.logger.warning("MFA not found or installation is broken. Demo generation will be disabled.")
+        except ImportError:
+            self.logger.warning("WhisperX library not found. Demo generation will be disabled.")
             return False
 
     def _setup_menu(self):
@@ -296,14 +284,14 @@ class PodcastGeneratorApp:
                                                        command=self.start_generation_thread)
         self.generate_button.grid(row=0, column=1, sticky="ew", padx=5)
 
-        self.show_button = customtkinter.CTkButton(self.button_frame, text="Open file location",
-                                                   command=self.open_file_location, state='disabled')
+        self.show_button = customtkinter.CTkButton(self.button_frame, text="Open file location", command=self.open_file_location)
         self.show_button.grid(row=0, column=2, sticky="ew", padx=5)
+        self._configure_button_state(self.show_button, enabled=False)
 
         self.play_button = customtkinter.CTkButton(self.button_frame, text="▶",
-                                                   command=self.play_last_generated_file, state='disabled',
-                                                   width=40)
+                                                   command=self.play_last_generated_file, width=40)
         self.play_button.grid(row=0, column=3, sticky="e", padx=(5, 0))
+        self._configure_button_state(self.play_button, enabled=False)
 
     def _load_cached_quota(self):
         """Loads and displays the cached quota if available."""
@@ -353,6 +341,23 @@ class PodcastGeneratorApp:
         # Premier tick
         if self.root and self.root.winfo_exists():
             self.root.after(interval_ms, _tick)
+
+    def _configure_button_state(self, button: customtkinter.CTkButton, enabled: bool):
+        """Configures the state and color of a button."""
+        if not button or not button.winfo_exists():
+            return
+
+        if enabled:
+            # Restore default theme color for the enabled state
+            normal_fg_color = customtkinter.ThemeManager.theme["CTkButton"]["fg_color"]
+            normal_text_color = customtkinter.ThemeManager.theme["CTkButton"]["text_color"]
+            button.configure(state='normal', fg_color=normal_fg_color, text_color=normal_text_color)
+        else:
+            # Apply a custom, more opaque color for the disabled state
+            disabled_fg_color = ("gray75", "gray30")
+            # Use a readable text color for the disabled state
+            disabled_text_color = ("gray10", "gray90")  # Dark gray for light mode, light gray for dark mode
+            button.configure(state='disabled', fg_color=disabled_fg_color, text_color_disabled=disabled_text_color)
 
     def on_provider_selected(self):
         """Handles selection from the TTS Provider radio button menu."""
@@ -500,7 +505,7 @@ class PodcastGeneratorApp:
             self.settings_menu.entryconfig(idx, state='normal' if has_any_key else 'disabled')
             # Protéger l'accès au bouton si l'initialisation n'est pas terminée.
             if hasattr(self, "generate_button") and self.generate_button:
-                self.generate_button.configure(state='normal' if has_any_key else 'disabled')
+                self._configure_button_state(self.generate_button, enabled=has_any_key)
 
     def _find_menu_index_by_label(self, menu: tk.Menu, label: str):
         """Retourne l'index d'une entrée de menu par son label, ou None si absent."""
@@ -675,7 +680,10 @@ class PodcastGeneratorApp:
                 if msg_type == 'GENERATION_COMPLETE':
                     self.on_generation_complete(success=message[1])
                 elif msg_type == 'UPDATE_PLAY_BUTTON':
-                    self.play_button.configure(text=message[1], state=message[2])
+                    is_enabled = message[2] == 'normal'
+                    self._configure_button_state(self.play_button, enabled=is_enabled)
+                    if self.play_button and self.play_button.winfo_exists():
+                        self.play_button.configure(text=message[1])
             else:
                 self._update_log(message)
         except queue.Empty:
@@ -762,10 +770,10 @@ class PodcastGeneratorApp:
             return
 
         # Disable buttons during generation
-        self.generate_button.configure(state='disabled')
-        self.load_button.configure(state='disabled')
-        self.play_button.configure(state='disabled')
-        self.show_button.configure(state='disabled')
+        self._configure_button_state(self.generate_button, enabled=False)
+        self._configure_button_state(self.load_button, enabled=False)
+        self._configure_button_state(self.play_button, enabled=False)
+        self._configure_button_state(self.show_button, enabled=False)
         self.actions_menu.entryconfig("Generate HTML Demo...", state='disabled')
         self.menubar.entryconfig("Settings", state="disabled")
 
@@ -851,19 +859,23 @@ class PodcastGeneratorApp:
     def on_generation_complete(self, success: bool):
         if success:
             self.root.bell()
-            if self.ffplay_path:
-                self.show_button.configure(state='normal')
-                self.play_button.configure(state='normal')
-            # Enable demo button only if MFA is available
-            self.actions_menu.entryconfig("Generate HTML Demo...",
-                                          state='normal' if self.is_mfa_available else 'disabled')
             if self.app_settings.get("tts_provider").lower() == "elevenlabs":
                 self.update_elevenlabs_quota_in_status()
 
         self.progress_bar.stop()
-        self.generate_button.configure(state='normal')
-        self.load_button.configure(state='normal')
+        self._configure_button_state(self.generate_button, enabled=True)
+        self._configure_button_state(self.load_button, enabled=True)
         self.menubar.entryconfig("Settings", state="normal") # pyright: ignore
+
+        # Re-enable file-related buttons if a valid file exists, regardless of the last operation's success
+        can_use_last_file = self.last_generated_filepath and os.path.exists(self.last_generated_filepath)
+
+        self._configure_button_state(self.show_button, enabled=can_use_last_file)
+        self._configure_button_state(self.play_button, enabled=(can_use_last_file and self.ffplay_path))
+
+        can_generate_demo = self.is_whisperx_available and can_use_last_file
+        self.actions_menu.entryconfig("Generate HTML Demo...", state='normal' if can_generate_demo else 'disabled')
+
         if self.progress_bar.winfo_ismapped():
             self.progress_bar.pack_forget()
         self.log_text.configure(state='disabled')  # Disable the log area at the very end
@@ -898,13 +910,13 @@ class PodcastGeneratorApp:
         """The function executed by the demo generation thread."""
         temp_script_file = None
         try:
-            # MFA requires a file, so we create a temporary one
+            # WhisperX requires a file, so we create a temporary one
             with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix=".txt", encoding='utf-8') as f:
                 f.write(script_content)
                 temp_script_file = f.name
 
             # Call the function from create_demo
-            create_html_demo(
+            create_html_demo_whisperx(
                 script_filepath=temp_script_file,
                 audio_filepath=audio_filepath,
                 title=title,
@@ -919,8 +931,8 @@ class PodcastGeneratorApp:
         finally:
             # Re-enable the button on the main thread
             if self.root.winfo_exists():
-                self.root.after(0, lambda: self.actions_menu.entryconfig("Generate HTML Demo...",
-                                                                         state='normal' if self.is_mfa_available else 'disabled'))
+                can_generate_demo = self.is_whisperx_available and self.last_generated_filepath and os.path.exists(self.last_generated_filepath)
+                self.root.after(0, lambda: self.actions_menu.entryconfig("Generate HTML Demo...", state='normal' if can_generate_demo else 'disabled'))
             # Clean up the temporary file
             if temp_script_file and os.path.exists(temp_script_file):
                 os.remove(temp_script_file)
@@ -958,7 +970,7 @@ class PodcastGeneratorApp:
                 "The 'ffplay' command (part of FFmpeg) was not found.\n\n"
                 "Playback is disabled. Please ensure FFmpeg is properly installed."
             )
-            self.play_button.configure(state='disabled')
+            self._configure_button_state(self.play_button, enabled=False)
             return
 
         if not self.last_generated_filepath or not os.path.exists(self.last_generated_filepath):
@@ -1230,7 +1242,7 @@ class DemoSettingsWindow(customtkinter.CTkToplevel):
 
         # --- Buttons ---
         button_frame = customtkinter.CTkFrame(main_frame, fg_color="transparent")
-        button_frame.pack(pady=(15, 0))
+        button_frame.pack(pady=(15, 15))
 
         ok_button = customtkinter.CTkButton(button_frame, text="Generate Demo", command=self.on_ok)
         ok_button.pack(side=tk.LEFT, padx=5)

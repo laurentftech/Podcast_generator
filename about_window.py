@@ -54,11 +54,11 @@ class AboutWindow(customtkinter.CTkToplevel):
                                                  "https://elevenlabs.io")
         elevenlabs_frame.pack(fill=tk.X, padx=10, pady=2)
 
-        # Montreal Forced Aligner link
-        mfa_frame = self._create_link_row(credits_frame, "- Montreal Forced Aligner:",
-                                          "montreal-forced-aligner.readthedocs.io",
-                                          "https://montreal-forced-aligner.readthedocs.io/")
-        mfa_frame.pack(fill=tk.X, padx=10, pady=2)
+        # WhisperX link
+        whisperx_frame = self._create_link_row(credits_frame, "- WhisperX for alignment:",
+                                               "github.com/m-bain/whisperX",
+                                               "https://github.com/m-bain/whisperX")
+        whisperx_frame.pack(fill=tk.X, padx=10, pady=2)
 
         customtkinter.CTkLabel(credits_frame, text="- Tkinter & customtkinter for the graphical interface",
                                anchor="w").pack(fill=tk.X, padx=10, pady=2)
@@ -79,5 +79,5 @@ class AboutWindow(customtkinter.CTkToplevel):
         customtkinter.CTkLabel(frame, text=text).pack(side=tk.LEFT)
         link_label = customtkinter.CTkLabel(frame, text=link_text, text_color=("#3a7ebf", "#1f6aa5"), cursor="hand2")
         link_label.pack(side=tk.LEFT, padx=5)
-        link_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://ai.google.dev/gemini-api"))
+        link_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab(url))
         return frame
