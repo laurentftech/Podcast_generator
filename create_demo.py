@@ -234,6 +234,7 @@ def create_word_mapping_whisperx(source_text: str, whisperx_result: dict, debug:
     i = 0
     matched_words = 0
     unmatched_words = 0
+    used_whisperx_indices = set()  # Éviter la réutilisation des mêmes timings
 
     while i < len(source_text):
         # Détection des noms de locuteurs
@@ -281,43 +282,50 @@ def create_word_mapping_whisperx(source_text: str, whisperx_result: dict, debug:
             word_text = word_match.group(0)
             timing_info = None
 
-            # Recherche du meilleur match dans WhisperX
-            best_match_index = None
-            best_similarity = 0
-            search_window = 5  # Fenêtre plus large pour WhisperX
+            # Ignorer certains mots très courts qui n'ont probablement pas de timing
+            skip_timing = len(word_text) <= 1 and word_text.lower() in ['i', 'a']
 
-            start_search = max(0, whisperx_index - search_window)
-            end_search = min(len(whisperx_words), whisperx_index + search_window + 1)
+            if not skip_timing:
+                # Recherche du meilleur match dans WhisperX
+                best_match_index = None
+                best_similarity = 0
+                search_window = 5  # Fenêtre plus large pour WhisperX
 
-            for search_idx in range(start_search, end_search):
-                if search_idx < len(whisperx_words):
-                    whisperx_word = whisperx_words[search_idx]["word"]
-                    similarity = SequenceMatcher(None, normalize_word(word_text), normalize_word(whisperx_word)).ratio()
-                    if similarity > best_similarity and similarity >= 0.6:  # Seuil ajusté
-                        best_similarity = similarity
-                        best_match_index = search_idx
+                start_search = max(0, whisperx_index - search_window)
+                end_search = min(len(whisperx_words), whisperx_index + search_window + 1)
 
-            if best_match_index is not None:
-                timing_info = {
-                    "start": whisperx_words[best_match_index]["start"],
-                    "end": whisperx_words[best_match_index]["end"]
-                }
-                whisperx_index = best_match_index + 1
-                matched_words += 1
+                for search_idx in range(start_search, end_search):
+                    if search_idx < len(whisperx_words) and search_idx not in used_whisperx_indices:
+                        whisperx_word = whisperx_words[search_idx]["word"]
+                        similarity = SequenceMatcher(None, normalize_word(word_text),
+                                                     normalize_word(whisperx_word)).ratio()
+                        if similarity > best_similarity and similarity >= 0.6:  # Seuil ajusté
+                            best_similarity = similarity
+                            best_match_index = search_idx
 
-                if debug and best_similarity < 0.9:
-                    print(
-                        f"Match approximatif: '{word_text}' -> '{whisperx_words[best_match_index]['word']}' (sim: {best_similarity:.2f})")
+                if best_match_index is not None:
+                    timing_info = {
+                        "start": whisperx_words[best_match_index]["start"],
+                        "end": whisperx_words[best_match_index]["end"]
+                    }
+                    used_whisperx_indices.add(best_match_index)  # Marquer comme utilisé
+                    whisperx_index = best_match_index + 1
+                    matched_words += 1
 
-            elif whisperx_index < len(whisperx_words):
-                unmatched_words += 1
-                if debug:
-                    current_whisperx = whisperx_words[whisperx_index]["word"] if whisperx_index < len(
-                        whisperx_words) else "END"
-                    print(f"Mot non aligné: '{word_text}' vs whisperx='{current_whisperx}'")
+                    if debug and best_similarity < 0.9:
+                        print(
+                            f"Match approximatif: '{word_text}' -> '{whisperx_words[best_match_index]['word']}' (sim: {best_similarity:.2f})")
 
-                if unmatched_words % 3 == 0 and whisperx_index < len(whisperx_words) - 1:
-                    whisperx_index += 1
+                elif whisperx_index < len(whisperx_words):
+                    unmatched_words += 1
+                    if debug:
+                        current_whisperx = whisperx_words[whisperx_index]["word"] if whisperx_index < len(
+                            whisperx_words) else "END"
+                        print(f"Mot non aligné: '{word_text}' vs whisperx='{current_whisperx}'")
+
+                    # Avancer plus prudemment pour éviter de perdre des mots
+                    if unmatched_words % 2 == 0 and whisperx_index < len(whisperx_words) - 1:
+                        whisperx_index += 1
 
             segments.append({
                 'type': 'word',
@@ -350,9 +358,11 @@ def create_word_mapping_whisperx(source_text: str, whisperx_result: dict, debug:
 
 
 def reconstruct_html_with_timing(segments):
-    """Reconstruit le HTML à partir des segments analysés."""
+    """Reconstruit le HTML à partir des segments analysés avec validation des timings."""
     html_parts = []
     word_counter = 0
+    words_with_timing = 0
+    words_without_timing = 0
 
     for segment in segments:
         if segment['type'] == 'speaker':
@@ -360,18 +370,27 @@ def reconstruct_html_with_timing(segments):
         elif segment['type'] == 'annotation':
             annotation_content = re.sub(r'[<>\[\]]', '', segment['text'])
             html_parts.append(f"<em>{annotation_content}</em>")
-        elif segment['type'] == 'word' and segment.get('timing'):
-            timing = segment['timing']
-            html_parts.append(
-                f'<span class="word" data-start="{timing["start"]}" data-end="{timing["end"]}" data-word-id="{word_counter}">{segment["text"]}</span>'
-            )
-            word_counter += 1
+        elif segment['type'] == 'word':
+            if segment.get('timing') and segment['timing']['start'] < segment['timing']['end']:
+                # Mot avec timing valide
+                timing = segment['timing']
+                html_parts.append(
+                    f'<span class="word" data-start="{timing["start"]}" data-end="{timing["end"]}" data-word-id="{word_counter}">{segment["text"]}</span>'
+                )
+                word_counter += 1
+                words_with_timing += 1
+            else:
+                # Mot sans timing - affiché normalement
+                html_parts.append(segment['text'])
+                words_without_timing += 1
         else:
+            # Texte normal, ponctuation, espaces
             text = segment['text']
             if '\n' in text:
                 text = text.replace('\n', '<br>')
             html_parts.append(text)
 
+    print(f"HTML généré: {words_with_timing} mots avec timing, {words_without_timing} mots sans timing")
     return ''.join(html_parts)
 
 

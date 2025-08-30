@@ -245,55 +245,74 @@
     const audio = document.getElementById("player");
     const words = document.querySelectorAll(".word");
 
-    // Créer un cache des timings pour éviter le parsing répétitif
+    // Créer un cache des timings pour une recherche rapide
     const wordTimings = Array.from(words).map(w => ({{
       element: w,
       start: parseFloat(w.dataset.start),
-      end: parseFloat(w.dataset.end),
-      wordId: w.dataset.wordId || Math.random() // fallback pour compatibilité
+      end: parseFloat(w.dataset.end)
     }}));
 
-    // Optimisation pour mobile : limiter la fréquence des mises à jour
-    let lastUpdateTime = 0;
-    const updateThrottle = 100; // ms
+    let currentlyHighlightedWord = null;
 
-    audio.addEventListener("timeupdate", () => {{
-      const now = Date.now();
-      if (now - lastUpdateTime < updateThrottle) return;
-      lastUpdateTime = now;
-
+    function highlightCurrentWord() {{
       const currentTime = audio.currentTime;
+      let wordToHighlight = null;
 
-      // Enlever tous les highlights actuels
-      wordTimings.forEach(word => word.element.classList.remove("highlight"));
-
-      // Trouver le mot actuellement lu (le plus récent qui a commencé)
-      let currentWord = null;
-      let latestStart = -1;
-
+      // Trouver le mot qui correspond au temps actuel
       for (const word of wordTimings) {{
         if (currentTime >= word.start && currentTime < word.end) {{
-          if (word.start > latestStart) {{
-            currentWord = word;
-            latestStart = word.start;
+          wordToHighlight = word;
+          break;
+        }}
+      }}
+
+      // Mettre à jour le surlignage seulement si nécessaire pour éviter le scintillement
+      if (wordToHighlight) {{
+        if (currentlyHighlightedWord !== wordToHighlight.element) {{
+          // Enlever l'ancien surlignage
+          if (currentlyHighlightedWord) {{
+            currentlyHighlightedWord.classList.remove("highlight");
+          }}
+          // Ajouter le nouveau
+          wordToHighlight.element.classList.add("highlight");
+          currentlyHighlightedWord = wordToHighlight.element;
+
+          // Défilement automatique pour garder le mot visible
+          if (window.innerWidth <= 768) {{
+            currentlyHighlightedWord.scrollIntoView({{
+              behavior: 'smooth',
+              block: 'center',
+              inline: 'nearest'
+            }});
           }}
         }}
-      }}
-
-      // Surligner uniquement le mot courant
-      if (currentWord) {{
-        currentWord.element.classList.add("highlight");
-
-        // Défilement automatique sur mobile pour garder le mot visible
-        if (window.innerWidth <= 768) {{
-          currentWord.element.scrollIntoView({{
-            behavior: 'smooth',
-            block: 'center',
-            inline: 'nearest'
-          }});
+      }} else {{
+        // Aucun mot à surligner (ex: silence), enlever l'ancien surlignage
+        if (currentlyHighlightedWord) {{
+          currentlyHighlightedWord.classList.remove("highlight");
+          currentlyHighlightedWord = null;
         }}
       }}
-    }});
+
+      // Continuer la boucle si l'audio est en cours de lecture
+      if (!audio.paused) {{
+        requestAnimationFrame(highlightCurrentWord);
+      }}
+    }}
+
+    // Démarrer la boucle de surlignage
+    audio.addEventListener("play", () => requestAnimationFrame(highlightCurrentWord));
+
+    // Nettoyer le surlignage à la fin, en pause, ou lors d'une navigation manuelle
+    const clearHighlight = () => {{
+      if (currentlyHighlightedWord) {{
+        currentlyHighlightedWord.classList.remove("highlight");
+        currentlyHighlightedWord = null;
+      }}
+    }};
+    audio.addEventListener("pause", clearHighlight);
+    audio.addEventListener("ended", clearHighlight);
+    audio.addEventListener("seeked", highlightCurrentWord);
 
     // Permettre de cliquer sur les mots pour naviguer dans l'audio
     words.forEach(word => {{

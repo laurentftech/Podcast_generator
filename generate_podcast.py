@@ -16,7 +16,7 @@ import tempfile
 
 import json
 import keyring  # For secure credential storage
-from create_demo import create_html_demo
+from create_demo import create_html_demo_whisperx
 
 import re
 import requests

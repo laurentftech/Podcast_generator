@@ -1,9 +1,12 @@
-numpy
-google-genai
+# Gestion de l'environnement
+customtkinter
 python-dotenv
 keyring
 elevenlabs
-textgrid
-customtkinter
-beautifulsoup4
 ttkbootstrap
+google-genai
+
+# WhisperX
+git+https://github.com/m-bain/whisperx.git@v3.3.0#egg=whisperx
+
+ffmpeg-python
