@@ -128,7 +128,8 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         customtkinter.CTkButton(button_frame, text="Restore Defaults", command=self.restore_defaults).grid(
             row=0, column=1, sticky="ew", padx=5)
         customtkinter.CTkButton(button_frame, text="Cancel", command=self.cancel_and_close,
-                                fg_color="transparent", border_width=1).grid(
+                                fg_color=("gray80", "gray25"),
+                                text_color=("gray10", "gray90"), border_width=1).grid(
             row=0, column=2, sticky="ew", padx=5)
         customtkinter.CTkButton(button_frame, text="Save", command=self.save_and_close).grid(
             row=0, column=3, sticky="ew", padx=(5, 0))
