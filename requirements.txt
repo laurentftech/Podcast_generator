@@ -8,5 +8,3 @@ google-genai
 
 # WhisperX
 git+https://github.com/m-bain/whisperx.git@v3.3.0#egg=whisperx
-
-ffmpeg-python
