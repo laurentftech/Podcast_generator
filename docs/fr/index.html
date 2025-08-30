@@ -8,18 +8,11 @@ permalink: /fr/
 
   <h1 style="margin-bottom:2rem;">🎙️Podcast Generator 🎙</h1>
 
-  <h2>Pourquoi l'utiliser ?</h2>
-  <p>Podcast Generator est idéal pour les enseignants, formateurs et créateurs de contenu souhaitant donner vie à leurs scripts grâce à des voix naturelles et immersives. Créez des podcasts engageants sans effort technique.</p>
+  <p style="font-size: 1.2rem; color: #586069; max-width: 750px; margin: 0 auto 2rem auto; text-align: center;">
+    Une application de bureau légère avec une interface moderne qui vous permet de générer des podcasts multi-intervenants à partir de n'importe quel script en utilisant les voix de haute qualité de **ElevenLabs** et **Google Gemini**.
+  </p>
 
-  <h2>Fonctionnalités principales</h2>
-  <ul>
-    <li>Multi-voix réaliste avec intonations naturelles</li>
-    <li>Support multilingue automatique</li>
-    <li>Parfait pour les cours, tutoriels et contenus pédagogiques</li>
-    <li>Expérience immersive et dynamique pour les auditeurs</li>
-  </ul>
-
-  <img src="/Podcast_generator/assets/podcast_creator_screenshot.png" alt="Exemple de Podcast Generator" style="max-width:100%; border-radius:6px; margin:1rem 0;">
+  <img class="screenshot" src="/Podcast_generator/assets/podcast_creator_screenshot.png" alt="Exemple de Podcast Generator">
 
   <div style="text-align:center; margin:2rem 0;">
     <h3>🎧 Écoutez la démo</h3>
@@ -28,27 +21,103 @@ permalink: /fr/
       <source src="/Podcast_generator/assets/sample2-gemini.mp3" type="audio/mpeg">
       Votre navigateur ne supporte pas l'élément audio.
     </audio>
-    <a href="/Podcast_generator/assets/who_am_i.html" style="display:inline-block; margin-top:0.8rem; background-color:#24292e; color:white; padding:0.6rem 1.5rem; border-radius:4px; text-decoration:none; font-weight:600; transition: background-color 0.2s;">Voir la démo complète ici</a>
+    <a href="/Podcast_generator/assets/who_am_i.html" class="button button-secondary" style="margin-top:0.8rem;">Voir la démo synchronisée</a>
+  </div>
+
+  <h2 style="border-bottom: 1px solid #e1e4e8; padding-bottom: 0.3em;">Comment ça marche</h2>
+  <div style="display: flex; justify-content: space-around; text-align: center; gap: 1rem; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 200px;">
+      <h3>1. Obtenez une clé API</h3>
+      <p>Prenez une clé gratuite chez ElevenLabs ou Google Gemini et ajoutez-la de manière sécurisée dans l'application.</p>
+    </div>
+    <div style="flex: 1; min-width: 200px;">
+      <h3>2. Écrivez votre script</h3>
+      <p>Formatez votre texte avec les noms des intervenants (ex: <code>John: Bonjour le monde !</code>).</p>
+    </div>
+    <div style="flex: 1; min-width: 200px;">
+      <h3>3. Générez</h3>
+      <p>Cliquez sur un bouton pour créer votre podcast de haute qualité en format MP3 ou WAV.</p>
+    </div>
+  </div>
+
+  <h2 style="border-bottom: 1px solid #e1e4e8; padding-bottom: 0.3em; margin-top: 2.5rem;">Fonctionnalités principales</h2>
+  <ul style="list-style: none; padding-left: 0;">
+    <li style="margin-bottom: 0.8rem;">✨ **Interface Moderne**: Une interface claire et réactive qui s'adapte au mode clair ou sombre de votre système.</li>
+    <li style="margin-bottom: 0.8rem;">🎤 **Double Fournisseur TTS**: Choisissez entre les voix de haute qualité de **Google Gemini** ou **ElevenLabs**.</li>
+    <li style="margin-bottom: 0.8rem;">📄 **Démo HTML Synchronisée**: Générez automatiquement une page HTML partageable avec l'audio de votre podcast et une transcription surlignée et synchronisée.</li>
+    <li style="margin-bottom: 0.8rem;">🔐 **Sécurisé & Simple**: Vos clés API sont stockées en toute sécurité dans le trousseau de votre système, et l'application vous guide lors de la configuration.</li>
+    <li style="margin-bottom: 0.8rem;">🎨 **Personnalisation des Voix**: Configurez et sauvegardez facilement les voix pour chaque intervenant de vos scripts, avec des guides vocaux et des extraits audio intégrés.</li>
+  </ul>
+
+  <div style="text-align:center; margin:2rem 0;">
+    <a href="https://github.com/laurentftech/Podcast_generator/releases/latest" class="button button-primary">Télécharger la dernière version</a>
   </div>
 
   <div style="text-align:center; margin-top:2rem;">
-    <a href="https://github.com/laurentftech/Podcast_generator" style="display:inline-block; background-color:#24292e; color:white; padding:0.6rem 1.5rem; border-radius:4px; text-decoration:none; font-weight:600; transition: background-color 0.2s;">Découvrir sur GitHub</a>
+    <a href="https://github.com/laurentftech/Podcast_generator" class="button button-secondary">Découvrir sur GitHub</a>
     <div style="margin-top:1rem;">
-      ☕ <a href="https://www.buymeacoffee.com/laurentftech" target="_blank" style="display:inline-block; background-color:#f5f5f5; color:#24292e; padding:0.6rem 1.5rem; border-radius:4px; text-decoration:none; font-weight:600; transition: background-color 0.2s;">Offrez-moi un café</a>
+      ☕ <a href="https://www.buymeacoffee.com/laurentftech" target="_blank" class="button button-tertiary">Offrez-moi un café</a>
     </div>
   </div>
 
 </section>
 
 <footer style="text-align:center; padding:2rem; font-size:0.9rem; color:#888;">
-  Made with ❤️ and ☕ by <a href="https://laurentftech.github.io">LaurentFTech</a>
+  Fait avec ❤️ et ☕ par <a href="https://laurentftech.github.io">LaurentFTech</a>
 </footer>
 
 <style>
+.screenshot {
+  max-width: 100%;
+  border-radius: 6px;
+  margin: 1rem 0;
+  border: 1px solid #d0d7de;
+  display: block;
+}
+
+.button {
+  display: inline-block;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 6px;
+  transition: background-color 0.2s, border-color 0.2s;
+  border: 1px solid transparent;
+}
+
+.button-primary {
+  background-color: #2da44e;
+  color: white;
+  padding: 0.8rem 2rem;
+  font-size: 1.1rem;
+  border-color: rgba(27, 31, 36, 0.15);
+}
+
+.button-secondary {
+  background-color: #f6f8fa;
+  color: #24292e;
+  padding: 0.7rem 1.6rem;
+  border-color: rgba(27, 31, 36, 0.15);
+}
+
+.button-tertiary {
+  background-color: transparent;
+  color: #57606a;
+  padding: 0.7rem 1.6rem;
+  border: none;
+}
+
+.button:hover {
+  filter: brightness(95%);
+}
+
 h1 {
   text-align: left;
   margin-bottom: 1.5rem;
   font-size: 2.2rem; /* taille standard desktop */
+}
+
+.screenshot {
+ border-color: #30363d; /* A subtle border for dark mode */
 }
 
 /* Ajustement responsive pour smartphone */
@@ -66,28 +135,40 @@ body {
 /* Mode sombre auto si l’OS est configuré en dark */
 @media (prefers-color-scheme: dark) {
   body {
-    background-color: #0d1117; /* fond sombre GitHub-like */
-    color: #c9d1d9; /* texte gris clair */
+    background-color: #1a1a1a; /* Fond sombre unifié */
+    color: #e0e0e0; /* Texte gris clair unifié */
   }
 
   a {
     color: #58a6ff;
   }
 
+  .screenshot {
+    border-color: #30363d;
+  }
+
   footer {
     color: #8b949e;
   }
 
-  /* Boutons sombres */
-  a[style*="background-color:#24292e"] {
-    background-color: #c9d1d9 !important;
-    color: #0d1117 !important;
+  .button-primary {
+    background-color: #3fb950;
+    color: white;
+    border-color: #3fb950;
   }
 
-  /* Bouton Buy me a coffee (clair) */
-  a[style*="background-color:#f5f5f5"] {
-    background-color: #161b22 !important;
-    color: #f0f6fc !important;
+  .button-secondary {
+    background-color: #282a2e;
+    color: #c9d1d9;
+    border-color: #30363d;
+  }
+
+  .button-tertiary {
+    color: #8b949e;
+  }
+
+  .button:hover {
+    filter: brightness(110%);
   }
 }
 </style>
