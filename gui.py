@@ -6,13 +6,20 @@ import subprocess
 import sys
 import queue
 import json
+import importlib.util
 import webbrowser
 import tempfile
 from datetime import datetime
 from typing import Optional
 
+import keyring
 import customtkinter
 from customtkinter.windows.ctk_input_dialog import CTkInputDialog
+
+try:
+    import requests
+except ImportError:
+    requests = None
 
 from about_window import AboutWindow
 from api_keys_window import APIKeysWindow
@@ -135,8 +142,6 @@ class PodcastGeneratorApp:
         self._setup_menu()
         self._setup_widgets(default_script)
 
-        # Provider sélectionné
-        self.provider_var = tk.StringVar(value=self.app_settings.get("tts_provider", "elevenlabs").lower())
         if self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs":
             self.update_elevenlabs_quota_in_status()
 
@@ -157,14 +162,16 @@ class PodcastGeneratorApp:
         self.logger.info("Main interface initialized.")
 
     def check_whisperx_availability(self) -> bool:
-        """Checks if WhisperX is installed and logs the result."""
-        try:
-            import whisperx
-            self.logger.info("WhisperX installation found. Demo generation is enabled.")
-            return True
-        except ImportError:
+        """Checks if WhisperX can be imported without actually loading it."""
+        # Using find_spec is safer for packaged apps as it doesn't load the
+        # (potentially heavy and problematic) library just for a check.
+        spec = importlib.util.find_spec("whisperx")
+        if spec is None:
             self.logger.warning("WhisperX library not found. Demo generation will be disabled.")
             return False
+        else:
+            self.logger.info("WhisperX installation found. Demo generation is enabled.")
+            return True
 
     def _setup_menu(self):
         """Sets up the main application menu bar."""
@@ -579,9 +586,6 @@ class PodcastGeneratorApp:
     # 2. Replace the update_elevenlabs_quota_in_status method in PodcastGeneratorApp class
     def update_elevenlabs_quota_in_status(self):
         """Fetches ElevenLabs quota in a background thread and updates the status label."""
-        import keyring
-        import threading
-
         key = keyring.get_password("PodcastGenerator", "elevenlabs_api_key")
         if not key:
             self.elevenlabs_quota_text = None
@@ -602,6 +606,11 @@ class PodcastGeneratorApp:
                 pass
 
         def fetch_and_update():
+            if not requests:
+                self.logger.error("'requests' library not found. Cannot fetch ElevenLabs quota.")
+                self.elevenlabs_quota_text = "TTS Provider: ElevenLabs v3 - 'requests' missing"
+                self.root.after(0, self._update_provider_label)
+                return
             try:
                 # Use the new v3-compatible quota function
                 quota_text = update_elevenlabs_quota(key, self.log_status)
@@ -1139,7 +1148,6 @@ class PodcastGeneratorApp:
         like checking for API keys and pre-fetching data.
         """
         # --- API key check at startup ---
-        import keyring
         current_provider = self.app_settings.get("tts_provider", "elevenlabs")
         account_name = "elevenlabs_api_key" if current_provider == "elevenlabs" else "gemini_api_key"
         api_key = keyring.get_password("PodcastGenerator", account_name)
@@ -1168,7 +1176,11 @@ class PodcastGeneratorApp:
         def _prefetch_elevenlabs():
             """Prefetches ElevenLabs voices using the v1 API."""
             try:
-                import keyring, requests
+                if not requests:
+                    self.logger.warning("'requests' library not found. Cannot pre-fetch ElevenLabs voices.")
+                    self.elevenlabs_voices_cache = []
+                    return
+
                 key = keyring.get_password("PodcastGenerator", "elevenlabs_api_key")
                 if not key:
                     self.elevenlabs_voices_cache = []

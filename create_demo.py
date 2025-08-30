@@ -7,21 +7,7 @@ import logging
 import re
 import tempfile
 import shutil
-import sys
 import types
-
-import torio._extension.utils as torio_utils
-
-torio_utils._TORIO_EXTENSION_AVAILABLE = False
-
-import torch
-import torchaudio
-
-# Configuration pour macOS Intel
-torch.set_num_threads(1)  # Évite les problèmes de concurrence sur macOS Intel
-os.environ['OMP_NUM_THREADS'] = '1'
-os.environ['MKL_NUM_THREADS'] = '1'
-
 from difflib import SequenceMatcher
 import unicodedata
 
@@ -289,6 +275,7 @@ def create_word_mapping_whisperx(source_text: str, whisperx_result: dict, debug:
                 # Recherche du meilleur match dans WhisperX
                 best_match_index = -1
                 best_score = -1.0  # Utiliser un score qui pénalise la distance
+                best_similarity = 0.0
                 search_window = 5
 
                 start_search = max(0, whisperx_index - search_window)
@@ -307,6 +294,7 @@ def create_word_mapping_whisperx(source_text: str, whisperx_result: dict, debug:
                             if score > best_score:
                                 best_score = score
                                 best_match_index = search_idx
+                                best_similarity = similarity
 
                 if best_match_index != -1:
                     timing_info = {
@@ -423,10 +411,27 @@ def create_html_demo_whisperx(script_filepath: str, audio_filepath: str, title: 
     """
     logger = logging.getLogger("PodcastGenerator.Demo")
 
+    # --- Dépendances lourdes chargées à la demande ---
+    # Cela évite de charger torch/whisperx au démarrage de l'app principale,
+    # ce qui est la cause principale des crashs sur les apps packagées.
     try:
+        # --- PATCH CRUCIAL pour Torchaudio ---
+        # Cette ligne doit être exécutée AVANT l'import de whisperx (qui importe torchaudio).
+        # Elle désactive la tentative de chargement des extensions C++ de torchaudio
+        # qui causent des crashs sur certains systèmes (notamment macOS avec Conda).
+        import torio._extension.utils as torio_utils
+        torio_utils._TORIO_EXTENSION_AVAILABLE = False
+        logging.info("Applied torchaudio patch to disable C++ extensions.")
+
+        import torch
+        # Configuration pour la stabilité sur CPU, notamment macOS Intel
+        torch.set_num_threads(1)
+        os.environ['OMP_NUM_THREADS'] = '1'
+        os.environ['MKL_NUM_THREADS'] = '1'
+
         import whisperx
-    except ImportError:
-        error_msg = "WhisperX n'est pas installé. Installez-le avec: pip install whisperx"
+    except ImportError as e:
+        error_msg = f"Une bibliothèque requise pour la démo est manquante : {e}.\n\nInstallez 'whisperx' et ses dépendances (torch, etc.)."
         status_callback(error_msg)
         logger.error(error_msg)
         return
@@ -434,14 +439,10 @@ def create_html_demo_whisperx(script_filepath: str, audio_filepath: str, title: 
     try:
         # --- 1. Charger le modèle WhisperX ---
         status_callback("Chargement du modèle WhisperX...")
-
-        # Configuration spécifique pour macOS Intel
-        device = "cpu"  # Force CPU sur macOS Intel pour éviter les problèmes CUDA/MPS
-        compute_type = "int8"  # Plus stable sur CPU
-
-        # Charger avec des paramètres optimisés pour macOS Intel
-        model = whisperx.load_model("small", device, compute_type=compute_type)  # Modèle plus petit
-        status_callback(f"Modèle WhisperX chargé (device: {device})")
+        device = "cpu"
+        compute_type = "int8"  # Optimisé pour CPU
+        model = whisperx.load_model("small", device, compute_type=compute_type)
+        status_callback(f"Modèle WhisperX chargé (device: {device}, type: {compute_type})")
 
         # --- 2. Transcription et alignement ---
         status_callback("Chargement de l'audio...")
@@ -624,7 +625,7 @@ if __name__ == "__main__":
         print(f"Error: Script file not found at '{args.script_file}'")
         sys.exit(1)
 
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     create_html_demo_whisperx(args.script_file, args.audio_file, title=args.title,
                               subtitle=args.subtitle, output_dir=args.output_dir,
                               language=args.language)

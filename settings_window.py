@@ -2,10 +2,15 @@ import logging
 import tkinter as tk
 import threading
 import json
+import keyring
 import customtkinter
 
 from gui import AVAILABLE_VOICES
 
+try:
+    import requests
+except ImportError:
+    requests = None
 
 class VoiceSettingsWindow(customtkinter.CTkToplevel):
     VOICE_DISPLAY_LIST = [f"{name} - {desc}" for name, desc in AVAILABLE_VOICES.items()]
@@ -23,7 +28,6 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         self.transient(parent)
         self.grab_set()
 
-        import keyring
         self.gemini_api_configured = bool(keyring.get_password("PodcastGenerator", "gemini_api_key"))
         self.elevenlabs_api_configured = bool(keyring.get_password("PodcastGenerator", "elevenlabs_api_key"))
 
@@ -222,13 +226,10 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         try:
             if (hasattr(self, 'refresh_voices_btn') and
                     self.refresh_voices_btn is not None):
-                try:
-                    self.refresh_voices_btn.winfo_class()
-                    self.refresh_voices_btn.config(state=state, text=text)
-                except tk.TclError:
-                    pass
+                if self.refresh_voices_btn.winfo_exists():
+                    self.refresh_voices_btn.configure(state=state, text=text)
         except (tk.TclError, AttributeError, TypeError) as e:
-            print(f"Erreur lors de la mise à jour du bouton (ignorée): {e}")
+            logging.warning(f"Error updating button state (ignored): {e}")
             pass
 
     def load_elevenlabs_voices(self):
@@ -239,9 +240,6 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
 
         self._loading_voices = True
 
-        import keyring
-        import requests
-
         def fetch_voices():
             try:
                 try:
@@ -251,12 +249,18 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
 
                 self.after(0, lambda: self.safe_update_button('disabled', '⏳'))
 
+                if not requests:
+                    logging.warning("'requests' library not found. Cannot fetch ElevenLabs voices.")
+                    self.elevenlabs_voices = []
+                    self.elevenlabs_voices_loaded = False
+                    self.after(100, self.populate_fields_delayed)
+                    return
+
                 api_key = keyring.get_password("PodcastGenerator", "elevenlabs_api_key")
                 if not api_key:
                     self.elevenlabs_voices = []
                     self.elevenlabs_voices_loaded = False
-                    print("Aucune clé API ElevenLabs configurée")
-                    print("Programmation de populate_fields_delayed sans clé API...")
+                    logging.warning("No ElevenLabs API key configured. Cannot fetch voices.")
                     self.after(100, self.populate_fields_delayed)
                     return
 
@@ -380,7 +384,7 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         except (tk.TclError, AttributeError):
             pass
         except Exception as e:
-            print(f"Erreur lors de la mise à jour des comboboxes: {e}")
+            logging.warning(f"Error updating comboboxes: {e}")
 
     def cancel_and_close(self):
         """Ferme la fenêtre sans sauvegarder les modifications."""

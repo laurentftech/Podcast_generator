@@ -14,9 +14,10 @@ authors = [{ name = "Laurent FRANCOISE", email = "laurent.f.tech@icloud.com" }]
 dependencies = [
     "numpy",
     "google-genai",
-    "python-dotenv",
     "keyring",
-    "elevenlabs"
+    "elevenlabs",
+    "requests",
+    "customtkinter",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -33,14 +34,17 @@ dev = [
     "pyinstaller"
 ]
 demo = [
-    "textgrid"
+    "whisperx"
 ]
+
+[project.scripts]
+podcast-generator = "gui:main"
 
 [project.urls]
 Homepage = "https://github.com/laurentftech/Podcast_generator"
 
 [tool.setuptools]
-py-modules = ["gui", "generate_podcast", "create_demo"]
+py-modules = ["gui", "generate_podcast", "create_demo", "about_window", "api_keys_window", "settings_window", "config"]
 
 [tool.setuptools_scm]
 # This tool will automatically discover the version from git tags.

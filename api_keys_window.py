@@ -1,11 +1,19 @@
 import tkinter as tk
 import webbrowser
 from tkinter import messagebox
+
+import keyring
 import customtkinter
-from customtkinter.windows.ctk_input_dialog import CTkInputDialog
+from customtkinter import CTkInputDialog
 
 from config import SERVICE_CONFIG
 
+try:
+    import requests
+    from google import genai
+except ImportError:
+    requests = None
+    genai = None
 
 class APIKeysWindow(customtkinter.CTkToplevel):
     def __init__(self, parent, close_callback):
@@ -114,8 +122,6 @@ class APIKeysWindow(customtkinter.CTkToplevel):
 
     def update_status(self):
         """Update the status labels for both APIs."""
-        import keyring
-
         # Check Gemini key
         gemini_key = keyring.get_password("PodcastGenerator", "gemini_api_key")
         if gemini_key:
@@ -132,8 +138,6 @@ class APIKeysWindow(customtkinter.CTkToplevel):
 
     def set_api_key(self, service: str):
         """Set or update an API key for the specified service."""
-        import keyring
-
         config = SERVICE_CONFIG.get(service)
         if not config: return
 
@@ -149,7 +153,6 @@ class APIKeysWindow(customtkinter.CTkToplevel):
 
     def remove_api_key(self, service: str):
         """Remove an API key for the specified service."""
-        import keyring
         config = SERVICE_CONFIG.get(service)
         if not config: return
 
@@ -164,16 +167,15 @@ class APIKeysWindow(customtkinter.CTkToplevel):
 
     def test_api_key(self, service: str):
         """Test an API key for the specified service."""
-        import keyring
-        import requests
-        from tkinter import messagebox
-
         if service == "elevenlabs":
+            if not requests:
+                messagebox.showerror("Missing Dependency", "The 'requests' library is not installed. Cannot test key.", parent=self)
+                return
             key = keyring.get_password("PodcastGenerator", "elevenlabs_api_key")
             if not key:
                 messagebox.showwarning("No Key", "No ElevenLabs API key is configured.", parent=self)
                 return
-
+            
             # Test ElevenLabs API
             try:
                 headers = {"xi-api-key": key}
@@ -227,6 +229,9 @@ class APIKeysWindow(customtkinter.CTkToplevel):
 
         else:
             # Gemini testing code
+            if not genai:
+                messagebox.showerror("Missing Dependency", "The 'google-generativeai' library is not installed. Cannot test key.", parent=self)
+                return
             key = keyring.get_password("PodcastGenerator", "gemini_api_key")
             if not key:
                 messagebox.showwarning("No Key", "No Gemini API key is configured.", parent=self)
@@ -234,7 +239,6 @@ class APIKeysWindow(customtkinter.CTkToplevel):
 
             # Test Gemini API
             try:
-                from google import genai
                 client = genai.Client(api_key=key)
                 # Simple test request
                 models = list(client.models.list())
