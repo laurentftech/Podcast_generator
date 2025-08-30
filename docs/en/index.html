@@ -57,4 +57,37 @@ h1 {
     font-size: 1.6rem; /* légèrement plus petit pour éviter le retour à la ligne */
   }
 }
+/* Mode clair par défaut */
+body {
+  background-color: #fff;
+  color: #24292e;
+}
+
+/* Mode sombre auto si l’OS est configuré en dark */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #0d1117; /* fond sombre GitHub-like */
+    color: #c9d1d9; /* texte gris clair */
+  }
+
+  a {
+    color: #58a6ff;
+  }
+
+  footer {
+    color: #8b949e;
+  }
+
+  /* Boutons sombres */
+  a[style*="background-color:#24292e"] {
+    background-color: #c9d1d9 !important;
+    color: #0d1117 !important;
+  }
+
+  /* Bouton Buy me a coffee (clair) */
+  a[style*="background-color:#f5f5f5"] {
+    background-color: #161b22 !important;
+    color: #f0f6fc !important;
+  }
+}
 </style>
