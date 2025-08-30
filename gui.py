@@ -1245,9 +1245,11 @@ class DemoSettingsWindow(customtkinter.CTkToplevel):
         button_frame.pack(pady=(15, 15))
 
         ok_button = customtkinter.CTkButton(button_frame, text="Generate Demo", command=self.on_ok)
+
         ok_button.pack(side=tk.LEFT, padx=5)
         cancel_button = customtkinter.CTkButton(button_frame, text="Cancel", command=self.destroy,
-                                                fg_color="transparent", border_width=1)
+                                                fg_color="transparent", text_color = ("gray10", "gray90"), border_width=1)
+
         cancel_button.pack(side=tk.LEFT, padx=5)
 
         self.protocol("WM_DELETE_WINDOW", self.destroy)
