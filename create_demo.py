@@ -287,9 +287,9 @@ def create_word_mapping_whisperx(source_text: str, whisperx_result: dict, debug:
 
             if not skip_timing:
                 # Recherche du meilleur match dans WhisperX
-                best_match_index = None
-                best_similarity = 0
-                search_window = 5  # Fenêtre plus large pour WhisperX
+                best_match_index = -1
+                best_score = -1.0  # Utiliser un score qui pénalise la distance
+                search_window = 5
 
                 start_search = max(0, whisperx_index - search_window)
                 end_search = min(len(whisperx_words), whisperx_index + search_window + 1)
@@ -297,13 +297,18 @@ def create_word_mapping_whisperx(source_text: str, whisperx_result: dict, debug:
                 for search_idx in range(start_search, end_search):
                     if search_idx < len(whisperx_words) and search_idx not in used_whisperx_indices:
                         whisperx_word = whisperx_words[search_idx]["word"]
-                        similarity = SequenceMatcher(None, normalize_word(word_text),
-                                                     normalize_word(whisperx_word)).ratio()
-                        if similarity > best_similarity and similarity >= 0.6:  # Seuil ajusté
-                            best_similarity = similarity
-                            best_match_index = search_idx
+                        similarity = SequenceMatcher(None, normalize_word(word_text), normalize_word(whisperx_word)).ratio()
 
-                if best_match_index is not None:
+                        if similarity >= 0.6:
+                            # Pénalise la distance pour favoriser les correspondances proches
+                            distance = abs(search_idx - whisperx_index)
+                            score = similarity - (distance * 0.05)
+
+                            if score > best_score:
+                                best_score = score
+                                best_match_index = search_idx
+
+                if best_match_index != -1:
                     timing_info = {
                         "start": whisperx_words[best_match_index]["start"],
                         "end": whisperx_words[best_match_index]["end"]
