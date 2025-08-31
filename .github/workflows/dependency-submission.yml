@@ -24,4 +24,4 @@ jobs:
           python-version: '3.11' # Force a version compatible with your pyproject.toml
 
       - name: Generate and submit dependency graph
-        uses: github/dependency-submission-action@v3
+        uses: github/dependency-submission-action@v4
