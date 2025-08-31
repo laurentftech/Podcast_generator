@@ -22,14 +22,9 @@
       </label>
 
       <div class="trigger">
-        {% for page in site.header_pages %}
-          {% assign p = site.pages | where: "path", page | first %}
-          {% if p.external_url %}
-            <a class="page-link" href="{{ p.external_url }}">{{ p.title | escape }}</a>
-          {% else %}
-            <a class="page-link" href="{{ p.url | relative_url }}">{{ p.title | escape }}</a>
-          {% endif %}
-        {% endfor %}
+        {%- for link in site.header_links -%}
+          <a class="page-link" href="{{ link.url | relative_url }}">{{ link.title }}</a>
+        {%- endfor -%}
       </div>
     </nav>
     {%- endunless %}
