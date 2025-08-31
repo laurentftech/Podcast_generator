@@ -24,7 +24,8 @@ datas = collect_data_files('customtkinter')
 datas += [
     ('podcast.png', '.'),
     ('docs/demo_template.html', 'docs'),
-    ('docs/assets/podcast_creator_screenshot.png', 'docs/assets')
+    ('docs/assets/podcast_creator_screenshot.png', 'docs/assets'),
+    ('samples/gemini_voices', 'samples/gemini_voices') # Add the Gemini voice samples directory
 ]
 
 # Explicitly list hidden imports that PyInstaller's static analysis might miss.
