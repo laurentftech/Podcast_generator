@@ -347,7 +347,7 @@ class PodcastGeneratorApp:
             # Apply a custom, more opaque color for the disabled state
             disabled_fg_color = ("gray75", "gray30")
             # Use a readable text color for the disabled state
-            disabled_text_color = ("gray10", "gray90")  # Dark gray for light mode, light gray for dark mode
+            disabled_text_color = ("gray10", "gray70")  # Dark gray for light mode, a less bright gray for dark mode
             button.configure(state='disabled', fg_color=disabled_fg_color, text_color_disabled=disabled_text_color)
 
     def on_provider_selected(self):

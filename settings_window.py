@@ -45,6 +45,11 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         self.elevenlabs_voices_loaded = False
         self._loading_voices = False
         self._voices_need_update = False
+        
+        # Pour le chargement progressif des voix ElevenLabs
+        self.elevenlabs_voice_offset = 0
+        self.load_more_btn = None
+        self.elevenlabs_scroll_frame = None  # Pour stocker la référence au frame
 
         if isinstance(preloaded_elevenlabs_voices, list) and preloaded_elevenlabs_voices:
             self.elevenlabs_voices = list(preloaded_elevenlabs_voices)
@@ -66,7 +71,8 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         self.deiconify()
 
         # Activate play buttons after the window is shown to avoid race conditions
-        self.after(500, self._enable_play_buttons)
+        # A longer delay is more robust on slower systems or different architectures like Mac ARM.
+        self.after(1000, self._enable_play_buttons)
 
     def _enable_play_buttons(self):
         """Active tous les boutons de lecture dans les guides vocaux."""
@@ -111,7 +117,10 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
 
             if self.elevenlabs_api_configured:
                 elevenlabs_tab = notebook.add("ElevenLabs Voices")
-                self._populate_guide_tab(elevenlabs_tab, "elevenlabs")
+                # Créer le conteneur une seule fois
+                self.elevenlabs_scroll_frame = customtkinter.CTkScrollableFrame(elevenlabs_tab, label_text="")
+                self.elevenlabs_scroll_frame.pack(fill="both", expand=True)
+                self._load_more_elevenlabs_voices() # Charger le premier lot
 
         button_frame = customtkinter.CTkFrame(main_frame, fg_color="transparent")
         button_frame.pack(fill=tk.X, padx=10, pady=(15, 10))
@@ -145,45 +154,42 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
                                                                                               padx=(0, 10))
 
     def _populate_guide_tab(self, tab, provider):
+        # Cette fonction ne gère plus que Gemini, qui est chargé une seule fois.
         scrollable_frame = customtkinter.CTkScrollableFrame(tab, label_text="")
         scrollable_frame.pack(fill="both", expand=True)
-
-        if provider == "gemini":
-            voices = list(AVAILABLE_VOICES.items())
-            for i, (name, desc) in enumerate(voices):
-                self._create_guide_row(scrollable_frame, provider, name, f"{name} - {desc}", name)
-                if i < len(voices) - 1:
-                    separator = customtkinter.CTkFrame(scrollable_frame, height=1, fg_color=("gray80", "gray25"))
-                    separator.pack(fill='x', pady=5, padx=5)
-        elif provider == "elevenlabs":
-            if self.elevenlabs_voices_loaded and self.elevenlabs_voices:
-                voices = self.elevenlabs_voices
-                for i, voice in enumerate(voices):
-                    self._create_guide_row(scrollable_frame, provider, voice['id'], voice['display_name'],
-                                           voice['preview_url'])
-                    if i < len(voices) - 1:
-                        separator = customtkinter.CTkFrame(scrollable_frame, height=1, fg_color=("gray80", "gray25"))
-                        separator.pack(fill='x', pady=5, padx=5)
-            else:
-                customtkinter.CTkLabel(scrollable_frame, text="Loading ElevenLabs voices...").pack(pady=20)
+        voices = list(AVAILABLE_VOICES.items())
+        for i, (name, desc) in enumerate(voices):
+            self._create_guide_row(scrollable_frame, provider, name, f"{name} - {desc}", name)
+            if i < len(voices) - 1:
+                separator = customtkinter.CTkFrame(scrollable_frame, height=1, fg_color=("gray80", "gray25"))
+                separator.pack(fill='x', pady=5, padx=5)
 
     def _create_guide_row(self, parent, provider, voice_id, display_name, play_identifier):
-        row_frame = customtkinter.CTkFrame(parent, fg_color="transparent")
+        # Set a fixed height for each row and prevent it from resizing.
+        # This makes layout calculations much faster and scrolling smoother.
+        row_frame = customtkinter.CTkFrame(parent, fg_color="transparent", height=55)
         row_frame.pack(fill=tk.X, pady=2)
+        row_frame.pack_propagate(False)  # This is the key to enforcing the height
+
         row_frame.columnconfigure(0, weight=1)
+        # Configure the row to center the content vertically
+        row_frame.rowconfigure(0, weight=1)
 
         text_frame = customtkinter.CTkFrame(row_frame, fg_color="transparent")
-        text_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        # Use sticky="w" to align left, the rowconfigure will handle vertical centering
+        text_frame.grid(row=0, column=0, sticky="w", padx=(5, 10))
 
         name, _, description = display_name.partition(" - ")
         customtkinter.CTkLabel(text_frame, text=name, font=customtkinter.CTkFont(weight="bold"),
                                anchor="w").pack(anchor="w", fill="x")
         if description:
+            # We still wrap, but the container's fixed height prevents layout jumps.
             customtkinter.CTkLabel(text_frame, text=description, anchor="w", wraplength=400,
                                    font=customtkinter.CTkFont(size=11)).pack(anchor="w", fill="x")
 
         buttons_inner = customtkinter.CTkFrame(row_frame, fg_color="transparent")
-        buttons_inner.grid(row=0, column=1, sticky="e")
+        # Use sticky="e" to align right
+        buttons_inner.grid(row=0, column=1, sticky="e", padx=(0, 5))
 
         play_btn = None
         if provider == "gemini" and self.play_gemini_sample:
@@ -203,6 +209,32 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
                                           command=lambda p=provider, d=display_name,
                                                          i=voice_id: self.add_voice_to_speakers(p, d, i))
         add_btn.pack(side=tk.LEFT)
+
+    def _load_more_elevenlabs_voices(self):
+        """Charge le prochain lot de voix ElevenLabs dans le frame existant."""
+        if not self.elevenlabs_scroll_frame:
+            return
+
+        # Supprimer l'ancien bouton "Charger plus" s'il existe
+        if self.load_more_btn and self.load_more_btn.winfo_exists():
+            self.load_more_btn.destroy()
+            self.load_more_btn = None
+
+        if self.elevenlabs_voices_loaded and self.elevenlabs_voices:
+            voices_to_display = self.elevenlabs_voices[self.elevenlabs_voice_offset : self.elevenlabs_voice_offset + 20]
+            for voice in voices_to_display:
+                self._create_guide_row(self.elevenlabs_scroll_frame, "elevenlabs", voice['id'], voice['display_name'], voice['preview_url'])
+                separator = customtkinter.CTkFrame(self.elevenlabs_scroll_frame, height=1, fg_color=("gray80", "gray25"))
+                separator.pack(fill='x', pady=5, padx=5)
+            
+            self.elevenlabs_voice_offset += len(voices_to_display)
+
+            # S'il reste des voix à charger, recréer le bouton
+            if self.elevenlabs_voice_offset < len(self.elevenlabs_voices):
+                self.load_more_btn = customtkinter.CTkButton(self.elevenlabs_scroll_frame, text="Charger plus...", command=self._load_more_elevenlabs_voices)
+                self.load_more_btn.pack(pady=10)
+        else:
+            customtkinter.CTkLabel(self.elevenlabs_scroll_frame, text="Loading ElevenLabs voices...").pack(pady=20)
 
     def safe_update_button(self, state, text):
         try:
@@ -364,9 +396,12 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         remove_btn.pack(side=tk.RIGHT)
         row_data['remove_btn'] = remove_btn
         self.entries.append(row_data)
-        # Force the window to recalculate its size. This is crucial on some
-        # platforms like Mac ARM where the window might not resize automatically.
-        self.update_idletasks()
+
+        # Force an explicit resize of the window to fit the new content.
+        # This is more reliable than just calling update_idletasks().
+        self.update_idletasks()  # Ensure new widgets are processed
+        new_height = self.winfo_reqheight()
+        self.geometry(f"{self.winfo_width()}x{new_height}")
 
     def remove_row(self, row_frame):
         entry_to_remove = next((e for e in self.entries if e['frame'] == row_frame), None)
@@ -374,7 +409,9 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
             row_frame.destroy()
             self.entries.remove(entry_to_remove)
             # Also update the size when a row is removed.
-            self.update_idletasks()
+            self.update_idletasks() # Ensure widgets are removed
+            new_height = self.winfo_reqheight()
+            self.geometry(f"{self.winfo_width()}x{new_height}")
 
     def restore_defaults(self):
         for row in self.entries: row['frame'].destroy()
