@@ -59,14 +59,14 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
 
         self.check_voices_update()
 
-        # Activer les boutons de lecture après un court délai pour éviter les race conditions
-        self.after(500, self._enable_play_buttons)
-
         self.update_idletasks()
         x = parent.winfo_x() + (parent.winfo_width() - self.winfo_width()) // 2
         y = parent.winfo_y() + (parent.winfo_height() - self.winfo_height()) // 2
         self.geometry(f"+{x}+{y}")
         self.deiconify()
+
+        # Activate play buttons after the window is shown to avoid race conditions
+        self.after(500, self._enable_play_buttons)
 
     def _enable_play_buttons(self):
         """Active tous les boutons de lecture dans les guides vocaux."""
@@ -364,7 +364,8 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         remove_btn.pack(side=tk.RIGHT)
         row_data['remove_btn'] = remove_btn
         self.entries.append(row_data)
-        # Force the window to recalculate its size
+        # Force the window to recalculate its size. This is crucial on some
+        # platforms like Mac ARM where the window might not resize automatically.
         self.update_idletasks()
 
     def remove_row(self, row_frame):
@@ -372,6 +373,7 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         if entry_to_remove:
             row_frame.destroy()
             self.entries.remove(entry_to_remove)
+            # Also update the size when a row is removed.
             self.update_idletasks()
 
     def restore_defaults(self):
