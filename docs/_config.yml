@@ -15,6 +15,11 @@ defaults:
     values:
       layout: "page"
 
+header_pages:
+  - en/index.html
+  - fr/index.html
+  - https://github.com/laurentftech/Podcast_generator
+
 # Plugins utiles (GitHub Pages en supporte une liste limitée)
 plugins:
   - jekyll-seo-tag   # Améliore le référencement SEO
