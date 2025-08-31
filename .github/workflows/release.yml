@@ -28,7 +28,7 @@ jobs:
       - name: Cache pip dependencies
         uses: actions/cache@v4
         with:
-          path: ~/Library/Caches/pip # Path for pip cache on macOS
+          path: ${{ runner.homedir }}/Library/Caches/pip # Use runner context for self-hosted compatibility
           key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-pip-
@@ -70,7 +70,7 @@ jobs:
       - name: Cache pip dependencies
         uses: actions/cache@v4
         with:
-          path: ~/Library/Caches/pip # Path for pip cache on macOS
+          path: ${{ runner.homedir }}/Library/Caches/pip # Use runner context for self-hosted compatibility
           key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-pip-
