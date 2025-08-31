@@ -23,5 +23,8 @@ jobs:
         with:
           python-version: '3.11' # Force a version compatible with your pyproject.toml
 
+      - name: Install required tools in the correct environment
+        run: python -m pip install pip-tools
+
       - name: Generate and submit dependency graph
         uses: github/dependency-submission-action@v4
