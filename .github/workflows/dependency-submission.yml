@@ -1,0 +1,27 @@
+# This workflow is triggered on pushes to the main branch.
+# It uses the GitHub Dependency Submission API to submit a dependency graph to GitHub.
+# This enables Dependabot alerts for your repository.
+
+name: Dependency Submission
+
+on:
+  push:
+    branches:
+      - "main"
+
+permissions:
+  contents: write
+
+jobs:
+  submit-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Force a version compatible with your pyproject.toml
+
+      - name: Generate and submit dependency graph
+        uses: github/dependency-submission-action@v3
