@@ -31,16 +31,22 @@ datas += [
 hidden_imports = [
     'tkinter',  # Force inclusion of tkinter, which can be missed on some Python builds
     'customtkinter',
+    'dotenv', # Explicitly include dotenv
     'whisperx',
     'torch',
     'torchaudio',
-    'keyring.backends.macOS',
-    'keyring.backends.SecretService',
-    'keyring.backends.Windows',
     'pkg_resources.py2_warn'
 ]
 # Also collect all submodules for whisperx to be safe
 hidden_imports += collect_submodules('whisperx')
+
+# Add platform-specific keyring backends for robustness
+if sys.platform == 'darwin':
+    hidden_imports.append('keyring.backends.macOS')
+elif sys.platform == 'win32':
+    hidden_imports.append('keyring.backends.Windows')
+else: # Linux
+    hidden_imports.append('keyring.backends.SecretService')
 
 # --- Platform-specific configuration ---
 icon_path = None

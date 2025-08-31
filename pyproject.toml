@@ -18,6 +18,7 @@ dependencies = [
     "elevenlabs",
     "requests",
     "customtkinter",
+    "python-dotenv", # Added to resolve ModuleNotFoundError
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

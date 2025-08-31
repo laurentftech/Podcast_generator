@@ -1,10 +1,10 @@
-# Gestion de l'environnement
-customtkinter
-python-dotenv
-keyring
-elevenlabs
-ttkbootstrap
-google-genai
+# Pour un environnement de développement cohérent, installez les dépendances
+# à partir du fichier pyproject.toml du projet.
+#
+# Pour installer les dépendances de base :
+# pip install .
+#
+# Pour installer les dépendances de développement et de démo :
+# pip install .[dev,demo]
 
-# WhisperX
-git+https://github.com/m-bain/whisperx.git@v3.3.0#egg=whisperx
+-e .[dev,demo]
