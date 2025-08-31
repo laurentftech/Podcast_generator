@@ -14,7 +14,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        python-version: ['3.10'] # Use a stable minor version for better availability
+        python-version: ['3.10.x'] # Use 'x' to explicitly request the latest patch version of 3.10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,9 +54,12 @@ jobs:
   build-intel:
     name: Build macOS Intel
     runs-on: [self-hosted, macos, x64]
+    env:
+      # Override the tool cache directory for self-hosted runner to avoid permission errors
+      RUNNER_TOOL_CACHE: "${{ runner.homedir }}/actions-runner-toolcache"
     strategy:
       matrix:
-        python-version: [ '3.10' ] # Use a stable minor version for better availability
+        python-version: [ '3.10.x' ] # Use 'x' to explicitly request the latest patch version of 3.10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -98,7 +101,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: ['3.10'] # Use a stable minor version for better availability
+        python-version: ['3.10.x'] # Use 'x' to explicitly request the latest patch version of 3.10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -143,7 +146,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10'] # Use a stable minor version for better availability
+        python-version: ['3.10.x'] # Use 'x' to explicitly request the latest patch version of 3.10
     steps:
       - uses: actions/checkout@v4
         with:
