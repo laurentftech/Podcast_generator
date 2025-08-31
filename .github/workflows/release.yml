@@ -60,6 +60,7 @@ jobs:
     steps:
       - name: Install and set up Python 3.10 via Homebrew for self-hosted runner
         run: |
+          brew install tcl-tk
           brew install python@3.10
           echo "$(brew --prefix python@3.10)/bin" >> $GITHUB_PATH
 
