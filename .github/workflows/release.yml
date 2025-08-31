@@ -42,6 +42,9 @@ jobs:
       - name: Build executable ARM64
         run: python -m PyInstaller "Podcast Generator.spec"
 
+      - name: Sign the application (ad-hoc)
+        run: codesign --force --deep --sign - "dist/Podcast Generator.app"
+
       - name: Package ARM64 tar.gz
         run: tar -czvf Podcast_Generator_${{ github.ref_name }}_MacOS_arm64.tar.gz -C dist "Podcast Generator.app"
 
@@ -72,6 +75,9 @@ jobs:
 
       - name: Build executable Intel
         run: python3.10 -m PyInstaller "Podcast Generator.spec"
+
+      - name: Sign the application (ad-hoc)
+        run: codesign --force --deep --sign - "dist/Podcast Generator.app"
 
       - name: Package Intel tar.gz
         run: tar -czvf Podcast_Generator_${{ github.ref_name }}_MacOS_x86_64.tar.gz -C dist "Podcast Generator.app"
