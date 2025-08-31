@@ -6,8 +6,10 @@ permalink: /en/
 
 <section style="max-width:850px; margin:2rem auto; padding:0 1rem;">
 
+  <h1 style="margin-bottom:2rem;">🎙Podcast Generator 🎙</h1>
+
   <p style="font-size: 1.2rem; color: #586069; max-width: 750px; margin: 0 auto 2rem auto; text-align: center;">
-    A lightweight desktop app with a modern UI that lets you generate multi-speaker podcasts from any script using high-quality voices from <strong>ElevenLabs</strong> and <strong>Google Gemini</strong>.
+    A lightweight desktop app with a modern UI that lets you generate multi-speaker podcasts from any script using high-quality voices from **ElevenLabs** and **Google Gemini**.
   </p>
 
   <img class="screenshot" src="/Podcast_generator/assets/podcast_creator_screenshot.png" alt="Podcast Generator Screenshot">
@@ -29,7 +31,7 @@ permalink: /en/
       <p>Grab a free key from ElevenLabs or Google Gemini and add it securely to the app.</p>
     </div>
     <div style="flex: 1; min-width: 200px;">
-      <h3>2. Write Your Script</h3>
+      <h3>2. Write Script</h3>
       <p>Format your text with speaker names (e.g., <code>John: Hello world!</code>).</p>
     </div>
     <div style="flex: 1; min-width: 200px;">
@@ -40,14 +42,14 @@ permalink: /en/
 
   <h2 style="border-bottom: 1px solid #e1e4e8; padding-bottom: 0.3em; margin-top: 2.5rem;">Main Features</h2>
   <ul style="list-style: none; padding-left: 0;">
-    <li style="margin-bottom: 0.8rem;">✨ <strong>Modern UI</strong>: A clean and responsive interface that adapts to your system's light or dark mode.</li>
-    <li style="margin-bottom: 0.8rem;">🎤 <strong>Dual TTS Provider</strong>: Choose between the high-quality voices of <strong>Google Gemini</strong> or <strong>ElevenLabs</strong>.</li>
-    <li style="margin-bottom: 0.8rem;">📄 <strong>Synchronized HTML Demo</strong>: Automatically generate a shareable HTML page with your podcast audio and a synchronized, highlighted transcript.</li>
-    <li style="margin-bottom: 0.8rem;">🔐 <strong>Secure & Simple</strong>: Your API keys are stored securely in your system's keychain, and the app guides you through the setup.</li>
-    <li style="margin-bottom: 0.8rem;">🎨 <strong>Voice Customization</strong>: Easily configure and save voices for each speaker in your scripts, with built-in voice guides and sample playback.</li>
+    <li style="margin-bottom: 0.8rem;">✨ **Modern UI**: A clean and responsive interface that adapts to your system's light or dark mode.</li>
+    <li style="margin-bottom: 0.8rem;">🎤 **Dual TTS Provider**: Choose between the high-quality voices of **Google Gemini** or **ElevenLabs**.</li>
+    <li style="margin-bottom: 0.8rem;">📄 **Synchronized HTML Demo**: Automatically generate a shareable HTML page with your podcast audio and a synchronized, highlighted transcript.</li>
+    <li style="margin-bottom: 0.8rem;">🔐 **Secure & Simple**: Your API keys are stored securely in your system's keychain, and the app guides you through the setup.</li>
+    <li style="margin-bottom: 0.8rem;">🎨 **Voice Customization**: Easily configure and save voices for each speaker in your scripts, with built-in voice guides and sample playback.</li>
   </ul>
 
-  <div style="text-align:center; margin:2rem 0;">
+  <div style="text-align:center; margin-top:2rem;">
     <a href="https://github.com/laurentftech/Podcast_generator/releases/latest" class="button button-primary">Download Latest Release</a>
   </div>
 
@@ -59,3 +61,114 @@ permalink: /en/
   </div>
 
 </section>
+
+<footer style="text-align:center; padding:2rem; font-size:0.9rem; color:#888;">
+  Made with ❤️ and ☕ by <a href="https://laurentftech.github.io">LaurentFTech</a>
+</footer>
+
+<style>
+.screenshot {
+  max-width: 100%;
+  border-radius: 6px;
+  margin: 1rem 0;
+  border: 1px solid #d0d7de;
+  display: block;
+}
+
+.button {
+  display: inline-block;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 6px;
+  transition: background-color 0.2s, border-color 0.2s;
+  border: 1px solid transparent;
+}
+
+.button-primary {
+  background-color: #2da44e;
+  color: white;
+  padding: 0.8rem 2rem;
+  font-size: 1.1rem;
+  border-color: rgba(27, 31, 36, 0.15);
+}
+
+.button-secondary {
+  background-color: #f6f8fa;
+  color: #24292e;
+  padding: 0.7rem 1.6rem;
+  border-color: rgba(27, 31, 36, 0.15);
+}
+
+.button-tertiary {
+  background-color: transparent;
+  color: #57606a;
+  padding: 0.7rem 1.6rem;
+  border: none;
+}
+
+.button:hover {
+  filter: brightness(95%);
+}
+
+h1 {
+  text-align: left;
+  margin-bottom: 1.5rem;
+  font-size: 2.2rem; /* taille standard desktop */
+}
+
+.screenshot {
+ border-color: #30363d; /* A subtle border for dark mode */
+}
+
+/* Ajustement responsive pour smartphone */
+@media screen and (max-width: 480px) {
+  h1 {
+    font-size: 1.6rem; /* légèrement plus petit pour éviter le retour à la ligne */
+  }
+}
+/* Mode clair par défaut */
+body {
+  background-color: #fff;
+  color: #24292e;
+}
+
+/* Mode sombre auto si l’OS est configuré en dark */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #1a1a1a; /* Unified dark background */
+    color: #e0e0e0; /* Unified light gray text */
+  }
+
+  a {
+    color: #58a6ff;
+  }
+
+  .screenshot {
+    border-color: #30363d;
+  }
+
+  footer {
+    color: #8b949e;
+  }
+
+  .button-primary {
+    background-color: #3fb950;
+    color: white;
+    border-color: #3fb950;
+  }
+
+  .button-secondary {
+    background-color: #282a2e;
+    color: #c9d1d9;
+    border-color: #30363d;
+  }
+
+  .button-tertiary {
+    color: #8b949e;
+  }
+
+  .button:hover {
+    filter: brightness(110%);
+  }
+}
+</style>

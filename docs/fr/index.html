@@ -4,32 +4,9 @@ title: "🎙Podcast Generator 🎙"
 permalink: /fr/
 ---
 
-<header class="site-header">
-  <div class="wrapper">
-    <a class="site-title" rel="author" href="/Podcast_generator/docs/en/">Podcast Generator</a>
-    <nav class="site-nav">
-      <input type="checkbox" id="nav-trigger" class="nav-trigger" />
-      <label for="nav-trigger">
-        <span class="menu-icon">
-          <svg viewBox="0 0 18 15" width="18px" height="15px">
-            <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484
-              C0,0.665,0.665,0,1.484,0h15.031C17.335,0,18,0.665,18,1.484z M18,7.516c0,0.82-0.665,1.484-1.484,1.484H1.484
-              C0.665,9,0,8.335,0,7.516c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,6.031,18,6.696,18,7.516z M18,13.516
-              c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,15,0,14.335,0,13.516c0-0.82,0.665-1.484,1.484-1.484h15.031
-              C17.335,12.031,18,12.696,18,13.516z"/>
-          </svg>
-        </span>
-      </label>
-      <div class="trigger">
-        <a class="page-link" href="/Podcast_generator/docs/en/">Home</a>
-        <a class="page-link" href="/Podcast_generator/docs/fr/">Accueil</a>
-        <a class="page-link" href="https://github.com/laurentftech/Podcast_generator">GitHub</a>
-      </div>
-    </nav>
-  </div>
-</header>
-
 <section style="max-width:850px; margin:2rem auto; padding:0 1rem;">
+
+  <h1 style="margin-bottom:2rem;">🎙️Podcast Generator 🎙</h1>
 
   <p style="font-size: 1.2rem; color: #586069; max-width: 750px; margin: 0 auto 2rem auto; text-align: center;">
     Une application de bureau légère avec une interface moderne qui vous permet de générer des podcasts multi-intervenants à partir de n'importe quel script en utilisant les voix de haute qualité de <strong>ElevenLabs</strong> ou <strong>Google Gemini</strong>.
@@ -90,90 +67,11 @@ permalink: /fr/
 </footer>
 
 <style>
-:root {
-  /* Variables pour le mode clair */
-  --bg-color: #ffffff;
-  --text-color: #24292e;
-  --link-color: #0366d6;
-  --link-hover-color: #005cc5;
-  --secondary-text-color: #586069;
-  --header-color: #24292e;
-  --border-color: #d0d7de;
-  --code-bg-color: #f6f8fa;
-  --code-border-color: #d0d7de;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Variables pour le mode sombre */
-    --bg-color: #1a1a1a;
-    --text-color: #e0e0e0;
-    --link-color: #58a6ff;
-    --link-hover-color: #80b6ff;
-    --secondary-text-color: #8b949e;
-    --header-color: #e0e0e0;
-    --border-color: #30363d;
-    --code-bg-color: #2a2a2a;
-    --code-border-color: #444;
-  }
-}
-
-body {
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  transition: background-color 0.3s, color 0.3s;
-}
-
-a {
-  color: var(--link-color);
-}
-
-a:hover, a:focus {
-  color: var(--link-hover-color);
-}
-
-h1, h2, h3, h4, h5, h6 {
-  color: var(--header-color);
-}
-
-h2 + p {
-  color: var(--secondary-text-color);
-}
-
-.site-footer {
-  border-top-color: var(--border-color);
-}
-
-code, pre {
-  background-color: var(--code-bg-color);
-  border: 1px solid var(--code-border-color);
-}
-
-/* --- Styles pour le header --- */
-.site-header {
-  border-bottom: 1px solid var(--border-color);
-  min-height: 54px;
-  position: relative;
-}
-
-.site-title {
-  color: var(--text-color);
-}
-
-.page-link {
-  color: var(--text-color);
-}
-
-.menu-icon > svg path {
-  fill: var(--header-color);
-}
-
-/* --- Styles spécifiques à la page --- */
 .screenshot {
   max-width: 100%;
   border-radius: 6px;
   margin: 1rem 0;
-  border: 1px solid var(--border-color);
+  border: 1px solid #d0d7de;
   display: block;
 }
 
@@ -212,20 +110,57 @@ code, pre {
   filter: brightness(95%);
 }
 
-/* --- Mode Sombre --- */
+h1 {
+  text-align: left;
+  margin-bottom: 1.5rem;
+  font-size: 2.2rem; /* taille standard desktop */
+}
+
+.screenshot {
+ border-color: #30363d; /* A subtle border for dark mode */
+}
+
+/* Ajustement responsive pour smartphone */
+@media screen and (max-width: 480px) {
+  h1 {
+    font-size: 1.6rem; /* légèrement plus petit pour éviter le retour à la ligne */
+  }
+}
+/* Mode clair par défaut */
+body {
+  background-color: #fff;
+  color: #24292e;
+}
+
+/* Mode sombre auto si l’OS est configuré en dark */
 @media (prefers-color-scheme: dark) {
+  body {
+    background-color: #1a1a1a; /* Fond sombre unifié */
+    color: #e0e0e0; /* Texte gris clair unifié */
+  }
+
+  a {
+    color: #58a6ff;
+  }
+
+  .screenshot {
+    border-color: #30363d;
+  }
+
   footer {
     color: #8b949e;
   }
 
   .button-primary {
     background-color: #3fb950;
+    color: white;
     border-color: #3fb950;
   }
 
   .button-secondary {
     background-color: #282a2e;
     color: #c9d1d9;
+    border-color: #30363d;
   }
 
   .button-tertiary {
@@ -234,34 +169,6 @@ code, pre {
 
   .button:hover {
     filter: brightness(110%);
-  }
-
-  .site-header .menu-icon {
-    background-color: #383838;
-    border-radius: 5px;
-    padding: 8px 6px 4px 6px;
-  }
-
-  @media screen and (max-width: 600px) {
-    .site-nav {
-      background-color: var(--bg-color);
-    }
-  }
-}
-
-/* --- Logique du menu Hamburger pour mobile --- */
-@media screen and (max-width: 600px) {
-  .nav-trigger {
-    display: none;
-  }
-  .menu-icon {
-    display: block;
-  }
-  .trigger {
-    display: none;
-  }
-  .nav-trigger:checked ~ .trigger {
-    display: block;
   }
 }
 </style>

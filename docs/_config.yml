@@ -15,15 +15,6 @@ defaults:
     values:
       layout: "page"
 
-# Liens de navigation pour l'en-tête du site
-header_links:
-  - title: Home
-    url: /Podcast_generator/en/
-  - title: French
-    url: /Podcast_generator/fr/
-  - title: GitHub
-    url: https://github.com/laurentftech/Podcast_generator
-
 # Plugins utiles (GitHub Pages en supporte une liste limitée)
 plugins:
   - jekyll-seo-tag   # Améliore le référencement SEO
