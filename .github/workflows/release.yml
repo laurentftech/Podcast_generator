@@ -65,13 +65,13 @@ jobs:
           fetch-depth: 0
 
       - name: Install dependencies
-        run: python -m pip install .[dev]
+        run: python3.10 -m pip install .[dev]
 
       - name: Convert PNG to ICNS
         run: sips -s format icns podcast.png --out podcast.icns
 
       - name: Build executable Intel
-        run: python -m PyInstaller "Podcast Generator.spec"
+        run: python3.10 -m PyInstaller "Podcast Generator.spec"
 
       - name: Package Intel tar.gz
         run: tar -czvf Podcast_Generator_${{ github.ref_name }}_MacOS_x86_64.tar.gz -C dist "Podcast Generator.app"
