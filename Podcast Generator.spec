@@ -18,28 +18,35 @@ except (FileNotFoundError, KeyError) as e:
 # --- Data and Hidden Imports Collection ---
 
 # Collect all data files from customtkinter (themes, fonts, etc.)
-# This is crucial for the UI to render correctly.
 datas = collect_data_files('customtkinter')
 
-# Add our own project assets
+# Add our own project assets (platform-agnostic)
 datas += [
     ('podcast.png', '.'),
-    ('podcast.icns', '.'),
-    ('docs/demo_template.html', 'docs')
+    ('docs/demo_template.html', 'docs'),
+    ('docs/assets/podcast_creator_screenshot.png', 'docs/assets')
 ]
 
 # Explicitly list hidden imports that PyInstaller's static analysis might miss.
-# This is the most common reason for applications crashing at startup.
 hidden_imports = [
     'customtkinter',
     'whisperx',
     'torch',
     'torchaudio',
-    'keyring.backends.macOS',  # Explicitly include keychain backend for macOS
+    'keyring.backends.macOS',
+    'keyring.backends.SecretService',
+    'keyring.backends.Windows',
     'pkg_resources.py2_warn'
 ]
 # Also collect all submodules for whisperx to be safe
 hidden_imports += collect_submodules('whisperx')
+
+# --- Platform-specific configuration ---
+icon_path = None
+if sys.platform == 'darwin':
+    icon_path = os.path.join(SPEC_DIR, 'podcast.icns')
+elif sys.platform == 'win32':
+    icon_path = os.path.join(SPEC_DIR, 'podcast.ico')
 
 # --- Analysis ---
 a = Analysis(
@@ -57,6 +64,7 @@ a = Analysis(
     cipher=None,
     noarchive=False,
 )
+
 pyz = PYZ(a.pure, a.zipped_data, cipher=None)
 
 # --- Executable ---
@@ -77,7 +85,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=os.path.join(SPEC_DIR, 'podcast.ico')  # Icon for Windows
+    icon=icon_path  # Use the platform-specific icon
 )
 
 # --- Platform-specific output ---
@@ -87,7 +95,7 @@ if sys.platform == 'darwin':
     app = BUNDLE(
         coll,
         name='Podcast Generator.app',
-        icon=os.path.join(SPEC_DIR, 'podcast.icns'),
+        icon=icon_path, # Use the platform-specific icon
         bundle_identifier='com.laurentftech.podcastgenerator',
         info_plist={
             'CFBundleShortVersionString': version_str.split('.dev')[0].split('+')[0],
