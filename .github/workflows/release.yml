@@ -53,9 +53,9 @@ jobs:
 
   build-intel:
     name: Build macOS Intel
-    runs-on: [self-hosted, macos, x64]
+    runs-on: [self-hosted, macos, x64] # This job runs on your local machine
     steps:
-      - name: Install and set up Python 3.10 via Homebrew
+      - name: Install and set up Python 3.10 via Homebrew for self-hosted runner
         run: |
           brew install python@3.10
           echo "$(brew --prefix python@3.10)/bin" >> $GITHUB_PATH
@@ -63,14 +63,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.homedir }}/Library/Caches/pip # Use runner context for self-hosted compatibility
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: python -m pip install .[dev]
@@ -120,7 +112,7 @@ jobs:
       - name: Convert PNG to ICO
         run: magick convert podcast.png -define icon:auto-resize=256,128,64,48,32,16 podcast.ico
 
-      - name: Install Python dependencies
+      - name: Install dependencies
         run: pip install .[dev]
 
       - name: Build Windows executable
