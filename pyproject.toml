@@ -8,7 +8,7 @@ name = "Podcast_generator"
 dynamic = ["version"]
 description = "A simple desktop application to create multi-speaker audio podcasts from a text script using the Google Gemini API."
 readme = "README.md"
-requires-python = "~=3.11"
+requires-python = "~=3.10.18"
 license = { file = "LICENSE" }
 authors = [{ name = "Laurent FRANCOISE", email = "laurent.f.tech@icloud.com" }]
 dependencies = [
