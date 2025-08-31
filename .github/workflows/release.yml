@@ -60,8 +60,9 @@ jobs:
     steps:
       - name: Install and set up Python 3.10 via Homebrew for self-hosted runner
         run: |
-          brew install tcl-tk
-          brew install python@3.10
+          # Install the python-tk formula, which guarantees the Tcl/Tk GUI toolkit is included.
+          # This is the definitive fix for "ModuleNotFoundError: No module named 'tkinter'".
+          brew install python-tk@3.10
           echo "$(brew --prefix python@3.10)/bin" >> $GITHUB_PATH
 
       - uses: actions/checkout@v4
