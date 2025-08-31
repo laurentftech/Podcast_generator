@@ -29,6 +29,7 @@ datas += [
 
 # Explicitly list hidden imports that PyInstaller's static analysis might miss.
 hidden_imports = [
+    'tkinter',  # Force inclusion of tkinter, which can be missed on some Python builds
     'customtkinter',
     'whisperx',
     'torch',
