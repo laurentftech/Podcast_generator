@@ -54,13 +54,13 @@ jobs:
   build-intel:
     name: Build macOS Intel
     runs-on: [self-hosted, macos, x64]
-    env:
-      # Override the tool cache directory for self-hosted runner to avoid permission errors
-      RUNNER_TOOL_CACHE: "${{ runner.homedir }}/actions-runner-toolcache"
     strategy:
       matrix:
         python-version: [ '3.10.x' ] # Use 'x' to explicitly request the latest patch version of 3.10
     steps:
+      - name: Set tool cache for self-hosted runner
+        run: echo "RUNNER_TOOL_CACHE=${{ runner.homedir }}/actions-runner-toolcache" >> $GITHUB_ENV
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
