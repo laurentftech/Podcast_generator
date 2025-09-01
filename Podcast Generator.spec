@@ -32,6 +32,7 @@ datas += [
 hidden_imports = [
     'tkinter',  # Force inclusion of tkinter, which can be missed on some Python builds
     'customtkinter',
+    'CTkMenuBarPlus',
     'dotenv', # Explicitly include dotenv
     'whisperx',
     'torch',

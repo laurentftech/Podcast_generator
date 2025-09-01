@@ -1,4 +1,5 @@
 import tkinter as tk
+import tkinter.font as tkFont
 from tkinter import filedialog, messagebox
 import threading
 import os
@@ -21,6 +22,17 @@ try:
     import requests
 except ImportError:
     requests = None
+
+try:
+    import CTkMenuBarPlus as CTkMenuBar
+    if sys.platform != "darwin":
+        HAS_CTK_MENUBAR = True
+    else:
+        HAS_CTK_MENUBAR = False
+        CTkMenuBar = None
+except ImportError:
+    HAS_CTK_MENUBAR = False
+    CTkMenuBar = None
 
 from about_window import AboutWindow
 from api_keys_window import APIKeysWindow
@@ -69,6 +81,7 @@ AVAILABLE_VOICES = {
     "Sulafat": "Warm"
 }
 
+
 def get_app_version() -> str:
     """Gets the application version from the _version.py file."""
     return __version__
@@ -101,9 +114,9 @@ class PodcastGeneratorApp:
             try:
                 img = tk.PhotoImage(file=icon_path)
                 self.root.tk.call('wm', 'iconphoto', self.root._w, img)
-            except tk.TclError: # In case of format error, continue without icon
+            except tk.TclError:  # In case of format error, continue without icon
                 self.logger.warning("Could not set application icon.")
-        
+
         self.app_data_dir = get_app_data_dir()
         self.settings_filepath = os.path.join(self.app_data_dir, "settings.json")
 
@@ -123,6 +136,14 @@ class PodcastGeneratorApp:
         self.app_settings = self.load_settings()
         self.provider_var = tk.StringVar(value=self.app_settings.get("tts_provider", "elevenlabs").lower())
 
+        # Initialiser les références de menu
+        self.menu_bar = None
+        self.settings_menu = None
+        self.actions_menu = None
+        self.help_menu = None
+        self.tts_submenu = None
+        self.menubar = None  # Pour le fallback Tkinter
+
         self._setup_menu()
         self._setup_widgets(default_script)
 
@@ -141,7 +162,13 @@ class PodcastGeneratorApp:
         # Schedule initial quota fetch and theme watcher
         if self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs":
             self._schedule_provider_label_refresh(delay_ms=2000, retries=5)
-        self._start_theme_watcher()
+
+        # Démarrer le watcher seulement si on utilise les menus Tkinter
+        if not HAS_CTK_MENUBAR:
+            self._start_theme_watcher()
+
+        # Schedule the pre-fetch of voices after the UI is stable to avoid startup race conditions.
+        self.root.after(500, self._prefetch_elevenlabs_voices)
 
         self.logger.info("Main interface initialized.")
 
@@ -157,16 +184,110 @@ class PodcastGeneratorApp:
             self.logger.info("WhisperX installation found. Demo generation is enabled.")
             return True
 
+    def _get_menu_colors(self):
+        """Retourne les couleurs du menu selon le thème actuel, synchronisées avec le fond principal."""
+        appearance_mode = customtkinter.get_appearance_mode().lower()
+
+        # Récupérer la couleur de fond de la fenêtre principale
+        try:
+            bg_color = self.root.cget("bg")  # couleur définie par CustomTkinter
+        except Exception:
+            bg_color = "#2b2b2b" if appearance_mode == "dark" else "#f0f0f0"
+
+        if appearance_mode == "dark":
+            return {
+                'bg': bg_color,
+                'fg': '#ffffff',
+                'activebackground': '#404040',
+                'activeforeground': '#ffffff',
+                'selectcolor': '#1f538d',
+                'disabledforeground': '#808080',
+                'relief': 'flat',
+                'borderwidth': 0
+            }
+        else:
+            return {
+                'bg': bg_color,
+                'fg': '#000000',
+                'activebackground': '#e0e0e0',
+                'activeforeground': '#000000',
+                'selectcolor': '#0078d4',
+                'disabledforeground': '#808080'
+            }
+
+    def _apply_menu_theme(self, menu):
+        """Applique le thème à un menu donné."""
+        colors = self._get_menu_colors()
+        menu.configure(**colors)
+
+        # Forcer une police lisible pour les menus
+        try:
+            default_font = tkFont.nametofont('TkMenuFont')
+            default_font.configure(size=11)
+            menu.configure(font=default_font)
+        except Exception:
+            pass
+
     def _setup_menu(self):
-        """Sets up the main application menu bar."""
-        # --- Menu Bar (Platform-specific) ---
+        """Sets up the main application menu bar with CTkMenuBarPlus or fallback to Tkinter."""
+        if HAS_CTK_MENUBAR:
+            self._setup_ctk_menu()
+        else:
+            self._setup_tkinter_menu()
+
+    def _setup_ctk_menu(self):
+        """Configure le menu avec CTkMenuBarPlus."""
+        # Créer la barre de menu principale
+        self.menu_bar = CTkMenuBar.CTkMenuBar(self.root, bg_color=customtkinter.ThemeManager.theme["CTkToplevel"]["fg_color"])
+
+        # Menu Settings
+        settings_button = self.menu_bar.add_cascade("Settings")
+        self.settings_menu = CTkMenuBar.CustomDropdownMenu(widget=settings_button)
+
+        # Voice settings
+        self.voice_settings_item = self.settings_menu.add_option("Voice settings...",
+                                                                 command=self.open_settings_window)
+
+        self.settings_menu.add_separator()
+
+        # TTS Provider (sera reconstruit dynamiquement)
+        self.tts_menu_item = None
+        self.rebuild_tts_provider_menu_ctk()
+
+        # Manage API Keys
+        self.settings_menu.add_option("Manage API Keys...", command=self.open_api_keys_window)
+
+        # Quit (Windows/Linux seulement)
+        if sys.platform != "darwin":
+            self.settings_menu.add_separator()
+            self.settings_menu.add_option("Quit", command=self.root.quit)
+
+        # Menu Actions
+        actions_button = self.menu_bar.add_cascade("Actions")
+        self.actions_menu = CTkMenuBar.CustomDropdownMenu(widget=actions_button)
+        self.demo_menu_item = self.actions_menu.add_option("Generate HTML Demo...",
+                                                           command=self.start_demo_generation_thread,
+                                                           state='disabled')
+
+        # Menu Help
+        help_button = self.menu_bar.add_cascade("Help")
+        self.help_menu = CTkMenuBar.CustomDropdownMenu(widget=help_button)
+        self.help_menu.add_option("Documentation (Github)...", command=self.open_documentation)
+        self.help_menu.add_option("About...", command=self.show_about_window)
+
+    def _setup_tkinter_menu(self):
+        """Fallback vers le menu Tkinter classique avec thème amélioré."""
         self.menubar = tk.Menu(self.root)
         self.root.config(menu=self.menubar)
+
+        # Appliquer le thème au menu principal
+        self._apply_menu_theme(self.menubar)
 
         if sys.platform == "darwin":  # macOS
             try:
                 # Create the special "app" menu. This can fail on non-native Tcl/Tk.
                 app_menu = tk.Menu(self.menubar, name='apple', tearoff=0)
+                self._apply_menu_theme(app_menu)
                 self.menubar.add_cascade(label="Podcast Generator", menu=app_menu)
 
                 app_menu.add_command(label=f"About Podcast Generator", command=self.show_about_window)
@@ -185,14 +306,13 @@ class PodcastGeneratorApp:
             except tk.TclError:
                 # Fallback for older Tcl/Tk. Clear any partially created menu.
                 self.menubar.delete(0, 'end')
-                # (Le menu Settings sera créé plus bas, commun à toutes les plateformes)
 
         # Création du menu Settings (commun à toutes les plateformes)
         self.settings_menu = tk.Menu(self.menubar, tearoff=0)
+        self._apply_menu_theme(self.settings_menu)
         self.menubar.add_cascade(label="Settings", menu=self.settings_menu)
 
-        # Sous-menu TTS provider (n’apparaît que si 2 clés sont présentes)
-
+        # Sous-menu TTS provider (n'apparaît que si 2 clés sont présentes)
         self.tts_submenu = None
         self.rebuild_tts_provider_menu()
 
@@ -203,25 +323,90 @@ class PodcastGeneratorApp:
 
         # --- Actions Menu ---
         self.actions_menu = tk.Menu(self.menubar, tearoff=0)
+        self._apply_menu_theme(self.actions_menu)
         self.menubar.add_cascade(label="Actions", menu=self.actions_menu)
         self.actions_menu.add_command(label="Generate HTML Demo...",
                                       command=self.start_demo_generation_thread,
                                       state='disabled')
 
         # Help Menu (common to all platforms)
-        help_menu = tk.Menu(self.menubar, tearoff=0)
-        self.menubar.add_cascade(label="Help", menu=help_menu)
-        help_menu.add_command(label="Documentation (Github)...", command=self.open_documentation)
-        help_menu.add_command(label="About...", command=self.show_about_window)
+        self.help_menu = tk.Menu(self.menubar, tearoff=0)
+        self._apply_menu_theme(self.help_menu)
+        self.menubar.add_cascade(label="Help", menu=self.help_menu)
+        self.help_menu.add_command(label="Documentation (Github)...", command=self.open_documentation)
+        self.help_menu.add_command(label="About...", command=self.show_about_window)
+
+    def rebuild_tts_provider_menu_ctk(self):
+        """Reconstruit le menu TTS provider avec CTkMenuBarPlus."""
+        import keyring
+
+        gemini_key_exists = bool(keyring.get_password("PodcastGenerator", "gemini_api_key"))
+        elevenlabs_key_exists = bool(keyring.get_password("PodcastGenerator", "elevenlabs_api_key"))
+        both_keys = gemini_key_exists and elevenlabs_key_exists
+
+        # Supprimer l'ancien item TTS si il existe
+        if self.tts_menu_item and hasattr(self.settings_menu, 'delete_option'):
+            try:
+                self.settings_menu.delete_option(self.tts_menu_item)
+            except:
+                pass
+
+        if both_keys:
+            # Créer un sous-menu TTS provider
+            self.tts_submenu = CTkMenuBar.CustomDropdownMenu()
+
+            # Ajouter les options
+            current_provider = self.app_settings.get("tts_provider", "elevenlabs")
+            self.tts_submenu.add_option("Gemini",
+                                        command=lambda: self._select_provider("gemini"))
+            self.tts_submenu.add_option("ElevenLabs",
+                                        command=lambda: self._select_provider("elevenlabs"))
+
+            # Ajouter le sous-menu au menu principal
+            self.tts_menu_item = self.settings_menu.add_cascade("TTS provider", submenu=self.tts_submenu)
+
+    def _select_provider(self, provider):
+        """Gère la sélection du provider depuis CTkMenuBarPlus."""
+        self.provider_var.set(provider)
+        self.on_provider_selected()
+
+    def update_voice_settings_enabled_ctk(self):
+        """Met à jour l'état de Voice settings avec CTkMenuBarPlus."""
+        import keyring
+        has_any_key = bool(keyring.get_password("PodcastGenerator", "gemini_api_key")) or \
+                      bool(keyring.get_password("PodcastGenerator", "elevenlabs_api_key"))
+
+        try:
+            if hasattr(self.settings_menu, 'configure_option') and self.voice_settings_item:
+                state = 'normal' if has_any_key else 'disabled'
+                self.settings_menu.configure_option(self.voice_settings_item, state=state)
+        except:
+            pass
+
+        # Protéger l'accès au bouton si l'initialisation n'est pas terminée.
+        if hasattr(self, "generate_button") and self.generate_button:
+            self._configure_button_state(self.generate_button, enabled=has_any_key)
+
+    def update_demo_menu_state_ctk(self, enabled):
+        """Met à jour l'état du menu demo avec CTkMenuBarPlus."""
+        try:
+            if hasattr(self.actions_menu, 'configure_option') and self.demo_menu_item:
+                state = 'normal' if enabled else 'disabled'
+                self.actions_menu.configure_option(self.demo_menu_item, state=state)
+        except:
+            pass
 
     def _setup_widgets(self, default_script: str):
-        """Sets up the main UI widgets like text areas and buttons."""
-        self.root.grid_columnconfigure(0, weight=1)
-        self.root.grid_rowconfigure(0, weight=1)  # Make the main_frame expand vertically
+        # --- Root container (pack at root level only) ---
+        container = customtkinter.CTkFrame(self.root, fg_color="transparent")
+        container.pack(fill="both", expand=True)  # Use pack only for the container
+        container.grid_columnconfigure(0, weight=1)
+        container.grid_rowconfigure(0, weight=1)
 
-        # --- Main Frame ---
-        main_frame = customtkinter.CTkFrame(self.root, fg_color="transparent")
+        # --- Main Frame inside the container ---
+        main_frame = customtkinter.CTkFrame(container, fg_color="transparent")
         main_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+
         main_frame.grid_columnconfigure(0, weight=1)
         main_frame.grid_rowconfigure(2, weight=1)  # Make script_text expand
         main_frame.grid_rowconfigure(4, weight=1)  # Make log_text expand
@@ -247,18 +432,21 @@ class PodcastGeneratorApp:
 
         # --- Log/Status Area ---
         customtkinter.CTkLabel(main_frame, text="Generation status").grid(row=3, column=0, sticky="w", padx=5)
-        self.log_text = customtkinter.CTkTextbox(main_frame, wrap=tk.WORD, state='disabled', border_width=1, fg_color="transparent")
+        self.log_text = customtkinter.CTkTextbox(main_frame, wrap=tk.WORD, state='disabled', border_width=1,
+                                                 fg_color="transparent")
         self.log_text.grid(row=4, column=0, sticky="nsew")
 
         # --- Progress Bar Placeholder & Widget ---
         # This frame reserves space for the progress bar to avoid window resizing.
         progress_bar_height = 20
-        self.progress_bar_placeholder = customtkinter.CTkFrame(main_frame, fg_color="transparent", height=progress_bar_height)
+        self.progress_bar_placeholder = customtkinter.CTkFrame(main_frame, fg_color="transparent",
+                                                               height=progress_bar_height)
         self.progress_bar_placeholder.grid(row=5, column=0, sticky="ew")
         # Prevent children from resizing the placeholder
         self.progress_bar_placeholder.pack_propagate(False)
 
-        self.progress_bar = customtkinter.CTkProgressBar(self.progress_bar_placeholder, mode='indeterminate', progress_color="#4CAF50")
+        self.progress_bar = customtkinter.CTkProgressBar(self.progress_bar_placeholder, mode='indeterminate',
+                                                         progress_color="#4CAF50")
 
         # --- Button Frame ---
         self.button_frame = customtkinter.CTkFrame(main_frame, fg_color="transparent")
@@ -275,7 +463,8 @@ class PodcastGeneratorApp:
                                                        command=self.start_generation_thread)
         self.generate_button.grid(row=0, column=1, sticky="ew", padx=5)
 
-        self.show_button = customtkinter.CTkButton(self.button_frame, text="Open file location", command=self.open_file_location)
+        self.show_button = customtkinter.CTkButton(self.button_frame, text="Open file location",
+                                                   command=self.open_file_location)
         self.show_button.grid(row=0, column=2, sticky="ew", padx=5)
         self._configure_button_state(self.show_button, enabled=False)
 
@@ -324,6 +513,8 @@ class PodcastGeneratorApp:
                 current_app_mode = customtkinter.get_appearance_mode().lower()
                 if (current and current_app_mode != "dark") or (not current and current_app_mode != "light"):
                     customtkinter.set_appearance_mode("dark" if current else "light")
+                    # Mettre à jour les couleurs du menu quand le thème change
+                    self._update_all_menu_themes()
             finally:
                 # Replanifie la prochaine vérification
                 if self.root and self.root.winfo_exists():
@@ -332,6 +523,35 @@ class PodcastGeneratorApp:
         # Premier tick
         if self.root and self.root.winfo_exists():
             self.root.after(interval_ms, _tick)
+
+    def _update_all_menu_themes(self):
+        """Met à jour le thème de tous les menus existants."""
+        # Seulement pour les menus Tkinter classiques
+        if HAS_CTK_MENUBAR:
+            return
+
+        try:
+            # Menu principal
+            if hasattr(self, 'menubar') and self.menubar:
+                self._apply_menu_theme(self.menubar)
+
+            # Sous-menus
+            if hasattr(self, 'settings_menu') and self.settings_menu and not HAS_CTK_MENUBAR:
+                self._apply_menu_theme(self.settings_menu)
+
+            if hasattr(self, 'actions_menu') and self.actions_menu and not HAS_CTK_MENUBAR:
+                self._apply_menu_theme(self.actions_menu)
+
+            if hasattr(self, 'help_menu') and self.help_menu and not HAS_CTK_MENUBAR:
+                self._apply_menu_theme(self.help_menu)
+
+            if hasattr(self, 'tts_submenu') and self.tts_submenu and not HAS_CTK_MENUBAR:
+                self._apply_menu_theme(self.tts_submenu)
+
+        except Exception as e:
+            # En cas d'erreur, on continue sans planter l'app
+            if hasattr(self, 'logger'):
+                self.logger.warning(f"Erreur lors de la mise à jour du thème des menus: {e}")
 
     def _configure_button_state(self, button: customtkinter.CTkButton, enabled: bool):
         """Configures the state and color of a button."""
@@ -408,40 +628,30 @@ class PodcastGeneratorApp:
     def update_provider_menu_state(self):
         """
         Met à jour la disponibilité du sous-menu TTS provider en fonction des clés API.
-        Le sous-menu n’apparaît que si les 2 clés sont configurées.
+        Le sous-menu n'apparaît que si les 2 clés sont configurées.
         """
-        import keyring
+        if HAS_CTK_MENUBAR:
+            self.rebuild_tts_provider_menu_ctk()
+            self.update_voice_settings_enabled_ctk()
+        else:
+            import keyring
 
-        gemini_key_exists = bool(keyring.get_password("PodcastGenerator", "gemini_api_key"))
-        elevenlabs_key_exists = bool(keyring.get_password("PodcastGenerator", "elevenlabs_api_key"))
+            gemini_key_exists = bool(keyring.get_password("PodcastGenerator", "gemini_api_key"))
+            elevenlabs_key_exists = bool(keyring.get_password("PodcastGenerator", "elevenlabs_api_key"))
 
-        # (Re)construit le sous-menu dynamiquement
-        self.rebuild_tts_provider_menu()
+            # (Re)construit le sous-menu dynamiquement
+            self.rebuild_tts_provider_menu()
 
-        # Cas limites: si la clé du provider courant a disparu, basculer vers l’autre si possible
-        current_provider = self.provider_var.get()
-        if current_provider == "gemini" and not gemini_key_exists and elevenlabs_key_exists:
-            self.log_status("Gemini API key not found. Switching to ElevenLabs.")
-            self.provider_var.set("elevenlabs")
-            self.on_provider_selected()
-        elif current_provider == "elevenlabs" and not elevenlabs_key_exists and gemini_key_exists:
-            self.log_status("ElevenLabs API key not found. Switching to Gemini.")
-            self.provider_var.set("gemini")
-            self.on_provider_selected()
-
-        # Mettre à jour l'état de "Voice settings..." (activé si au moins une clé)
-        self.update_voice_settings_enabled()
+            # Mettre à jour l'état de "Voice settings..." (activé si au moins une clé)
+            self.update_voice_settings_enabled()
 
     def rebuild_tts_provider_menu(self):
         """
-        Reconstruit entièrement le menu 'Settings' dans l'ordre attendu.
-        - Voice settings... (activé si au moins une clé)
-        - Séparateur
-        - TTS provider (cascade si 2 clés, sinon simple entrée désactivée sans flèche)
-        - Séparateur
-        - Manage API Keys...
-        - (Windows/Linux uniquement) Séparateur + Quit
+        Reconstruit entièrement le menu 'Settings' dans l'ordre attendu avec le thème (Tkinter fallback).
         """
+        if HAS_CTK_MENUBAR:
+            return  # Cette méthode n'est utilisée que pour le fallback Tkinter
+
         import keyring, sys
 
         gemini_key_exists = bool(keyring.get_password("PodcastGenerator", "gemini_api_key"))
@@ -466,6 +676,7 @@ class PodcastGeneratorApp:
         if both_keys:
             # Cascade avec flèche
             self.tts_submenu = tk.Menu(self.settings_menu, tearoff=0)
+            self._apply_menu_theme(self.tts_submenu)  # Appliquer le thème au sous-menu
             self.tts_submenu.add_radiobutton(label="Gemini", variable=self.provider_var, value="gemini",
                                              command=self.on_provider_selected)
             self.tts_submenu.add_radiobutton(label="ElevenLabs", variable=self.provider_var, value="elevenlabs",
@@ -487,7 +698,10 @@ class PodcastGeneratorApp:
             self.settings_menu.add_command(label="Quit", command=self.root.quit)
 
     def update_voice_settings_enabled(self):
-        """Active 'Voice settings...' si au moins une clé API est configurée, sinon désactive."""
+        """Active 'Voice settings...' si au moins une clé API est configurée, sinon désactive (Tkinter fallback)."""
+        if HAS_CTK_MENUBAR:
+            return  # Cette méthode n'est utilisée que pour le fallback Tkinter
+
         import keyring
         has_any_key = bool(keyring.get_password("PodcastGenerator", "gemini_api_key")) or \
                       bool(keyring.get_password("PodcastGenerator", "elevenlabs_api_key"))
@@ -517,20 +731,43 @@ class PodcastGeneratorApp:
     def open_api_keys_window(self):
         """Opens the API keys management window."""
         # Désactiver le menu Settings pendant l'ouverture
-        self.menubar.entryconfig("Settings", state="disabled")
+        if HAS_CTK_MENUBAR:
+            try:
+                # Pour CTkMenuBarPlus, on peut désactiver le bouton
+                if hasattr(self.menu_bar, 'configure'):
+                    self.menu_bar.configure(state="disabled")
+            except:
+                pass
+        else:
+            self.menubar.entryconfig("Settings", state="disabled")
+
         win = APIKeysWindow(self.root, self.on_api_keys_window_close)
         return win
 
     def on_api_keys_window_close(self):
         """Callback to re-enable the TTS menu when API keys window is closed."""
-        self.menubar.entryconfig("Settings", state="normal")
-        # Reconstruit dynamiquement le sous-menu selon les clés et met à jour l'état de l'entrée Voice settings
-        self.rebuild_tts_provider_menu()
+        if HAS_CTK_MENUBAR:
+            try:
+                if hasattr(self.menu_bar, 'configure'):
+                    self.menu_bar.configure(state="normal")
+            except:
+                pass
+        else:
+            self.menubar.entryconfig("Settings", state="normal")
+
+        # Rebuild UI elements synchronously
         self.update_provider_menu_state()
-        self.update_voice_settings_enabled()
-        # Si ElevenLabs est actif, rafraîchir le quota affiché
-        if self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs":
-            self.update_elevenlabs_quota_in_status()
+
+        # Defer the network-intensive quota update.
+        # This prevents starting a thread from within the `wait_window` context during startup,
+        # which is a major cause of instability on Windows.
+        def deferred_quota_update():
+            # Re-check provider in case it changed
+            if self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs":
+                self.update_elevenlabs_quota_in_status()
+
+        # Schedule the update to run after the current event processing is complete.
+        self.root.after(50, deferred_quota_update)
 
     def load_settings(self):
         """Loads settings from the JSON file."""
@@ -563,11 +800,11 @@ class PodcastGeneratorApp:
             with open(self.settings_filepath, 'w') as f:
                 json.dump(self.app_settings, f, indent=4)
             # self.log_status("Settings saved successfully.")
-        except IOError as e:
-            messagebox.showerror("Saving Error", f"Cannot save settings to file:\n{e}", parent=self.root)
-            self.logger.error(f"Saving error for settings: {e}")
+        except (IOError, OSError) as e:
+            # CRITICAL: Do not show a messagebox here. It can crash the app if called
+            # during the startup phase while the main window is withdrawn.
+            self.logger.error(f"CRITICAL: Failed to save settings: {e}")
 
-    # 2. Replace the update_elevenlabs_quota_in_status method in PodcastGeneratorApp class
     def update_elevenlabs_quota_in_status(self):
         """Fetches ElevenLabs quota in a background thread and updates the status label."""
         key = keyring.get_password("PodcastGenerator", "elevenlabs_api_key")
@@ -616,7 +853,14 @@ class PodcastGeneratorApp:
 
     def open_settings_window(self):
         # Disable the button while the window is open to avoid duplicates
-        self.menubar.entryconfig("Settings", state="disabled")
+        if HAS_CTK_MENUBAR:
+            try:
+                if hasattr(self.menu_bar, 'configure'):
+                    self.menu_bar.configure(state="disabled")
+            except:
+                pass
+        else:
+            self.menubar.entryconfig("Settings", state="disabled")
 
         # If the ElevenLabs voice cache is not yet populated, wait for it.
         # This prevents a race condition in the settings window where a late
@@ -767,8 +1011,18 @@ class PodcastGeneratorApp:
         self._configure_button_state(self.load_button, enabled=False)
         self._configure_button_state(self.play_button, enabled=False)
         self._configure_button_state(self.show_button, enabled=False)
-        self.actions_menu.entryconfig("Generate HTML Demo...", state='disabled')
-        self.menubar.entryconfig("Settings", state="disabled")
+
+        # Désactiver les menus selon le type
+        if HAS_CTK_MENUBAR:
+            self.update_demo_menu_state_ctk(False)
+            try:
+                if hasattr(self.menu_bar, 'configure'):
+                    self.menu_bar.configure(state="disabled")
+            except:
+                pass
+        else:
+            self.actions_menu.entryconfig("Generate HTML Demo...", state='disabled')
+            self.menubar.entryconfig("Settings", state="disabled")
 
         # Show and start the progress bar
         self.clear_log()
@@ -828,7 +1082,16 @@ class PodcastGeneratorApp:
         self.progress_bar.stop()
         self._configure_button_state(self.generate_button, enabled=True)
         self._configure_button_state(self.load_button, enabled=True)
-        self.menubar.entryconfig("Settings", state="normal") # pyright: ignore
+
+        # Réactiver les menus selon le type
+        if HAS_CTK_MENUBAR:
+            try:
+                if hasattr(self.menu_bar, 'configure'):
+                    self.menu_bar.configure(state="normal")
+            except:
+                pass
+        else:
+            self.menubar.entryconfig("Settings", state="normal")
 
         # Re-enable file-related buttons if a valid file exists, regardless of the last operation's success
         can_use_last_file = self.last_generated_filepath and os.path.exists(self.last_generated_filepath)
@@ -837,7 +1100,10 @@ class PodcastGeneratorApp:
         self._configure_button_state(self.play_button, enabled=(can_use_last_file and self.ffplay_path))
 
         can_generate_demo = self.is_whisperx_available and can_use_last_file
-        self.actions_menu.entryconfig("Generate HTML Demo...", state='normal' if can_generate_demo else 'disabled')
+        if HAS_CTK_MENUBAR:
+            self.update_demo_menu_state_ctk(can_generate_demo)
+        else:
+            self.actions_menu.entryconfig("Generate HTML Demo...", state='normal' if can_generate_demo else 'disabled')
 
         if self.progress_bar.winfo_ismapped():
             self.progress_bar.pack_forget()
@@ -864,7 +1130,11 @@ class PodcastGeneratorApp:
     def _on_demo_settings_confirmed(self, title: str, subtitle: str, output_dir: str):
         """Callback that receives settings from the dialog and starts the thread."""
         self.log_status("Starting HTML demo generation...")
-        self.actions_menu.entryconfig("Generate HTML Demo...", state='disabled')
+
+        if HAS_CTK_MENUBAR:
+            self.update_demo_menu_state_ctk(False)
+        else:
+            self.actions_menu.entryconfig("Generate HTML Demo...", state='disabled')
 
         thread = threading.Thread(
             target=self.run_demo_generation,
@@ -898,8 +1168,14 @@ class PodcastGeneratorApp:
         finally:
             # Re-enable the button on the main thread
             if self.root.winfo_exists():
-                can_generate_demo = self.is_whisperx_available and self.last_generated_filepath and os.path.exists(self.last_generated_filepath)
-                self.root.after(0, lambda: self.actions_menu.entryconfig("Generate HTML Demo...", state='normal' if can_generate_demo else 'disabled'))
+                can_generate_demo = self.is_whisperx_available and self.last_generated_filepath and os.path.exists(
+                    self.last_generated_filepath)
+
+                if HAS_CTK_MENUBAR:
+                    self.root.after(0, lambda: self.update_demo_menu_state_ctk(can_generate_demo))
+                else:
+                    self.root.after(0, lambda: self.actions_menu.entryconfig("Generate HTML Demo...",
+                                                                             state='normal' if can_generate_demo else 'disabled'))
             # Clean up the temporary file
             if temp_script_file and os.path.exists(temp_script_file):
                 os.remove(temp_script_file)
@@ -1063,7 +1339,15 @@ class PodcastGeneratorApp:
 
     def on_settings_window_close(self):
         self._stop_sample_playback()
-        self.menubar.entryconfig("Settings", state="normal")
+        if HAS_CTK_MENUBAR:
+            try:
+                if hasattr(self.menu_bar, 'configure'):
+                    self.menu_bar.configure(state="normal")
+            except:
+                pass
+        else:
+            self.menubar.entryconfig("Settings", state="normal")
+
         self._update_provider_label()
         self.provider_var.set(self.app_settings.get("tts_provider", "elevenlabs").lower())
         self.update_provider_menu_state()
@@ -1076,7 +1360,7 @@ class PodcastGeneratorApp:
         current_provider_display = current_provider_raw.title()
         text_to_display = f"TTS Provider: {current_provider_display}"
 
-        # Si ElevenLabs est actif et qu’un quota est connu, afficher le quota
+        # Si ElevenLabs est actif et qu'un quota est connu, afficher le quota
         if current_provider_raw.lower() == "elevenlabs" and self.elevenlabs_quota_text:
             text_to_display = self.elevenlabs_quota_text
 
@@ -1087,7 +1371,7 @@ class PodcastGeneratorApp:
         """Planifie des rafraîchissements du provider_label après un délai, avec quelques tentatives."""
 
         def _try_refresh(attempt=1):
-            # Met à jour le label avec l’info la plus récente disponible
+            # Met à jour le label avec l'info la plus récente disponible
             self._update_provider_label()
             # Si ElevenLabs est actif et que le quota n'est pas encore connu, retente plus tard
             if (
@@ -1106,33 +1390,60 @@ class PodcastGeneratorApp:
         like checking for API keys and pre-fetching data.
         """
         # --- API key check at startup ---
-        current_provider = self.app_settings.get("tts_provider", "elevenlabs")
-        account_name = "elevenlabs_api_key" if current_provider == "elevenlabs" else "gemini_api_key"
-        api_key = keyring.get_password("PodcastGenerator", account_name)
+        # We need at least one key to start. Let's check both.
+        gemini_key = keyring.get_password("PodcastGenerator", "gemini_api_key")
+        elevenlabs_key = keyring.get_password("PodcastGenerator", "elevenlabs_api_key")
 
-        if not api_key:
-            # Open the API key management window and wait for it to close
+        if not gemini_key and not elevenlabs_key:
+            # No keys at all. Force user to enter one.
+            self.logger.info("No API keys found. Opening API key window at startup.")
             win = self.open_api_keys_window()
-            self.root.deiconify()  # Ensure the parent window is visible for the dialog
             self.root.wait_window(win)
 
             # Re-check the key after the dialog is closed
-            api_key = keyring.get_password("PodcastGenerator", account_name)
-            if not api_key:
+            gemini_key = keyring.get_password("PodcastGenerator", "gemini_api_key")
+            elevenlabs_key = keyring.get_password("PodcastGenerator", "elevenlabs_api_key")
+
+            if not gemini_key and not elevenlabs_key:
                 self.logger.info("Application closed because no API key was provided at startup.")
-                messagebox.showwarning("API Key Required", "The application cannot start without an API key.",
-                                       parent=self.root)
-                self.root.destroy()
                 return False  # Indicate failure
 
-        # Now that we have the key, assign it to the app and update the UI.
-        self.api_key = api_key
-        self.update_provider_menu_state()
-        self.update_voice_settings_enabled()
+        # --- Provider Auto-Correction Logic ---
+        # If the stored provider's key is missing but another one exists, switch to it.
+        # This is crucial for the first-launch scenario where the default is 'elevenlabs'
+        # but the user only enters a Gemini key.
+        current_provider = self.app_settings.get("tts_provider", "elevenlabs")
+        if current_provider == "elevenlabs" and not elevenlabs_key and gemini_key:
+            self.logger.info("ElevenLabs key not found, but Gemini key exists. Switching provider to Gemini.")
+            self.app_settings["tts_provider"] = "gemini"
+            self.save_settings(self.app_settings)
+        elif current_provider == "gemini" and not gemini_key and elevenlabs_key:
+            self.logger.info("Gemini key not found, but ElevenLabs key exists. Switching provider to ElevenLabs.")
+            self.app_settings["tts_provider"] = "elevenlabs"
+            self.save_settings(self.app_settings)
 
-        # --- Pre-fetch ElevenLabs voices ---
-        def _prefetch_elevenlabs():
-            """Prefetches ElevenLabs voices using the v1 API."""
+        # At this point, app_settings should be in a consistent state.
+        # Now, we load the key for the (potentially newly-set) current provider.
+        current_provider = self.app_settings.get("tts_provider", "elevenlabs")
+        if current_provider == "elevenlabs":
+            self.api_key = elevenlabs_key
+        elif current_provider == "gemini":
+            self.api_key = gemini_key
+
+        # Final validation: if we still don't have a key for the selected provider, fail.
+        if not self.api_key:
+            self.logger.error(
+                f"Startup task failed: No valid API key found for the selected provider ('{current_provider}').")
+            return False
+        # UI updates are now deferred until after the window is shown to improve stability on Windows.
+        # The pre-fetch is now handled by an 'after' call in __init__ to avoid race conditions.
+        return True  # Indicate success
+
+    def _prefetch_elevenlabs_voices(self):
+        """Prefetches ElevenLabs voices in a background thread.
+        This is started with a delay to avoid startup race conditions on Windows."""
+
+        def _run_fetch():
             try:
                 if not requests:
                     self.logger.warning("'requests' library not found. Cannot pre-fetch ElevenLabs voices.")
@@ -1155,9 +1466,11 @@ class PodcastGeneratorApp:
                 voices = []
                 for voice in data.get('voices', []):
                     labels = voice.get('labels', {}) if voice.get('labels') else {}
-                    desc_parts = [p.title() for p in [labels.get('gender'), labels.get('age'), labels.get('accent')] if p]
+                    desc_parts = [p.title() for p in [labels.get('gender'), labels.get('age'), labels.get('accent')] if
+                                  p]
                     description = ', '.join(desc_parts) or str(voice.get('category', '')).title()
-                    display_name = f"{voice.get('name', 'Unknown')} - {description}" if description else voice.get('name', 'Unknown')
+                    display_name = f"{voice.get('name', 'Unknown')} - {description}" if description else voice.get(
+                        'name', 'Unknown')
                     voices.append({'id': voice.get('voice_id', ''), 'name': voice.get('name', 'Unknown'),
                                    'display_name': display_name, 'category': voice.get('category', ''),
                                    'labels': labels, 'preview_url': voice.get('preview_url', '')})
@@ -1166,57 +1479,169 @@ class PodcastGeneratorApp:
             except Exception:
                 self.elevenlabs_voices_cache = []
 
-        threading.Thread(target=_prefetch_elevenlabs, daemon=True).start()
-        return True  # Indicate success
+        threading.Thread(target=_run_fetch, daemon=True).start()
+
+
+def show_error_and_log(*args):
+    """Global exception handler with improved debugging."""
+    print(f"DEBUG: show_error_and_log called with {len(args)} args", flush=True)
+    print(f"DEBUG: Exception args: {args}", flush=True)
+
+    if len(args) >= 3:
+        import traceback
+        err_type, err_value, err_tb = args[:3]
+        error_message = "".join(traceback.format_exception(err_type, err_value, err_tb))
+
+        print(f"DEBUG: Full exception traceback:\n{error_message}", flush=True)
+
+        # Log only, don't show messagebox or destroy window yet
+        try:
+            from generate_podcast import setup_logging
+            logger = setup_logging()
+            logger.critical(f"Unhandled exception occurred:\n{error_message}")
+        except:
+            pass
+
+        # Only show error for serious exceptions, not KeyboardInterrupt
+        if err_type != KeyboardInterrupt:
+            print("DEBUG: Showing error messagebox...", flush=True)
+            try:
+                import tkinter as tk
+                from tkinter import messagebox
+                # Create a temporary root if needed
+                temp_root = tk.Tk()
+                temp_root.withdraw()
+
+                result = messagebox.askyesno(
+                    "Error Occurred",
+                    f"An error occurred: {err_value}\n\n"
+                    f"Do you want to close the application?\n\n"
+                    f"(Click 'No' to continue running)",
+                    parent=temp_root
+                )
+                if result:  # User clicked Yes
+                    print("DEBUG: User chose to close application", flush=True)
+                    temp_root.destroy()
+                    sys.exit(1)
+                else:
+                    print("DEBUG: User chose to continue running", flush=True)
+                temp_root.destroy()
+            except Exception as e:
+                print(f"DEBUG: Error showing messagebox: {e}", flush=True)
+        else:
+            print("DEBUG: KeyboardInterrupt detected", flush=True)
+    else:
+        print(f"DEBUG: Unexpected args format: {args}", flush=True)
+
+
+def debug_tk_error(*args):
+    """Tkinter callback exception handler."""
+    print(f"DEBUG: Tkinter callback exception: {args}", flush=True)
+    # Call the original handler but don't let it crash the app
+    try:
+        show_error_and_log(*args)
+    except:
+        print("DEBUG: Exception in callback exception handler!", flush=True)
+        import traceback
+        traceback.print_exc()
 
 
 def main():
-    # Initializes the application and starts the main Tkinter loop
-    # Creates the root window but hides it for now.
-    # This allows for reliable display of error dialogs
-    # even if the full interface initialization fails.
-
+    """Initializes the application, sets up error handling, and starts the main loop."""
     root = customtkinter.CTk()
     root.withdraw()
 
+    # --- DPI Scaling for Windows ---
+    if sys.platform == 'win32':
+        try:
+            root.tk.call('tk', 'scaling', 1.25)
+        except Exception:
+            pass
+
     # --- Import path correction ---
-    # Ensures the script can find 'generate_podcast.py'
-    # regardless of where it is executed from.
     try:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         if script_dir not in sys.path:
             sys.path.insert(0, script_dir)
     except NameError:
-        # __file__ is not defined in some interactive environments
-        pass
+        pass  # __file__ is not defined in some interactive environments
 
-    # --- Importing dependencies ---
+    # --- Importing dependencies and setting up logging ---
     try:
         from generate_podcast import generate, PODCAST_SCRIPT, setup_logging
-        # Note: find_ffplay_path is now imported from utils.py at the top level.
+        logger = setup_logging()
     except ImportError as e:
         messagebox.showerror(
             "Import Error",
             f"The file 'generate_podcast.py' was not found.\n\n"
             f"Please ensure it is in the same folder as gui.py.\n\n"
-            f"Error details: {e}"
-            , parent=root)
+            f"Error details: {e}",
+            parent=root
+        )
         root.destroy()
         return
 
-    # Initializes logging before anything else
-    logger = setup_logging()
-    logger.info("Starting application...")
+    # --- Global Exception Handler ---
+    sys.excepthook = show_error_and_log
 
-    # Create the app instance first, which populates the root window with widgets.
-    # The window remains hidden for now. We pass a placeholder for the api_key.
-    app = PodcastGeneratorApp(root, generate_func=generate, logger=logger, api_key="", default_script=PODCAST_SCRIPT)
+    try:
+        logger.info("Starting application...")
 
-    # Perform startup tasks (API key check, pre-fetching, etc.)
-    if app.perform_startup_tasks():
-        # If startup is successful, show the main window and start the event loop
-        root.deiconify()
-        root.mainloop()
+        # Create the app instance
+        app = PodcastGeneratorApp(root, generate_func=generate, logger=logger, api_key="",
+                                  default_script=PODCAST_SCRIPT)
+
+        # Override the default tkinter error handler to use our global handler
+        root.report_callback_exception = debug_tk_error
+
+        # Perform startup tasks
+        if app.perform_startup_tasks():
+            def deferred_ui_updates():
+                """
+                This function runs after the mainloop has started, ensuring the UI is stable
+                before these final configurations are applied. This is the key to preventing
+                startup crashes on Windows.
+                """
+                # Vérifier que la fenêtre existe toujours
+                if not root.winfo_exists():
+                    return
+
+                # Sync the UI variable with the final setting from startup tasks
+                app.provider_var.set(app.app_settings.get("tts_provider", "elevenlabs"))
+
+                # Update menu states now that the window is fully stable.
+                app.update_provider_menu_state()
+                if HAS_CTK_MENUBAR:
+                    app.update_voice_settings_enabled_ctk()
+                else:
+                    app.update_voice_settings_enabled()
+
+            def start_mainloop():
+                if root.winfo_exists():
+                    root.mainloop()
+
+            root.deiconify()
+            root.after(50, deferred_ui_updates)
+            root.after(100, start_mainloop)
+
+            # Boucle de maintien temporaire pour Windows
+            import time
+            while root.winfo_exists():
+                try:
+                    root.update()
+                    time.sleep(0.01)
+                except Exception as e:
+                    print(f"DEBUG: Exception in keep-alive loop: {e}", flush=True)
+                    break
+        else:
+            # This is a controlled exit, not a crash.
+            messagebox.showerror("Startup Error", "The application cannot start. Please provide the required API keys.")
+            root.destroy()
+
+    except Exception:
+        # This will catch errors during app instantiation or startup tasks
+        # before the mainloop starts.
+        show_error_and_log(*sys.exc_info())
 
 
 if __name__ == "__main__":
