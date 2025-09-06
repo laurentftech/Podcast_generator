@@ -1536,20 +1536,22 @@ def show_error_and_log(*args):
 
 def debug_tk_error(*args):
     """Tkinter callback exception handler."""
-    print(f"DEBUG: Tkinter callback exception: {args}", flush=True)
-    # Call the original handler but don't let it crash the app
+    if len(args) >= 2:
+        error = args[1]
+        # Ignorer les erreurs de destruction d'app
+        if "application has been destroyed" in str(error) or "invalid command name" in str(error):
+            return
+
     try:
         show_error_and_log(*args)
     except:
-        print("DEBUG: Exception in callback exception handler!", flush=True)
-        import traceback
-        traceback.print_exc()
+        pass
 
 
 def main():
     """Initializes the application, sets up error handling, and starts the main loop."""
     root = customtkinter.CTk()
-    root.withdraw()
+    #root.withdraw()
 
     # --- DPI Scaling for Windows ---
     if sys.platform == 'win32':
@@ -1616,23 +1618,7 @@ def main():
                 else:
                     app.update_voice_settings_enabled()
 
-            def start_mainloop():
-                if root.winfo_exists():
-                    root.mainloop()
-
-            root.deiconify()
-            root.after(50, deferred_ui_updates)
-            root.after(100, start_mainloop)
-
-            # Boucle de maintien temporaire pour Windows
-            import time
-            while root.winfo_exists():
-                try:
-                    root.update()
-                    time.sleep(0.01)
-                except Exception as e:
-                    print(f"DEBUG: Exception in keep-alive loop: {e}", flush=True)
-                    break
+            root.mainloop()
         else:
             # This is a controlled exit, not a crash.
             messagebox.showerror("Startup Error", "The application cannot start. Please provide the required API keys.")
