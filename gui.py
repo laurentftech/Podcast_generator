@@ -243,7 +243,12 @@ class PodcastGeneratorApp:
 
         # Menu Settings
         settings_button = self.menu_bar.add_cascade("Settings")
-        self.settings_menu = CTkMenuBar.CustomDropdownMenu(widget=settings_button)
+        self.settings_menu = CTkMenuBar.CustomDropdownMenu(
+            widget=settings_button,
+            corner_radius=3,
+            border_width=1,
+            border_color=("gray70", "gray25")
+        )
 
         # Voice settings
         self.voice_settings_item = self.settings_menu.add_option("Voice settings...",
@@ -265,14 +270,24 @@ class PodcastGeneratorApp:
 
         # Menu Actions
         actions_button = self.menu_bar.add_cascade("Actions")
-        self.actions_menu = CTkMenuBar.CustomDropdownMenu(widget=actions_button)
+        self.actions_menu = CTkMenuBar.CustomDropdownMenu(
+            widget=actions_button,
+            corner_radius=3,
+            border_width=1,
+            border_color=("gray70", "gray25")
+        )
         self.demo_menu_item = self.actions_menu.add_option("Generate HTML Demo...",
                                                            command=self.start_demo_generation_thread,
                                                            state='disabled')
 
         # Menu Help
         help_button = self.menu_bar.add_cascade("Help")
-        self.help_menu = CTkMenuBar.CustomDropdownMenu(widget=help_button)
+        self.help_menu = CTkMenuBar.CustomDropdownMenu(
+            widget=help_button,
+            corner_radius=3,
+            border_width=1,
+            border_color=("gray70", "gray25")
+        )
         self.help_menu.add_option("Documentation (Github)...", command=self.open_documentation)
         self.help_menu.add_option("About...", command=self.show_about_window)
 
@@ -354,7 +369,11 @@ class PodcastGeneratorApp:
 
         if both_keys:
             # Créer un sous-menu TTS provider
-            self.tts_submenu = CTkMenuBar.CustomDropdownMenu()
+            self.tts_submenu = CTkMenuBar.CustomDropdownMenu(
+                corner_radius=3,
+                border_width=1,
+                border_color=("gray70", "gray25")
+            )
 
             # Ajouter les options
             current_provider = self.app_settings.get("tts_provider", "elevenlabs")

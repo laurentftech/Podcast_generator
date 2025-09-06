@@ -3,6 +3,7 @@ import tkinter as tk
 import threading
 import json
 import keyring
+import sys
 import customtkinter
 
 from gui import AVAILABLE_VOICES
@@ -26,6 +27,46 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         self.title("Voice settings")
         self.transient(parent)
         self.grab_set()
+
+        # Fix pour le bandeau de titre sombre sur Windows
+        if sys.platform == "win32":
+            try:
+                # Cette méthode force Windows à utiliser un bandeau de titre sombre
+                # compatible avec le mode sombre de l'application
+                self.after(10, lambda: self.wm_attributes("-alpha", 0.99))
+                self.after(20, lambda: self.wm_attributes("-alpha", 1.0))
+                # Alternative plus robuste pour Windows 10/11
+                try:
+                    import ctypes
+                    from ctypes import wintypes
+
+                    # Constantes Windows pour le mode sombre
+                    DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19
+                    DWMWA_USE_IMMERSIVE_DARK_MODE = 20
+
+                    # Obtenir le handle de la fenêtre
+                    hwnd = int(self.wm_frame(), 16)
+
+                    # Essayer d'abord avec la nouvelle constante (Windows 10 20H1+)
+                    try:
+                        ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                            hwnd,
+                            DWMWA_USE_IMMERSIVE_DARK_MODE,
+                            ctypes.byref(ctypes.c_int(1)),
+                            ctypes.sizeof(ctypes.c_int)
+                        )
+                    except:
+                        # Fallback pour les versions plus anciennes
+                        ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                            hwnd,
+                            DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1,
+                            ctypes.byref(ctypes.c_int(1)),
+                            ctypes.sizeof(ctypes.c_int)
+                        )
+                except Exception as e:
+                    logging.debug(f"Could not set dark title bar: {e}")
+            except Exception as e:
+                logging.debug(f"Title bar styling failed: {e}")
 
         self.gemini_api_configured = bool(keyring.get_password("PodcastGenerator", "gemini_api_key"))
         self.elevenlabs_api_configured = bool(keyring.get_password("PodcastGenerator", "elevenlabs_api_key"))
@@ -65,6 +106,10 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         self.check_voices_update()
 
         self.update_idletasks()
+        # Forcer une largeur minimale sous Windows pour éviter une fenêtre trop étroite à l'ouverture
+        if sys.platform == "win32":
+            self.geometry("800x600")  # Définit une taille de départ raisonnable
+
         x = parent.winfo_x() + (parent.winfo_width() - self.winfo_width()) // 2
         y = parent.winfo_y() + (parent.winfo_height() - self.winfo_height()) // 2
         self.geometry(f"+{x}+{y}")
