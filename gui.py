@@ -14,6 +14,7 @@ from typing import Optional
 
 import keyring
 import customtkinter
+from CTkMenuBarPlus import CTkMenuBar
 
 from demo_window import DemoSettingsWindow
 

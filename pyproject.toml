@@ -18,6 +18,7 @@ dependencies = [
     "elevenlabs",
     "requests",
     "customtkinter",
+    "CTkMenuBarPlus",
     "python-dotenv", # Added to resolve ModuleNotFoundError
 ]
 classifiers = [
