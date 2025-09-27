@@ -1223,8 +1223,17 @@ class PodcastGeneratorApp:
 
     def play_last_generated_file(self):
         """Plays or stops the playback of the last generated audio file."""
-        if self.playback_obj and self.playback_obj.poll() is None:
-            self.playback_obj.terminate()  # Stops the ffplay process if running
+        if self.playback_obj and self.playback_obj.poll() is None: # If process exists and is running
+            # Use a more robust stop mechanism to prevent race conditions, especially on Mac ARM.
+            try:
+                self.playback_obj.terminate()
+                # The wait() call in the thread will handle the rest.
+                # We don't need to wait here, just ensure the terminate signal is sent.
+            except Exception as e:
+                self.logger.error(f"Error terminating main playback: {e}")
+            finally:
+                # The thread's finally block will reset the button and object.
+                pass
             return
 
         if not self.ffplay_path:
@@ -1296,8 +1305,15 @@ class PodcastGeneratorApp:
             self.sample_poll_id = None
 
         if self.sample_playback_obj and self.sample_playback_obj.poll() is None:
-            self.sample_playback_obj.terminate()
-            self.sample_playback_obj = None
+            # Use wait() with a timeout for a more graceful shutdown, which is more
+            # reliable on different architectures like Mac ARM.
+            try:
+                self.sample_playback_obj.terminate()  # Ask it to stop
+                self.sample_playback_obj.wait(timeout=0.5)  # Wait for it to exit
+            except subprocess.TimeoutExpired:
+                self.sample_playback_obj.kill()  # Force kill if it doesn't respond
+            finally:
+                self.sample_playback_obj = None
             self._reset_active_button()
 
     def _poll_sample_playback(self):
