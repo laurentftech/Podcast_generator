@@ -160,16 +160,21 @@ class PodcastGeneratorApp:
         self.update_provider_menu_state()
         self.update_voice_settings_enabled()
 
-        # Schedule initial quota fetch and theme watcher
+        # Schedule initial quota fetch with longer delay on macOS ARM
         if self.app_settings.get("tts_provider", "elevenlabs").lower() == "elevenlabs":
-            self._schedule_provider_label_refresh(delay_ms=2000, retries=5)
+            # Increase delay on macOS ARM to avoid blocking UI initialization
+            delay = 3000 if sys.platform == "darwin" else 2000
+            self._schedule_provider_label_refresh(delay_ms=delay, retries=5)
 
-        # Démarrer le watcher seulement si on utilise les menus Tkinter
+        # Démarrer le watcher seulement si on utilise les menus Tkinter, avec intervalle plus long sur macOS
         if not HAS_CTK_MENUBAR:
-            self._start_theme_watcher()
+            # Use longer interval on macOS to reduce event loop interference
+            interval = 5000 if sys.platform == "darwin" else 2000
+            self._start_theme_watcher(interval_ms=interval)
 
-        # Schedule the pre-fetch of voices after the UI is stable to avoid startup race conditions.
-        self.root.after(500, self._prefetch_elevenlabs_voices)
+        # Schedule the pre-fetch of voices with longer delay on macOS ARM to avoid startup race conditions
+        prefetch_delay = 1500 if sys.platform == "darwin" else 500
+        self.root.after(prefetch_delay, self._prefetch_elevenlabs_voices)
 
         self.logger.info("Main interface initialized.")
 
@@ -575,20 +580,30 @@ class PodcastGeneratorApp:
 
     def _configure_button_state(self, button: customtkinter.CTkButton, enabled: bool):
         """Configures the state and color of a button."""
-        if not button or not button.winfo_exists():
+        if not button:
             return
 
-        if enabled:
-            # Restore default theme color for the enabled state
-            normal_fg_color = customtkinter.ThemeManager.theme["CTkButton"]["fg_color"]
-            normal_text_color = customtkinter.ThemeManager.theme["CTkButton"]["text_color"]
-            button.configure(state='normal', fg_color=normal_fg_color, text_color=normal_text_color)
-        else:
-            # Apply a custom, more opaque color for the disabled state
-            disabled_fg_color = ("gray75", "gray30")
-            # Use a readable text color for the disabled state
-            disabled_text_color = ("gray10", "gray70")  # Dark gray for light mode, a less bright gray for dark mode
-            button.configure(state='disabled', fg_color=disabled_fg_color, text_color_disabled=disabled_text_color)
+        try:
+            if not button.winfo_exists():
+                return
+        except (tk.TclError, AttributeError):
+            return
+
+        try:
+            if enabled:
+                # Restore default theme color for the enabled state
+                normal_fg_color = customtkinter.ThemeManager.theme["CTkButton"]["fg_color"]
+                normal_text_color = customtkinter.ThemeManager.theme["CTkButton"]["text_color"]
+                button.configure(state='normal', fg_color=normal_fg_color, text_color=normal_text_color)
+            else:
+                # Apply a custom, more opaque color for the disabled state
+                disabled_fg_color = ("gray75", "gray30")
+                # Use a readable text color for the disabled state
+                disabled_text_color = ("gray10", "gray70")  # Dark gray for light mode, a less bright gray for dark mode
+                button.configure(state='disabled', fg_color=disabled_fg_color, text_color_disabled=disabled_text_color)
+        except (tk.TclError, AttributeError) as e:
+            # Widget might be in an invalid state on macOS ARM
+            self.logger.debug(f"Error configuring button state: {e}")
 
     def on_provider_selected(self):
         """Handles selection from the TTS Provider radio button menu."""
@@ -850,7 +865,12 @@ class PodcastGeneratorApp:
             if not requests:
                 self.logger.error("'requests' library not found. Cannot fetch ElevenLabs quota.")
                 self.elevenlabs_quota_text = "TTS Provider: ElevenLabs v3 - 'requests' missing"
-                self.root.after(0, self._update_provider_label)
+                # Use try/except to ensure UI thread safety on macOS
+                try:
+                    if self.root and self.root.winfo_exists():
+                        self.root.after(0, self._update_provider_label)
+                except (tk.TclError, RuntimeError):
+                    pass
                 return
             try:
                 # Use the new v3-compatible quota function
@@ -866,8 +886,13 @@ class PodcastGeneratorApp:
                 self.elevenlabs_quota_text = "TTS Provider: ElevenLabs v3 - Network error"
                 _save_quota_cache(self.elevenlabs_quota_text)
             finally:
-                # Always schedule the UI update from the main thread
-                self.root.after(0, self._update_provider_label)
+                # Always schedule the UI update from the main thread with safety check
+                try:
+                    if self.root and self.root.winfo_exists():
+                        self.root.after(0, self._update_provider_label)
+                except (tk.TclError, RuntimeError):
+                    # Window may have been destroyed, ignore
+                    pass
 
         threading.Thread(target=fetch_and_update, daemon=True).start()
 
@@ -939,13 +964,27 @@ class PodcastGeneratorApp:
                 elif msg_type == 'UPDATE_PLAY_BUTTON':
                     is_enabled = message[2] == 'normal'
                     self._configure_button_state(self.play_button, enabled=is_enabled)
-                    if self.play_button and self.play_button.winfo_exists():
-                        self.play_button.configure(text=message[1])
+                    try:
+                        if self.play_button and self.play_button.winfo_exists():
+                            self.play_button.configure(text=message[1])
+                    except (tk.TclError, AttributeError):
+                        pass  # Widget might be in an invalid state
             else:
                 self._update_log(message)
         except queue.Empty:
             pass  # The queue is empty, do nothing
-        self.root.after(100, self.poll_log_queue)  # Check the queue every 100 ms
+        except Exception as e:
+            # Log but don't crash if there's an issue processing the queue
+            self.logger.debug(f"Error processing log queue: {e}")
+
+        # Schedule next poll, with safety check for window existence
+        try:
+            if self.root and self.root.winfo_exists():
+                # Slightly longer interval on macOS to reduce event loop contention
+                interval = 150 if sys.platform == "darwin" else 100
+                self.root.after(interval, self.poll_log_queue)
+        except (tk.TclError, RuntimeError):
+            pass  # Window destroyed, stop polling
 
     def _update_log(self, message):
         self.log_text.configure(state='normal')
@@ -1268,8 +1307,13 @@ class PodcastGeneratorApp:
             self.log_status(f"Audio playback error: {e}")
         finally:
             self.playback_obj = None
-            if self.root.winfo_exists():
-                self.log_queue.put(('UPDATE_PLAY_BUTTON', '▶', 'normal'))
+            # Check if window still exists before updating UI
+            try:
+                if self.root and self.root.winfo_exists():
+                    self.log_queue.put(('UPDATE_PLAY_BUTTON', '▶', 'normal'))
+            except (tk.TclError, RuntimeError):
+                # Window destroyed, ignore
+                pass
 
     def _reset_active_button(self):
         """Resets the currently active play button to its default state."""
@@ -1477,7 +1521,7 @@ class PodcastGeneratorApp:
 
     def _prefetch_elevenlabs_voices(self):
         """Prefetches ElevenLabs voices in a background thread.
-        This is started with a delay to avoid startup race conditions on Windows."""
+        This is started with a delay to avoid startup race conditions on Windows and macOS."""
 
         def _run_fetch():
             try:
@@ -1492,7 +1536,9 @@ class PodcastGeneratorApp:
                     return
 
                 headers = {"xi-api-key": key}
-                resp = requests.get("https://api.elevenlabs.io/v1/voices", headers=headers, timeout=15)
+                # Increase timeout on macOS ARM to avoid connection issues
+                timeout = 20 if sys.platform == "darwin" else 15
+                resp = requests.get("https://api.elevenlabs.io/v1/voices", headers=headers, timeout=timeout)
 
                 if resp.status_code != 200:
                     self.elevenlabs_voices_cache = []
@@ -1512,7 +1558,9 @@ class PodcastGeneratorApp:
                                    'labels': labels, 'preview_url': voice.get('preview_url', '')})
                 voices.sort(key=lambda x: x.get('name', ''))
                 self.elevenlabs_voices_cache = voices
-            except Exception:
+                self.logger.info(f"Successfully pre-fetched {len(voices)} ElevenLabs voices.")
+            except Exception as e:
+                self.logger.warning(f"Failed to pre-fetch ElevenLabs voices: {e}")
                 self.elevenlabs_voices_cache = []
 
         threading.Thread(target=_run_fetch, daemon=True).start()
