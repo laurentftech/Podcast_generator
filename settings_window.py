@@ -86,11 +86,18 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         self.elevenlabs_voices_loaded = False
         self._loading_voices = False
         self._voices_need_update = False
-        
+        self._voices_update_in_progress = False  # Protection contre les appels multiples
+
         # Pour le chargement progressif des voix ElevenLabs
         self.elevenlabs_voice_offset = 0
         self.load_more_btn = None
         self.elevenlabs_scroll_frame = None  # Pour stocker la référence au frame
+        self._elevenlabs_voices_displayed = False  # Flag pour éviter les doublons
+        self._loading_more_voices = False  # Protection contre les appels simultanés
+
+        # Pour éviter les doublons Gemini
+        self._gemini_voices_displayed = False
+        self.gemini_scroll_frame = None
 
         if isinstance(preloaded_elevenlabs_voices, list) and preloaded_elevenlabs_voices:
             self.elevenlabs_voices = list(preloaded_elevenlabs_voices)
@@ -126,10 +133,25 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
                 button.configure(state="normal")
 
     def check_voices_update(self):
-        if self._voices_need_update and self.elevenlabs_voices_loaded:
+        """Vérifie périodiquement si les voix doivent être mises à jour."""
+        if self._voices_need_update and self.elevenlabs_voices_loaded and not self._voices_update_in_progress:
             self._voices_need_update = False
-            self.update_elevenlabs_comboboxes()
-        self.after(200, self.check_voices_update)
+            self._voices_update_in_progress = True
+            try:
+                self.update_elevenlabs_comboboxes()
+                # Déclencher le chargement des voix dans le guide si pas encore fait
+                if not self._elevenlabs_voices_displayed and self.elevenlabs_scroll_frame:
+                    self._load_more_elevenlabs_voices()
+            finally:
+                self._voices_update_in_progress = False
+
+        # Continue à vérifier mais avec intervalle plus long sur macOS
+        try:
+            if self.winfo_exists():
+                interval = 500 if sys.platform == "darwin" else 200
+                self.after(interval, self.check_voices_update)
+        except tk.TclError:
+            pass  # Window destroyed
 
     def create_interface(self):
         main_frame = customtkinter.CTkFrame(self, fg_color="transparent")
@@ -158,14 +180,19 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
 
             if self.gemini_api_configured:
                 gemini_tab = notebook.add("Gemini Voices")
-                self._populate_guide_tab(gemini_tab, "gemini")
+                # Créer le scrollable frame et le stocker pour éviter de recréer les voix
+                self.gemini_scroll_frame = customtkinter.CTkScrollableFrame(gemini_tab, label_text="")
+                self.gemini_scroll_frame.pack(fill="both", expand=True)
+                self._populate_guide_tab(self.gemini_scroll_frame, "gemini")
 
             if self.elevenlabs_api_configured:
                 elevenlabs_tab = notebook.add("ElevenLabs Voices")
                 # Créer le conteneur une seule fois
                 self.elevenlabs_scroll_frame = customtkinter.CTkScrollableFrame(elevenlabs_tab, label_text="")
                 self.elevenlabs_scroll_frame.pack(fill="both", expand=True)
-                self._load_more_elevenlabs_voices() # Charger le premier lot
+                # Le chargement sera déclenché par check_voices_update() quand les voix seront prêtes
+                if self.elevenlabs_voices_loaded:
+                    self._load_more_elevenlabs_voices()
 
         button_frame = customtkinter.CTkFrame(main_frame, fg_color="transparent")
         button_frame.pack(fill=tk.X, padx=10, pady=(15, 10))
@@ -198,16 +225,22 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
                                    font=customtkinter.CTkFont(weight="bold"), width=220).pack(side=tk.LEFT,
                                                                                               padx=(0, 10))
 
-    def _populate_guide_tab(self, tab, provider):
-        # Cette fonction ne gère plus que Gemini, qui est chargé une seule fois.
-        scrollable_frame = customtkinter.CTkScrollableFrame(tab, label_text="")
-        scrollable_frame.pack(fill="both", expand=True)
+    def _populate_guide_tab(self, scrollable_frame, provider):
+        """Peuple l'onglet des voix Gemini. Ne doit être appelé qu'une seule fois."""
+        # Protection contre les appels multiples (doublons)
+        if provider == "gemini" and self._gemini_voices_displayed:
+            return
+
         voices = list(AVAILABLE_VOICES.items())
         for i, (name, desc) in enumerate(voices):
             self._create_guide_row(scrollable_frame, provider, name, f"{name} - {desc}", name)
             if i < len(voices) - 1:
                 separator = customtkinter.CTkFrame(scrollable_frame, height=1, fg_color=("gray80", "gray25"))
                 separator.pack(fill='x', pady=5, padx=5)
+
+        # Marquer comme affiché
+        if provider == "gemini":
+            self._gemini_voices_displayed = True
 
     def _create_guide_row(self, parent, provider, voice_id, display_name, play_identifier):
         # Set a fixed height for each row and prevent it from resizing.
@@ -260,26 +293,54 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         if not self.elevenlabs_scroll_frame:
             return
 
-        # Supprimer l'ancien bouton "Charger plus" s'il existe
-        if self.load_more_btn and self.load_more_btn.winfo_exists():
-            self.load_more_btn.destroy()
-            self.load_more_btn = None
+        # Protection contre les appels multiples
+        if hasattr(self, '_loading_more_voices') and self._loading_more_voices:
+            return
+        self._loading_more_voices = True
 
-        if self.elevenlabs_voices_loaded and self.elevenlabs_voices:
-            voices_to_display = self.elevenlabs_voices[self.elevenlabs_voice_offset : self.elevenlabs_voice_offset + 20]
-            for voice in voices_to_display:
-                self._create_guide_row(self.elevenlabs_scroll_frame, "elevenlabs", voice['id'], voice['display_name'], voice['preview_url'])
-                separator = customtkinter.CTkFrame(self.elevenlabs_scroll_frame, height=1, fg_color=("gray80", "gray25"))
-                separator.pack(fill='x', pady=5, padx=5)
-            
-            self.elevenlabs_voice_offset += len(voices_to_display)
+        try:
+            # Supprimer l'ancien bouton "Charger plus" s'il existe
+            if self.load_more_btn:
+                try:
+                    if self.load_more_btn.winfo_exists():
+                        self.load_more_btn.destroy()
+                except tk.TclError:
+                    pass
+                self.load_more_btn = None
 
-            # S'il reste des voix à charger, recréer le bouton
-            if self.elevenlabs_voice_offset < len(self.elevenlabs_voices):
-                self.load_more_btn = customtkinter.CTkButton(self.elevenlabs_scroll_frame, text="Charger plus...", command=self._load_more_elevenlabs_voices)
-                self.load_more_btn.pack(pady=10)
-        else:
-            customtkinter.CTkLabel(self.elevenlabs_scroll_frame, text="Loading ElevenLabs voices...").pack(pady=20)
+            if self.elevenlabs_voices_loaded and self.elevenlabs_voices:
+                # Si c'est le premier chargement et que des voix sont déjà affichées, ne rien faire
+                if self.elevenlabs_voice_offset == 0 and self._elevenlabs_voices_displayed:
+                    return
+
+                voices_to_display = self.elevenlabs_voices[self.elevenlabs_voice_offset : self.elevenlabs_voice_offset + 20]
+
+                if voices_to_display:  # Seulement si on a des voix à afficher
+                    for voice in voices_to_display:
+                        self._create_guide_row(self.elevenlabs_scroll_frame, "elevenlabs", voice['id'],
+                                             voice['display_name'], voice['preview_url'])
+                        separator = customtkinter.CTkFrame(self.elevenlabs_scroll_frame, height=1,
+                                                          fg_color=("gray80", "gray25"))
+                        separator.pack(fill='x', pady=5, padx=5)
+
+                    self.elevenlabs_voice_offset += len(voices_to_display)
+                    self._elevenlabs_voices_displayed = True
+
+                    # S'il reste des voix à charger, recréer le bouton
+                    if self.elevenlabs_voice_offset < len(self.elevenlabs_voices):
+                        self.load_more_btn = customtkinter.CTkButton(
+                            self.elevenlabs_scroll_frame,
+                            text=f"Load more... ({self.elevenlabs_voice_offset}/{len(self.elevenlabs_voices)})",
+                            command=self._load_more_elevenlabs_voices
+                        )
+                        self.load_more_btn.pack(pady=10)
+            elif not self.elevenlabs_voices_loaded:
+                # Afficher un message de chargement seulement si rien n'est affiché
+                if not self._elevenlabs_voices_displayed:
+                    customtkinter.CTkLabel(self.elevenlabs_scroll_frame,
+                                         text="Loading ElevenLabs voices...").pack(pady=20)
+        finally:
+            self._loading_more_voices = False
 
     def safe_update_button(self, state, text):
         try:
@@ -388,7 +449,18 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
                 new_settings.setdefault('speaker_voices', {})[speaker_name] = row['gemini_voice'].get()
             if row.get('elevenlabs_voice'):
                 display = row['elevenlabs_voice'].get()
-                voice_id = next((v['id'] for v in self.elevenlabs_voices if v['display_name'] == display), "")
+                # Try to find the voice_id from the loaded voices
+                voice_id = next((v['id'] for v in self.elevenlabs_voices if v['display_name'] == display), None)
+
+                # If voice_id is not found (voices not loaded yet), preserve the existing ID from current_settings
+                if voice_id is None:
+                    existing_data = self.current_settings.get('speaker_voices_elevenlabs', {}).get(speaker_name, {})
+                    if isinstance(existing_data, dict) and existing_data.get('display_name') == display:
+                        # Keep the existing voice_id if the display_name hasn't changed
+                        voice_id = existing_data.get('id', '')
+                    else:
+                        voice_id = ''
+
                 new_settings.setdefault('speaker_voices_elevenlabs', {})[speaker_name] = {'id': voice_id,
                                                                                           'display_name': display}
         if self.save_callback: self.save_callback(new_settings)
