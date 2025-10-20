@@ -187,7 +187,7 @@ Elle sera stockée de manière sécurisée.
 ## 🚀 Fonctionnalité avancée : Génération de démo HTML (optionnel)
 
 L'application peut générer une page HTML partageable avec l'audio de votre podcast et une transcription synchronisée, mot par mot. C'est parfait pour partager des démos ou pour l'accessibilité.
-Voir un exemple de page HTML générée [ici](assets/who_am_i.html).
+Voir un exemple de page HTML générée [ici](https://laurentftech.github.io/Podcast_generator/assets/who_am_i.html).
 
 ### Installation des dépendances optionnelles pour la génération de démo
 
