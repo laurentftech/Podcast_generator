@@ -210,7 +210,7 @@ It will be stored securely.
  
  The app can generate a shareable HTML page with your podcast audio and a synchronized, word-by-word highlighted transcript. This is perfect for sharing demos or for accessibility.
  
- See an example of a generated HTML page [here](docs/assets/who_am_i.html).
+ See an example of a generated HTML page [here](https://laurentftech.github.io/Podcast_generator/assets/who_am_i.html).
  
  ### Installing Optional Dependencies for Demo Generation
  
