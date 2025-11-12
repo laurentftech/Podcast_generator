@@ -526,7 +526,7 @@ def validate_speakers(script_text: str, app_settings: Dict[str, Any]) -> Tuple[L
           Si plus de 2 sont détectés, une ValueError est levée avec un message explicite.
     """
     # Trouver tous les locuteurs uniques du script (lignes du style "Nom: texte")
-    script_speakers = set(re.findall(r"^\s*(.+?)\s*:", script_text, re.MULTILINE))
+    script_speakers = set(re.findall(r"^\s*(\w+)\s*:", script_text, re.MULTILINE))
 
     if not script_speakers:
         return ([], [])  # Aucun speaker détecté
