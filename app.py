@@ -261,4 +261,4 @@ def get_temp_file(filename):
 if __name__ == '__main__':
     from dotenv import load_dotenv
     load_dotenv()
-    app.run(debug=True, port=5001)
+    app.run(debug=False, port=5001)

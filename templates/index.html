@@ -222,7 +222,6 @@
             animation: generating-wave 2s linear infinite;
         }
         #tts-status-bar {
-            padding: 10px;
             border-radius: 4px;
             background-color: var(--container-bg-color);
             text-align: left;
@@ -230,6 +229,8 @@
             color: var(--text-color);
             border: none; /* Remove border from status bar */
             margin-bottom: 1em; /* Added space below status bar */
+            margin-left: 0.5em; /* Explicitly set left margin to 0 */
+            padding-left: 0; /* Explicitly set left padding to 0 */
         }
         /* Ensure script label is left-aligned and has space above it */
         #podcast-form label[for="script"] {
@@ -237,6 +238,8 @@
             text-align: left; /* Align to the left */
             margin-top: 1em; /* Space between status bar and script label */
             margin-bottom: 5px;
+            margin-left: 0.5em; /* Explicitly set left margin to 0 */
+            padding-left: 0; /* Explicitly set left padding to 0 */
         }
     </style>
 </head>
