@@ -1,8 +1,13 @@
 # Use an official Python runtime as a parent image
-FROM python:3.11-slim-buster
+FROM python:3.11-slim-bookworm
 
 # Set the working directory in the container
 WORKDIR /app
+
+# Install FFmpeg (required for audio processing)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements file into the container at /app
 COPY requirements.txt .

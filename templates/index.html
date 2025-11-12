@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Podcast Generator</title>
     <link rel="icon" href="/assets/podcast.png" type="image/png">
+    <link rel="manifest" href="/static/manifest.webmanifest">
+    <meta name="theme-color" content="#1e1e1e">
+    <!-- iOS support -->
+    <link rel="apple-touch-icon" href="/assets/podcast.png">
     <style>
         :root {
             --bg-color: #f4f4f9;
@@ -681,6 +685,17 @@
                     generateDemoConfirmBtn.classList.remove('generating');
                     generateDemoConfirmBtn.textContent = 'Generate';
                 }
+            }
+
+            // --- PWA Service Worker Registration ---
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/static/sw.js').then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    }, err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+                });
             }
         });
     </script>
