@@ -22,3 +22,6 @@ _version.py
 *.DS_Store
 Podcast_generator.egg-info/
 instance/*
+
+# Environment variables (contains API keys)
+.env

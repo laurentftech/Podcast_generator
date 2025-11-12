@@ -1,5 +1,7 @@
 # 🎙️ Podcast Generator
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=000000)](https://www.buymeacoffee.com/laurentftech)
+[![Docker Hub](https://img.shields.io/docker/v/gandulf78/podcast_generator?label=docker&logo=docker)](https://hub.docker.com/r/gandulf78/podcast_generator)
+[![Docker Pulls](https://img.shields.io/docker/pulls/gandulf78/podcast_generator)](https://hub.docker.com/r/gandulf78/podcast_generator)
 
 If you enjoy this project and want to support my work, feel free to [buy me a coffee](https://www.buymeacoffee.com/laurentftech) ☕. Thank you for your support!
 
@@ -231,6 +233,56 @@ pip install .[demo]
 
 ```bash
 pip install .[demo]
+```
+
+---
+
+## 🐳 Docker Deployment
+
+You can run Podcast Generator as a web service using Docker. This provides a REST API and web interface.
+
+### Setting up API Keys
+
+First, create a `.env` file with your API keys:
+
+```bash
+# Copy the example file
+cp .env.example .env
+
+# Edit .env and add your API keys
+# ELEVENLABS_API_KEY=your_actual_key_here
+# GEMINI_API_KEY=your_actual_key_here
+```
+
+### Using Docker Hub (Recommended)
+
+**Option 1: Using docker-compose (easiest)**
+
+```bash
+# Pull and start the container (reads .env automatically)
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+**Option 2: Using docker run**
+
+```bash
+# Pull the latest image
+docker pull gandulf78/podcast_generator:latest
+
+# Run the container (load .env file)
+docker run -d -p 8000:8000 \
+  -v $(pwd)/config:/app/config \
+  -v $(pwd)/logs:/app/logs \
+  --env-file .env \
+  gandulf78/podcast_generator:latest
+```
+
+The web interface will be available at `http://localhost:8000`
+
+### Building from Source
+
+```bash
+docker-compose up --build
 ```
 
 ---

@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from generate_podcast import generate, PODCAST_SCRIPT, setup_logging, validate_speakers, update_elevenlabs_quota
-from utils import sanitize_text, get_asset_path
+from utils import sanitize_text, get_asset_path, get_app_data_dir
+from config import AVAILABLE_VOICES, DEFAULT_APP_SETTINGS
 from create_demo import create_html_demo_whisperx
 import os
 import tempfile
@@ -38,7 +39,6 @@ app.config['DEMOS_DIR'] = DEMOS_DIR
 
 
 def get_settings_path():
-    from gui import get_app_data_dir
     return os.path.join(get_app_data_dir(), "settings.json")
 
 def load_settings():
@@ -46,8 +46,7 @@ def load_settings():
         with open(get_settings_path(), 'r') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
-        from gui import PodcastGeneratorApp
-        return PodcastGeneratorApp.DEFAULT_APP_SETTINGS
+        return DEFAULT_APP_SETTINGS
 
 def save_settings(settings):
     with open(get_settings_path(), 'w') as f:
@@ -111,7 +110,7 @@ def update_settings():
 
 @app.route('/api/voices', methods=['GET'])
 def get_voices():
-    from gui import AVAILABLE_VOICES as gemini_voices
+    gemini_voices = AVAILABLE_VOICES
     elevenlabs_voices = []
     api_key = os.environ.get("ELEVENLABS_API_KEY")
     if api_key:
