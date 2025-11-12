@@ -1,10 +1,7 @@
-# Pour un environnement de développement cohérent, installez les dépendances
-# à partir du fichier pyproject.toml du projet.
-#
-# Pour installer les dépendances de base :
-# pip install .
-#
-# Pour installer les dépendances de développement et de démo :
-# pip install .[dev,demo]
-
--e .[dev,demo]
+Flask
+gunicorn
+google-generativeai
+elevenlabs
+requests
+python-dotenv
+keyring

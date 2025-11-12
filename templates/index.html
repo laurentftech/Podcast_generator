@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Podcast Generator</title>
+    <link rel="icon" href="/assets/podcast.png" type="image/png">
+    <style>
+        :root {
+            --bg-color: #f4f4f9;
+            --text-color: #333;
+            --container-bg-color: #fff;
+            --input-border-color: #ddd;
+            --button-bg-color: #007bff;
+            --button-text-color: white;
+            --button-disabled-bg-color: #aaa;
+            --button-disabled-text-color: #6c757d;
+            --success-bg: #e7f7e7;
+            --success-text: #2d6a2d;
+            --error-bg: #fde2e2;
+            --error-text: #b71c1c;
+            --shadow-color: rgba(0,0,0,0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #121212;
+                --text-color: #e0e0e0;
+                --container-bg-color: #1e1e1e;
+                --input-border-color: #444;
+                --button-bg-color: #0d6efd;
+                --button-disabled-bg-color: #333;
+                --button-disabled-text-color: #888;
+                --success-bg: #1c3c1c;
+                --success-text: #a7d7a7;
+                --error-bg: #4d1f1f;
+                --error-text: #f7c5c5;
+                --shadow-color: rgba(255,255,255,0.1);
+            }
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0; 
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .top-bar {
+            background-color: var(--container-bg-color);
+            padding: 0.5em 2em;
+            box-shadow: 0 2px 4px var(--shadow-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 2em auto;
+            padding: 2em;
+            background-color: var(--container-bg-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px var(--shadow-color);
+            text-align: center;
+        }
+        h1, h2 {
+            color: var(--text-color);
+        }
+        textarea { 
+            width: 100%; 
+            height: 250px; 
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid var(--input-border-color);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            box-sizing: border-box;
+            margin-bottom: 1em;
+            text-align: left;
+        }
+        button, .button {
+            display: inline-block;
+            padding: 10px 15px;
+            border: none;
+            background-color: var(--button-bg-color);
+            color: var(--button-text-color);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            text-decoration: none;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .play-btn {
+            padding: 5px 10px;
+            font-size: 0.8em;
+            margin-left: 5px;
+        }
+        button:disabled {
+            background-color: var(--button-disabled-bg-color);
+            color: var(--button-disabled-text-color);
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 1em;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .status-success { background-color: var(--success-bg); color: var(--success-text); }
+        .status-error { background-color: var(--error-bg); color: var(--error-text); }
+        
+        #result-container, #demo-result-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 1em;
+        }
+        #result-container a, #demo-result-container a {
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            padding: 10px 15px;
+            white-space: nowrap;
+        }
+        #demo-result-container a {
+            background-color: #17a2b8;
+        }
+        #result-container audio {
+            flex-grow: 1;
+            margin-left: 20px;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.6);
+        }
+        .modal-content {
+            background-color: var(--container-bg-color);
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid var(--input-border-color);
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .modal-content input {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--input-border-color);
+            border-radius: 4px;
+        }
+        .modal-content select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--input-border-color);
+            border-radius: 4px;
+            padding: 8px 30px 8px 10px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23333' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 12px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover, .close:focus {
+            color: var(--text-color);
+            text-decoration: none;
+            cursor: pointer;
+        }
+        #voice-settings-container {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 10px;
+            align-items: center;
+        }
+        #voice-settings-container label {
+            justify-self: end;
+            font-weight: bold;
+        }
+        .voice-row {
+            display: contents;
+        }
+        .modal-footer {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        /* Generation Animation */
+        @keyframes generating-wave {
+            0% { background-position: 100% 50%; }
+            100% { background-position: -100% 50%; }
+        }
+        .generating {
+            background: linear-gradient(90deg, var(--button-bg-color) 0%, #0099ff 50%, var(--button-bg-color) 100%);
+            background-size: 200% 200%;
+            animation: generating-wave 2s linear infinite;
+        }
+        #tts-status-bar {
+            padding: 10px;
+            border-radius: 4px;
+            background-color: var(--container-bg-color);
+            text-align: left;
+            font-size: 0.9em;
+            color: var(--text-color);
+            border: none; /* Remove border from status bar */
+            margin-bottom: 1em; /* Added space below status bar */
+        }
+        /* Ensure script label is left-aligned and has space above it */
+        #podcast-form label[for="script"] {
+            display: block;
+            text-align: left; /* Align to the left */
+            margin-top: 1em; /* Space between status bar and script label */
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <button id="demo-btn" class="button" disabled>Generate HTML Demo</button>
+        <button id="settings-btn" class="button">Settings</button>
+        <button id="about-btn" class="button">About</button>
+    </div>
+
+    <div class="container">
+        <img src="/assets/podcast.png" alt="Podcast Generator Logo" width="64" height="64">
+        <h1>Podcast Generator</h1>
+        <div id="tts-status-bar">
+            <!-- TTS status and quota will be displayed here -->
+        </div>
+        <form id="podcast-form">
+            <label for="script">Script:</label>
+            <textarea id="script" name="script">{{ default_script }}</textarea><br>
+            <button id="generate-btn" type="submit" style="width: 100%;">Generate Podcast</button>
+        </form>
+        <div id="status"></div>
+        <div id="result"></div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+      <div class="modal-content">
+        <span class="close" id="settings-close">&times;</span>
+        <h2>Settings</h2>
+        <div id="provider-container"></div>
+        <hr>
+        <h3>Voice Settings</h3>
+        <div id="voice-settings-container"></div>
+        <div class="modal-footer">
+            <button id="save-settings-btn" class="button">Save Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Demo Modal -->
+    <div id="demo-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="demo-close">&times;</span>
+            <h2>Generate HTML Demo</h2>
+            <label for="demo-title">Title:</label>
+            <input type="text" id="demo-title" name="demo-title">
+            <label for="demo-subtitle">Subtitle:</label>
+            <input type="text" id="demo-subtitle" name="demo-subtitle">
+            <div class="modal-footer">
+                <button id="generate-demo-confirm-btn" class="button">Generate</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div id="about-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="about-close">&times;</span>
+            <img src="/assets/podcast.png" alt="Podcast Generator Logo" width="64" height="64">
+            <h2>About Podcast Generator</h2>
+            <p>Version: <span id="app-version"></span></p>
+            <p>This application is an open-source project designed to simplify the creation of audio podcasts from text scripts.</p>
+            <hr>
+            <h3>Core Technologies</h3>
+            <ul style="text-align: left;">
+                <li><strong>Text-to-Speech by:</strong> Google Gemini & ElevenLabs</li>
+                <li><strong>Word-level Transcription by:</strong> WhisperX</li>
+            </ul>
+            <h3>Asset Credits</h3>
+            <ul style="text-align: left;">
+                <li><strong>Icon by:</strong> Smashicons from <a href="https://www.flaticon.com" target="_blank">flaticon.com</a></li>
+            </ul>
+            <hr>
+            <p>MIT License</p>
+            <p>Copyright (c) 2025 Laurent FRANCOISE<br>
+            Contact: <a href="mailto:laurent.f.tech@icloud.com">laurent.f.tech@icloud.com</a></p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const generateBtn = document.getElementById('generate-btn');
+            const demoBtn = document.getElementById('demo-btn');
+            const settingsBtn = document.getElementById('settings-btn');
+            const aboutBtn = document.getElementById('about-btn');
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            const ttsStatusBar = document.getElementById('tts-status-bar');
+            
+            const settingsModal = document.getElementById('settings-modal');
+            const demoModal = document.getElementById('demo-modal');
+            const aboutModal = document.getElementById('about-modal');
+            
+            const settingsClose = document.getElementById('settings-close');
+            const demoClose = document.getElementById('demo-close');
+            const aboutClose = document.getElementById('about-close');
+
+            const providerContainer = document.getElementById('provider-container');
+            const voiceSettingsContainer = document.getElementById('voice-settings-container');
+            const saveSettingsBtn = document.getElementById('save-settings-btn');
+            const generateDemoConfirmBtn = document.getElementById('generate-demo-confirm-btn');
+
+            let allVoices = {};
+            let currentSettings = {};
+            let sampleAudio = null;
+            let lastGeneratedFilename = null;
+
+            function cleanScript(text) {
+                return text.split('\n').filter(line => /^\s*\w+:\s*.+/.test(line)).join('\n');
+            }
+
+            // --- Modal Logic ---
+            settingsBtn.onclick = () => { loadSettings(); settingsModal.style.display = 'block'; }
+            demoBtn.onclick = () => { demoModal.style.display = 'block'; }
+            aboutBtn.onclick = () => { loadAboutInfo(); aboutModal.style.display = 'block'; }
+            
+            settingsClose.onclick = () => closeModal(settingsModal);
+            demoClose.onclick = () => closeModal(demoModal);
+            aboutClose.onclick = () => closeModal(aboutModal);
+
+            window.onclick = (event) => {
+                if (event.target == settingsModal) closeModal(settingsModal);
+                if (event.target == demoModal) closeModal(demoModal);
+                if (event.target == aboutModal) closeModal(aboutModal);
+            }
+            function closeModal(modal) {
+                if (sampleAudio) sampleAudio.pause();
+                modal.style.display = 'none';
+            }
+
+            // --- About Logic ---
+            async function loadAboutInfo() {
+                try {
+                    const response = await fetch('/api/about');
+                    const data = await response.json();
+                    document.getElementById('app-version').textContent = data.version;
+                } catch (error) {
+                    document.getElementById('app-version').textContent = 'Error loading version.';
+                }
+            }
+
+            // --- TTS Status Bar Logic ---
+            async function updateTtsStatusBar() {
+                try {
+                    const response = await fetch('/api/status');
+                    const data = await response.json();
+                    let text = `TTS Provider: ${data.provider_name}`;
+                    if (data.quota_text) {
+                        text += ` - ${data.quota_text}`;
+                    }
+                    ttsStatusBar.textContent = text;
+                } catch (error) {
+                    console.error("Error fetching TTS status:", error);
+                    ttsStatusBar.textContent = "TTS Status: Error loading.";
+                }
+            }
+            updateTtsStatusBar(); // Initial load
+
+            // --- Settings Logic ---
+            async function loadSettings() {
+                try {
+                    const [settingsRes, voicesRes] = await Promise.all([
+                        fetch('/api/settings'),
+                        fetch('/api/voices')
+                    ]);
+                    currentSettings = await settingsRes.json();
+                    allVoices = await voicesRes.json();
+                    renderProviderSelection();
+                    renderVoiceSettings(currentSettings.tts_provider || 'elevenlabs');
+                } catch (error) {
+                    console.error("Error loading settings:", error);
+                    providerContainer.innerHTML = '<p style="color: red;">Could not load settings.</p>';
+                }
+            }
+
+            function renderProviderSelection() {
+                providerContainer.innerHTML = '';
+                const bothKeys = currentSettings.has_elevenlabs_key && currentSettings.has_gemini_key;
+                const label = document.createElement('label');
+                label.textContent = 'TTS Provider: ';
+                providerContainer.appendChild(label);
+                if (bothKeys) {
+                    const select = document.createElement('select');
+                    select.id = 'tts-provider';
+                    select.innerHTML = `<option value="elevenlabs">ElevenLabs</option><option value="gemini">Gemini</option>`;
+                    select.value = currentSettings.tts_provider;
+                    select.onchange = () => renderVoiceSettings(select.value);
+                    providerContainer.appendChild(select);
+                } else {
+                    const providerName = currentSettings.tts_provider === 'gemini' ? 'Gemini' : 'ElevenLabs';
+                    const span = document.createElement('span');
+                    span.textContent = providerName;
+                    span.style.fontWeight = 'bold';
+                    providerContainer.appendChild(span);
+                }
+            }
+
+            function renderVoiceSettings(provider) {
+                voiceSettingsContainer.innerHTML = '';
+                const speakerVoices = (provider === 'elevenlabs') ? currentSettings.speaker_voices_elevenlabs : currentSettings.speaker_voices;
+                const voices = (provider === 'elevenlabs') ? allVoices.elevenlabs : allVoices.gemini;
+
+                if (!voices || (provider === 'elevenlabs' && voices.length === 0)) {
+                    voiceSettingsContainer.innerHTML = `<p style="color: orange;">Could not fetch voices for ${provider}. Is the API key set in the server environment?</p>`;
+                    return;
+                }
+
+                const scriptText = document.getElementById('script').value;
+                const lines = scriptText.split('\n');
+                const speakersInScript = lines.map(line => {
+                    const match = line.match(/^\s*(\w+):/);
+                    return match ? match[1] : null;
+                }).filter(Boolean);
+                const uniqueSpeakers = [...new Set(speakersInScript)];
+
+                if (uniqueSpeakers.length === 0) {
+                    voiceSettingsContainer.innerHTML = '<p>No speakers found in the script (e.g., "John: ..."). Check the script format.</p>';
+                    return;
+                }
+
+                uniqueSpeakers.forEach(speaker => {
+                    const label = document.createElement('label');
+                    label.textContent = `${speaker}:`;
+                    const select = document.createElement('select');
+                    select.dataset.speaker = speaker;
+                    const playBtn = document.createElement('button');
+                    playBtn.textContent = '▶';
+                    playBtn.className = 'button play-btn';
+                    const row = document.createElement('div');
+                    row.className = 'voice-row';
+                    row.appendChild(label);
+                    row.appendChild(select);
+                    row.appendChild(playBtn);
+                    voiceSettingsContainer.appendChild(row);
+
+                    if (provider === 'elevenlabs') {
+                        voices.forEach(voice => {
+                            const option = new Option(`${voice.name} (${voice.labels.gender || 'N/A'})`, voice.voice_id);
+                            select.add(option);
+                        });
+                        const currentVoiceId = speakerVoices[speaker] ? (speakerVoices[speaker].id || speakerVoices[speaker]) : '';
+                        select.value = currentVoiceId;
+                    } else {
+                        for (const [name, desc] of Object.entries(voices)) {
+                             const option = new Option(`${name} - ${desc}`, name);
+                             select.add(option);
+                        }
+                        select.value = speakerVoices[speaker] ? speakerVoices[speaker].split(' - ')[0] : '';
+                    }
+                    playBtn.onclick = () => playSample(playBtn, select.value, provider);
+                });
+            }
+
+            function stopAllAudio() {
+                if (sampleAudio && !sampleAudio.paused) {
+                    sampleAudio.pause();
+                    sampleAudio.currentTime = 0;
+                }
+                document.querySelectorAll('.play-btn').forEach(btn => btn.textContent = '▶');
+            }
+
+            function playSample(button, voiceId, provider) {
+                const wasPlaying = sampleAudio && !sampleAudio.paused && button.textContent === '⏸';
+                stopAllAudio();
+                if (wasPlaying) return;
+
+                let url;
+                if (provider === 'elevenlabs') {
+                    const voice = allVoices.elevenlabs.find(v => v.voice_id === voiceId);
+                    url = voice ? voice.preview_url : null;
+                } else {
+                    url = `/api/gemini_sample/${voiceId}`;
+                }
+                if (!url) {
+                    alert('No sample available for this voice.');
+                    return;
+                }
+                sampleAudio = new Audio(url);
+                button.textContent = '⏸';
+                sampleAudio.play();
+                sampleAudio.onended = () => button.textContent = '▶';
+                sampleAudio.onerror = () => {
+                    alert("Error playing audio sample.");
+                    button.textContent = '▶';
+                }
+            }
+
+            saveSettingsBtn.onclick = async function() {
+                const providerSelect = document.getElementById('tts-provider');
+                const newProvider = providerSelect ? providerSelect.value : currentSettings.tts_provider;
+                const newSpeakerVoices = {};
+                const newSpeakerVoicesElevenlabs = {};
+                const selects = voiceSettingsContainer.querySelectorAll('select');
+                selects.forEach(select => {
+                    const speaker = select.dataset.speaker;
+                    const voice = select.value;
+                    if (newProvider === 'elevenlabs') {
+                        const voiceData = allVoices.elevenlabs.find(v => v.voice_id === voice);
+                        newSpeakerVoicesElevenlabs[speaker] = { id: voice, display_name: voiceData ? `${voiceData.name} - ...` : 'Unknown' };
+                    } else {
+                        newSpeakerVoices[speaker] = `${voice} - ${allVoices.gemini[voice]}`;
+                    }
+                });
+                const settingsToSave = {
+                    tts_provider: newProvider,
+                    speaker_voices: newProvider === 'gemini' ? newSpeakerVoices : currentSettings.speaker_voices,
+                    speaker_voices_elevenlabs: newProvider === 'elevenlabs' ? newSpeakerVoicesElevenlabs : currentSettings.speaker_voices_elevenlabs,
+                };
+                try {
+                    const response = await fetch('/api/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(settingsToSave)
+                    });
+                    if (response.ok) {
+                        alert('Settings saved!');
+                        closeModal(settingsModal);
+                        updateTtsStatusBar(); // Refresh status bar after saving settings
+                    } else {
+                        alert('Failed to save settings.');
+                    }
+                } catch (error) {
+                    alert('Error saving settings.');
+                }
+            }
+
+            document.getElementById('podcast-form').addEventListener('submit', async function(event) {
+                event.preventDefault();
+                const form = event.target;
+                const originalScript = form.elements.script.value;
+                const cleanedScript = cleanScript(originalScript);
+                
+                const formData = new FormData();
+                formData.append('script', cleanedScript);
+
+                statusDiv.style.display = 'none';
+                resultDiv.innerHTML = '';
+                generateBtn.disabled = true;
+                generateBtn.classList.add('generating');
+                demoBtn.disabled = true;
+                generateBtn.textContent = 'Generating...';
+                lastGeneratedFilename = null;
+
+                try {
+                    const response = await fetch('/generate', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        statusDiv.textContent = 'Generation successful!';
+                        statusDiv.className = 'status-success';
+                        const resultContainer = document.createElement('div');
+                        resultContainer.id = 'result-container';
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = data.download_url;
+                        downloadLink.textContent = 'Download MP3';
+                        downloadLink.download = data.filename;
+                        const audioPlayer = document.createElement('audio');
+                        audioPlayer.controls = true;
+                        audioPlayer.src = data.download_url;
+                        resultContainer.appendChild(downloadLink);
+                        resultContainer.appendChild(audioPlayer);
+                        resultDiv.appendChild(resultContainer);
+                        lastGeneratedFilename = data.filename;
+                        demoBtn.disabled = false;
+                        updateTtsStatusBar(); // Refresh status bar after successful generation
+                    } else {
+                        statusDiv.textContent = `Error: ${data.error || 'Unknown error'}`;
+                        statusDiv.className = 'status-error';
+                    }
+                } catch (error) {
+                    statusDiv.textContent = 'A network error occurred. Could not connect to the server.';
+                    statusDiv.className = 'status-error';
+                } finally {
+                    statusDiv.style.display = 'block';
+                    generateBtn.disabled = false;
+                    generateBtn.classList.remove('generating');
+                    generateBtn.textContent = 'Generate Podcast';
+                }
+            });
+
+            generateDemoConfirmBtn.onclick = async function() {
+                if (!lastGeneratedFilename) {
+                    alert("Please generate a podcast first.");
+                    return;
+                }
+                generateDemoConfirmBtn.disabled = true;
+                generateDemoConfirmBtn.classList.add('generating');
+                generateDemoConfirmBtn.textContent = 'Generating...';
+                statusDiv.style.display = 'none';
+
+                try {
+                    const response = await fetch('/api/generate_demo', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            script: cleanScript(document.getElementById('script').value),
+                            audio_filename: lastGeneratedFilename,
+                            title: document.getElementById('demo-title').value,
+                            subtitle: document.getElementById('demo-subtitle').value
+                        })
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        statusDiv.textContent = 'Demo generated!';
+                        statusDiv.className = 'status-success';
+                        
+                        const demoResultContainer = document.createElement('div');
+                        demoResultContainer.id = 'demo-result-container';
+
+                        const viewLink = document.createElement('a');
+                        viewLink.href = data.view_url;
+                        viewLink.textContent = 'View Demo';
+                        viewLink.target = '_blank';
+
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = data.download_url;
+                        downloadLink.textContent = 'Download Demo (.zip)';
+                        downloadLink.style.marginLeft = '10px';
+
+                        demoResultContainer.appendChild(viewLink);
+                        demoResultContainer.appendChild(downloadLink);
+                        resultDiv.appendChild(demoResultContainer);
+
+                        closeModal(demoModal);
+                    } else {
+                        statusDiv.textContent = `Error: ${data.error || 'Unknown error'}`;
+                        statusDiv.className = 'status-error';
+                    }
+                } catch (error) {
+                    statusDiv.textContent = 'A network error occurred while generating the demo.';
+                    statusDiv.className = 'status-error';
+                } finally {
+                    statusDiv.style.display = 'block';
+                    generateDemoConfirmBtn.disabled = false;
+                    generateDemoConfirmBtn.classList.remove('generating');
+                    generateDemoConfirmBtn.textContent = 'Generate';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

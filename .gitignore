@@ -20,5 +20,5 @@ _version.py
 .vscode/
 .idea/
 *.DS_Store
-/podcast.icns
 Podcast_generator.egg-info/
+instance/*
