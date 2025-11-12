@@ -1,0 +1,9 @@
+services:
+  podcast-generator:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+    restart: always

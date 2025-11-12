@@ -1,6 +1,6 @@
 Flask
 gunicorn
-google-generativeai
+google-genai
 elevenlabs
 requests
 python-dotenv
