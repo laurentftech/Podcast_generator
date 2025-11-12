@@ -38,7 +38,7 @@ except ImportError:
 from about_window import AboutWindow
 from api_keys_window import APIKeysWindow
 from generate_podcast import validate_speakers, update_elevenlabs_quota
-from utils import get_asset_path, sanitize_app_settings_for_backend, find_ffplay_path, get_app_data_dir
+from utils import get_asset_path, sanitize_app_settings_for_backend, find_ffplay_path, get_app_data_dir, sanitize_text
 from create_demo import create_html_demo_whisperx
 
 # --- Versioning ---
@@ -1010,9 +1010,11 @@ class PodcastGeneratorApp:
 
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+                sanitized_content = sanitize_text(content)
                 self.script_text.delete('1.0', tk.END)
-                self.script_text.insert('1.0', f.read())
-            self.log_status(f"Script loaded from: {os.path.basename(filepath)}")
+                self.script_text.insert('1.0', sanitized_content)
+            self.log_status(f"Script loaded and sanitized from: {os.path.basename(filepath)}")
         except Exception as e:
             messagebox.showerror("Reading error", f"Cannot read the file:\n{e}", parent=self.root)
             self.logger.error(f"Error reading the script: {e}")
@@ -1025,11 +1027,13 @@ class PodcastGeneratorApp:
                                    parent=self.root)
             return
 
-        self.last_generated_script = script_content  # Store script for demo
+        # Sanitize the script content before using it
+        sanitized_script = sanitize_text(script_content)
+        self.last_generated_script = sanitized_script  # Store sanitized script for demo
 
         # --- Validate Speaker Voices ---
         try:
-            missing_speakers, configured_speakers = validate_speakers(script_content, self.app_settings)
+            missing_speakers, configured_speakers = validate_speakers(sanitized_script, self.app_settings)
         except ValueError as e:
             # Règle Gemini: plus de 2 speakers -> erreur bloquante
             messagebox.showerror("Configuration Error", str(e), parent=self.root)
@@ -1091,7 +1095,7 @@ class PodcastGeneratorApp:
 
         thread = threading.Thread(
             target=self.run_generation,
-            args=(script_content, output_filepath, self.app_settings, self.api_key)
+            args=(sanitized_script, output_filepath, self.app_settings, self.api_key)
         )
         thread.daemon = True
         thread.start()

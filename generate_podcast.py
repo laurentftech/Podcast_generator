@@ -18,7 +18,7 @@ import keyring  # For secure credential storage
 
 import re
 import requests
-from utils import get_app_data_dir, find_ffmpeg_path, sanitize_app_settings_for_backend
+from utils import get_app_data_dir, find_ffmpeg_path, sanitize_app_settings_for_backend, sanitize_text
 
 # Global logger instance - initialized once when module is imported
 logger = logging.getLogger(__name__)
@@ -566,6 +566,9 @@ def generate(script_text: str, app_settings: dict, output_filepath: str, status_
     logger.info("Starting generation function.")
     status_callback("Starting podcast generation...")
 
+    # Sanitize the script text at the entry point of the generation logic
+    sanitized_script_text = sanitize_text(script_text)
+
     ffmpeg_path = find_ffmpeg_path()
     if not ffmpeg_path:
         status_callback("--- CRITICAL ERROR ---")
@@ -592,12 +595,12 @@ def generate(script_text: str, app_settings: dict, output_filepath: str, status_
     if provider_name == "gemini":
         speaker_mapping = (app_settings or {}).get("speaker_voices", {})
         provider = GeminiTTS(api_key=api_key)
-        return provider.synthesize(script_text=script_text, speaker_mapping=speaker_mapping,
+        return provider.synthesize(script_text=sanitized_script_text, speaker_mapping=speaker_mapping,
                                    output_filepath=output_filepath, status_callback=status_callback)
     else:
         speaker_mapping = (app_settings or {}).get("speaker_voices_elevenlabs", {})
         provider = ElevenLabsTTS(api_key=api_key)
-        return provider.synthesize(script_text=script_text, speaker_mapping=speaker_mapping,
+        return provider.synthesize(script_text=sanitized_script_text, speaker_mapping=speaker_mapping,
                                    output_filepath=output_filepath, status_callback=status_callback)
 
 
@@ -735,7 +738,7 @@ Example usage:
 
     temp_script_file_path = None
     if args.script_text:
-        script_text = args.script_text
+        script_text = sanitize_text(args.script_text)
         script_source_description = "the provided text"
         if not args.output_filepath:
             parser.error("argument --output is required when using --script-text.")
@@ -751,7 +754,7 @@ Example usage:
     else:  # script_filepath is guaranteed to be not None here
         try:
             with open(args.script_filepath, 'r', encoding='utf-8') as f:
-                script_text = f.read()
+                script_text = sanitize_text(f.read())
             script_filepath_for_demo = args.script_filepath
             script_source_description = f"'{os.path.basename(args.script_filepath)}'"
         except FileNotFoundError:

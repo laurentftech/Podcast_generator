@@ -2,7 +2,9 @@ import os
 import sys
 import shutil
 from typing import Optional, Dict, Any
-
+import re
+import unicodedata
+from html import unescape
 
 def get_asset_path(filename: str) -> Optional[str]:
     """
@@ -56,6 +58,37 @@ def find_ffplay_path() -> Optional[str]:
     """Finds the path to the ffplay executable."""
     return _find_command_path("ffplay")
 
+
+def sanitize_text(text: str) -> str:
+    if not text:
+        return ""
+
+    # 1️⃣ Enlève le HTML ou XML résiduel (ex : <p>, <o:p> de Word)
+    text = re.sub(r"<[^>]+>", " ", text)
+
+    # 2️⃣ Décode les entités HTML (ex: &nbsp;, &amp;)
+    text = unescape(text)
+
+    # 3️⃣ Normalise les caractères unicode (accents, quotes, symboles)
+    text = unicodedata.normalize("NFKC", text)
+
+    # 4️⃣ Remplace les espaces insécables et similaires par des espaces normaux
+    text = re.sub(r"[\u00A0\u2000-\u200B\u202F\u205F\u3000]", " ", text)
+
+    # 5️⃣ Supprime les caractères de contrôle invisibles (retours chariots bizarres, etc.)
+    text = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", text)
+
+    # 6️⃣ Remplace les guillemets Word “smart quotes” par des guillemets simples
+    text = text.translate(str.maketrans({
+        "“": '"', "”": '"',
+        "‘": "'", "’": "'",
+        "–": "-", "—": "-", "•": "-"
+    }))
+
+    # 7️⃣ Réduit les espaces multiples
+    text = re.sub(r"\s+", " ", text).strip()
+
+    return text
 
 def sanitize_app_settings_for_backend(app_settings: Dict[str, Any]) -> Dict[str, Any]:
     """
