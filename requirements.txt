@@ -11,3 +11,4 @@ elevenlabs
 
 # Utility
 requests
+keyring
