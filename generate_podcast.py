@@ -27,25 +27,39 @@ logger = logging.getLogger(__name__)
 # The podcast script is now split into instruction and main script
 DEFAULT_INSTRUCTION = "Read aloud in a warm, welcoming tone"
 DEFAULT_SCRIPT = """John: [playful] Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs, my dogs' names are corgis! Who am I??
-Samantha: [laughing] You're queen Elizabeth II!!
+Samantha: [laughing] You's queen Elizabeth II!!
 """
 PODCAST_SCRIPT = f"{DEFAULT_INSTRUCTION}\n{DEFAULT_SCRIPT}"
 
 
 def setup_logging() -> logging.Logger:
-    """Configures logging to write to a file in the application's data directory."""
+    """
+    Configures logging to write to a file and to the console.
+    Uses LOG_DIR environment variable if set, otherwise falls back to the application's data directory.
+    """
     if logger.hasHandlers():  # Avoids adding duplicate handlers
         return logger
 
-    log_dir = get_app_data_dir()
+    log_dir = os.getenv("LOG_DIR")
+    if not log_dir:
+        log_dir = get_app_data_dir()
+    
     os.makedirs(log_dir, exist_ok=True)
     log_file = os.path.join(log_dir, 'app.log')
 
     logger.setLevel(logging.INFO)
-    handler = logging.FileHandler(log_file, 'w', 'utf-8')
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(module)s - %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+
+    # File handler
+    file_handler = logging.FileHandler(log_file, 'w', 'utf-8')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    
     return logger
 
 def get_api_key(status_callback, logger: logging.Logger, parent_window=None, service: str = "gemini") -> Optional[str]:
@@ -211,6 +225,7 @@ class ElevenLabsTTS(TTSProvider):
             if not voice_id:
                 self.logger.warning(f"No voice mapped for '{speaker}', skipping segment.")
                 continue
+            self.logger.info(f"ElevenLabs - Speaker '{speaker}' mapped to voice_id: '{voice_id}'")
             dialogue_inputs.append({"text": text, "voice_id": voice_id})
 
         if not dialogue_inputs:
@@ -259,7 +274,8 @@ class ElevenLabsTTS(TTSProvider):
                 self.logger.info(f"Skipping non-dialogue line for ElevenLabs: '{line}'")
                 continue
             speaker, text = m.group(1).strip(), m.group(2).strip()
-            text = re.sub(r"<[^>]+>", "", text).strip()
+            # Apply sanitize_text here, after speaker and text are separated
+            text = sanitize_text(text)
             if text:
                 segments.append((speaker, text))
         return segments
@@ -331,7 +347,7 @@ def generate(script_text: str, app_settings: dict, output_filepath: str, status_
     if stop_event and stop_event.is_set():
         raise Exception("Generation stopped by user before starting.")
 
-    sanitized_script_text = sanitize_text(script_text)
+    # Removed sanitize_script_text here
     if not find_ffmpeg_path():
         raise FileNotFoundError("FFmpeg executable not found.")
 
@@ -351,7 +367,8 @@ def generate(script_text: str, app_settings: dict, output_filepath: str, status_
     ProviderClass = ElevenLabsTTS if provider_name == "elevenlabs" else GeminiTTS
     provider = ProviderClass(api_key=api_key)
     
-    return provider.synthesize(script_text=sanitized_script_text, speaker_mapping=speaker_mapping, output_filepath=output_filepath, status_callback=status_callback, stop_event=stop_event)
+    # Pass the original script_text to synthesize
+    return provider.synthesize(script_text=script_text, speaker_mapping=speaker_mapping, output_filepath=output_filepath, status_callback=status_callback, stop_event=stop_event)
 
 
 def parse_audio_mime_type(mime_type: str) -> Dict[str, int]:
@@ -378,7 +395,11 @@ def sanitize_app_settings_for_backend(app_settings: Dict[str, Any]) -> Dict[str,
     elevenlabs_voices = app_settings.get("speaker_voices_elevenlabs", {})
     clean_elevenlabs = {}
     for speaker, data in elevenlabs_voices.items():
-        clean_elevenlabs[speaker] = data.get('id', '') if isinstance(data, dict) else data
+        if isinstance(data, dict):
+            elevenlabs_mapping_clean[speaker] = data.get('id', '')
+        else:
+            # Legacy format: use the string as-is
+            elevenlabs_mapping_clean[speaker] = data
     clean_settings["speaker_voices_elevenlabs"] = clean_elevenlabs
     
     return clean_settings
@@ -398,12 +419,12 @@ if __name__ == "__main__":
         parser.error("Either script_filepath or --script-text is required.")
 
     if args.script_text:
-        script_text = sanitize_text(args.script_text)
+        script_text = args.script_text # Removed sanitize_text here
         output_filepath = args.output_filepath or "output.mp3"
     else:
         try:
             with open(args.script_filepath, 'r', encoding='utf-8') as f:
-                script_text = sanitize_text(f.read())
+                script_text = f.read() # Removed sanitize_text here
             output_filepath = args.output_filepath or f"{os.path.splitext(args.script_filepath)[0]}.mp3"
         except FileNotFoundError:
             sys.exit(f"Error: The script file was not found at '{args.script_filepath}'")

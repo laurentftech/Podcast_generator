@@ -11,4 +11,5 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - DEMO_AVAILABLE=${DEMO_AVAILABLE}
       - DEFAULT_TTS_PROVIDER=${DEFAULT_TTS_PROVIDER}
+      - LOG_DIR=/app/logs
     restart: always

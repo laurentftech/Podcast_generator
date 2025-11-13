@@ -72,11 +72,15 @@ def sanitize_text(text: str) -> str:
     # 3️⃣ Normalise les caractères unicode (accents, quotes, symboles)
     text = unicodedata.normalize("NFKC", text)
 
-    # 4️⃣ Remplace les espaces insécables et similaires par des espaces normaux
+    # 4️⃣ Remplace les espaces insécables et similaires par des espaces normaux,
+    # mais préserve les retours à la ligne.
     text = re.sub(r"[\u00A0\u2000-\u200B\u202F\u205F\u3000]", " ", text)
 
-    # 5️⃣ Supprime les caractères de contrôle invisibles (retours chariots bizarres, etc.)
-    text = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", text)
+    # 5️⃣ Supprime les caractères de contrôle invisibles, mais préserve les retours à la ligne.
+    # [\x00-\x1f\x7f-\x9f] sont les caractères de contrôle.
+    # Nous voulons exclure \n (LF, U+000A) et \r (CR, U+000D) de cette suppression.
+    text = re.sub(r"[\x00-\x09\x0B-\x0C\x0E-\x1f\x7f-\x9f]", "", text)
+
 
     # 6️⃣ Remplace les guillemets Word “smart quotes” par des guillemets simples
     text = text.translate(str.maketrans({
@@ -85,10 +89,12 @@ def sanitize_text(text: str) -> str:
         "–": "-", "—": "-", "•": "-"
     }))
 
-    # 7️⃣ Réduit les espaces multiples
-    text = re.sub(r"\s+", " ", text).strip()
+    # 7️⃣ Réduit les espaces multiples (mais pas les retours à la ligne)
+    # et supprime les espaces en début/fin de chaîne.
+    text = re.sub(r"[ \t]+", " ", text) # Replace multiple spaces/tabs with single space
 
-    return text
+    return text.strip() # Apply strip at the very end to clean leading/trailing spaces/newlines
+
 
 def sanitize_app_settings_for_backend(app_settings: Dict[str, Any]) -> Dict[str, Any]:
     """
