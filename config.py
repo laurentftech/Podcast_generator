@@ -49,7 +49,7 @@ AVAILABLE_VOICES = {
 
 # Default application settings
 DEFAULT_APP_SETTINGS = {
-    "tts_provider": "elevenlabs",
+    "tts_provider": os.getenv("DEFAULT_TTS_PROVIDER", "elevenlabs"),
     "speaker_voices": {"John": "Schedar - Even", "Samantha": "Zephyr - Bright"},
     "speaker_voices_elevenlabs": {
         "John": {"id": "TX3LPaxmHKxFdv7VOQHJ", "display_name": "Liam - Male, Young, american"},
