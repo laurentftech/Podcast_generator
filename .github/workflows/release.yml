@@ -205,23 +205,39 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for setuptools-scm to determine the version
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x' # Use a recent Python version
+
+      - name: Install setuptools-scm
+        run: pip install setuptools-scm
+
+      - name: Generate _version.py
+        run: python -m setuptools_scm write_version_to_file _version.py
+
+      - name: Get version from _version.py
+        id: get_version
+        run: |
+          # Read the __version__ variable from the generated _version.py
+          VERSION=$(python -c "import _version; print(_version.__version__)")
+          # Remove leading 'v' if present (e.g., v1.0.0 -> 1.0.0)
+          VERSION="${VERSION#v}"
+          # Extract major version (e.g., 1.0.0 -> 1)
+          MAJOR_VERSION=$(echo "$VERSION" | cut -d. -f1)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "MAJOR_VERSION=$MAJOR_VERSION" >> $GITHUB_ENV
+          echo "Extracted VERSION: $VERSION"
+          echo "Extracted MAJOR_VERSION: $MAJOR_VERSION"
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Get version from Git tag
-        id: get_version
-        run: |
-          VERSION="${{ github.ref_name }}"
-          VERSION="${VERSION#v}" # Remove leading 'v'
-          MAJOR_VERSION=$(echo "$VERSION" | cut -d. -f1)
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "MAJOR_VERSION=$MAJOR_VERSION" >> $GITHUB_ENV
-          echo "Extracted VERSION: $VERSION"
-          echo "Extracted MAJOR_VERSION: $MAJOR_VERSION"
 
       # --- Build and push FULL image (with WhisperX) ---
       - name: Build and push FULL Docker image
