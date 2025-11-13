@@ -190,7 +190,7 @@ class GeminiTTS(TTSProvider):
                 if i < len(models_to_try) - 1:
                     status_callback("Trying next model...")
                 else:
-                    raise e
+                    raise Exception(f"Gemini API Error: {e}")
         raise Exception("Audio generation failed after trying all available models.")
 
 
@@ -234,14 +234,19 @@ class ElevenLabsTTS(TTSProvider):
             return output_filepath
         except ApiError as e:
             self.logger.error(f"ElevenLabs API error: {e}")
-            raise e
+            try:
+                # Extract the user-friendly message from the error body
+                error_message = e.body['detail']['message']
+                raise Exception(f"ElevenLabs API Error: {error_message}")
+            except (KeyError, TypeError):
+                # Fallback for unexpected error formats
+                raise Exception(f"An unknown ElevenLabs API error occurred: {e}")
         except Exception as e:
-            # Don't re-raise the "stopped by user" exception, just let it be handled in the main generate function
-            if "stopped by user" not in str(e):
-                self.logger.error(f"ElevenLabs critical error: {e}", exc_info=True)
-                raise Exception(f"An unexpected critical error occurred in ElevenLabs TTS: {e}")
             # Re-raise the stop exception to be caught by the task runner
-            raise e
+            if "stopped by user" in str(e):
+                raise e
+            self.logger.error(f"ElevenLabs critical error: {e}", exc_info=True)
+            raise Exception(f"An unexpected critical error occurred in ElevenLabs TTS: {e}")
 
     def _parse_script_segments(self, script_text: str) -> List[Tuple[str, str]]:
         segments = []

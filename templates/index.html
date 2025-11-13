@@ -57,7 +57,27 @@
             padding: 0.5em 2em;
             box-shadow: 0 2px 4px var(--shadow-color);
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between; /* Changed */
+            align-items: center; /* Added */
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo-img {
+            height: 30px;
+        }
+        .logo-text {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+        .top-bar-buttons {
+            display: flex;
             gap: 10px;
         }
         .container {
@@ -84,7 +104,7 @@
             text-align: left;
         }
         #instruction {
-            height: 80px; /* Smaller height for instructions */
+            height: 60px; /* Smaller height for instructions (approx. 3 lines) */
         }
         #script {
             height: 250px; /* Original height for main script */
@@ -334,11 +354,17 @@
 <body>
 
     <div class="top-bar">
-        {% if demo_available %}
-        <button id="demo-btn" class="button" disabled>Generate HTML Demo</button>
-        {% endif %}
-        <button id="settings-btn" class="button">Settings</button>
-        <button id="about-btn" class="button">About</button>
+        <div class="logo-container">
+            <img src="/assets/podcast.png" alt="Logo" class="logo-img">
+            <span class="logo-text">Podcast Generator</span>
+        </div>
+        <div class="top-bar-buttons">
+            {% if demo_available %}
+            <button id="demo-btn" class="button" disabled>Generate HTML Demo</button>
+            {% endif %}
+            <button id="settings-btn" class="button">Settings</button>
+            <button id="about-btn" class="button">About</button>
+        </div>
     </div>
 
     <div class="container">
@@ -358,14 +384,15 @@
                 <textarea id="script" name="script">{{ default_script }}</textarea>
             </div>
 
-            <button type="button" class="accordion">Preview (for validation)</button>
-            <div class="panel">
+            <div id="speaker-validation-error" class="status-error" style="display: none; text-align: left; margin-bottom: 1em; padding: 10px; border-radius: 4px;"></div>
+
+            <button type="button" class="accordion active">Preview (for validation)</button>
+            <div class="panel" style="max-height: 500px;"> <!-- Open by default -->
                 <div id="formatted-script-preview" class="script-preview"></div>
-            </div>
-            
-            <div class="generation-buttons" style="margin-top: 1em;">
-                <button id="generate-btn" type="submit">Generate Podcast</button>
-                <button id="stop-btn" type="button">Stop Generation</button>
+                <div class="generation-buttons" style="margin-top: 1em;">
+                    <button id="generate-btn" type="submit">Generate Podcast</button>
+                    <button id="stop-btn" type="button">Stop Generation</button>
+                </div>
             </div>
         </form>
         <div id="status"></div>
@@ -466,9 +493,36 @@
             const instructionTextarea = document.getElementById('instruction'); // New instruction textarea
             const scriptTextarea = document.getElementById('script');
             const formattedScriptPreview = document.getElementById('formatted-script-preview');
+            const speakerValidationErrorDiv = document.getElementById('speaker-validation-error');
 
             function cleanScript(text) {
                 return text.split('\n').filter(line => /^\s*\w+:\s*.+/.test(line)).join('\n');
+            }
+
+            function validateSpeakersInUI() {
+                const provider = currentSettings.tts_provider || 'elevenlabs';
+
+                if (provider !== 'gemini') {
+                    speakerValidationErrorDiv.style.display = 'none';
+                    generateBtn.disabled = false;
+                    return;
+                }
+
+                const instructionText = instructionContainer.style.display !== 'none' ? instructionTextarea.value : '';
+                const scriptText = scriptTextarea.value;
+                const combinedText = (instructionText.trim() ? instructionText + '\n' : '') + scriptText;
+
+                const speakersInScript = (combinedText.match(/^\s*(\w+):/gm) || []).map(s => s.match(/^\s*(\w+):/)[1]);
+                const uniqueSpeakers = [...new Set(speakersInScript)];
+
+                if (uniqueSpeakers.length > 2) {
+                    speakerValidationErrorDiv.textContent = `Gemini TTS supports a maximum of 2 speakers. Found ${uniqueSpeakers.length}: ${uniqueSpeakers.join(', ')}.`;
+                    speakerValidationErrorDiv.style.display = 'block';
+                    generateBtn.disabled = true;
+                } else {
+                    speakerValidationErrorDiv.style.display = 'none';
+                    generateBtn.disabled = false;
+                }
             }
 
             // Function to update the formatted script preview
@@ -506,6 +560,7 @@
                 }
 
                 formattedScriptPreview.innerHTML = htmlLines.join('<br>');
+                validateSpeakersInUI(); // Also validate speakers on every update
             }
 
             // --- Accordion Logic ---
@@ -584,6 +639,7 @@
                     allVoices = await voicesRes.json();
                     renderProviderSelection();
                     renderVoiceSettings(currentSettings.tts_provider || 'elevenlabs');
+                    validateSpeakersInUI(); // Validate on settings load
                 } catch (error) {
                     console.error("Error loading settings:", error);
                     providerContainer.innerHTML = '<p style="color: red;">Could not load settings.</p>';
@@ -601,7 +657,10 @@
                     select.id = 'tts-provider';
                     select.innerHTML = `<option value="elevenlabs">ElevenLabs</option><option value="gemini">Gemini</option>`;
                     select.value = currentSettings.tts_provider;
-                    select.onchange = () => renderVoiceSettings(select.value);
+                    select.onchange = () => {
+                        currentSettings.tts_provider = select.value; // Update state immediately
+                        renderVoiceSettings(select.value);
+                    };
                     providerContainer.appendChild(select);
                 } else {
                     const providerName = currentSettings.tts_provider === 'gemini' ? 'Gemini' : 'ElevenLabs';
@@ -961,6 +1020,9 @@
             // Update the formatted script preview whenever the textarea content changes
             instructionTextarea.addEventListener('input', updateFormattedScriptPreview);
             scriptTextarea.addEventListener('input', updateFormattedScriptPreview);
+
+            // Initial check for provider on page load
+            loadSettings();
 
             // --- PWA Service Worker Registration ---
             if ('serviceWorker' in navigator) {
