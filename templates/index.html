@@ -21,7 +21,7 @@
             --button-disabled-text-color: #6c757d;
             --success-bg: #e7f7e7;
             --success-text: #2d6a2d;
-            --error-bg: #fde2e2;
+            --error-bg: #fde2f2;
             --error-text: #b71c1c;
             --shadow-color: rgba(0,0,0,0.1);
             --accordion-hover-bg: #f1f1f1;
@@ -349,6 +349,9 @@
             margin-top: 10px;
             margin-bottom: 10px;
         }
+        #instruction-container {
+            display: none; /* Hide by default */
+        }
     </style>
 </head>
 <body>
@@ -482,6 +485,7 @@
 
             let allVoices = {};
             let currentSettings = {};
+            let modalProvider = null; // New variable to hold provider selected in modal
             let sampleAudio = null;
             let lastGeneratedFilename = null;
             const demoAvailable = {{ demo_available|tojson }};
@@ -500,7 +504,7 @@
             }
 
             function validateSpeakersInUI() {
-                const provider = currentSettings.tts_provider || 'elevenlabs';
+                const provider = currentSettings.tts_provider || 'elevenlabs'; // Always use saved settings for main UI validation
 
                 if (provider !== 'gemini') {
                     speakerValidationErrorDiv.style.display = 'none';
@@ -578,7 +582,12 @@
             }
 
             // --- Modal Logic ---
-            settingsBtn.onclick = () => { loadSettings(); settingsModal.style.display = 'block'; }
+            settingsBtn.onclick = () => { 
+                loadSettings().then(() => {
+                    modalProvider = currentSettings.tts_provider; // Initialize modalProvider AFTER currentSettings is loaded
+                    settingsModal.style.display = 'block'; 
+                });
+            }
             if (demoAvailable && demoBtn) { // Check if demoBtn exists before assigning onclick
                 demoBtn.onclick = () => { demoModal.style.display = 'block'; }
             }
@@ -637,9 +646,9 @@
                     ]);
                     currentSettings = await settingsRes.json();
                     allVoices = await voicesRes.json();
-                    renderProviderSelection();
-                    renderVoiceSettings(currentSettings.tts_provider || 'elevenlabs');
-                    validateSpeakersInUI(); // Validate on settings load
+                    renderProviderSelection(); // This will use modalProvider, which is now correctly set
+                    renderVoiceSettings(modalProvider); // This will use modalProvider, which is now correctly set
+                    // validateSpeakersInUI(); // No need to call here, renderVoiceSettings calls updateFormattedScriptPreview which calls this.
                 } catch (error) {
                     console.error("Error loading settings:", error);
                     providerContainer.innerHTML = '<p style="color: red;">Could not load settings.</p>';
@@ -656,10 +665,10 @@
                     const select = document.createElement('select');
                     select.id = 'tts-provider';
                     select.innerHTML = `<option value="elevenlabs">ElevenLabs</option><option value="gemini">Gemini</option>`;
-                    select.value = currentSettings.tts_provider;
+                    select.value = modalProvider; // Use modalProvider for selection
                     select.onchange = () => {
-                        currentSettings.tts_provider = select.value; // Update state immediately
-                        renderVoiceSettings(select.value);
+                        modalProvider = select.value; // Update modalProvider
+                        renderVoiceSettings(modalProvider); // Render voices in modal based on modalProvider
                     };
                     providerContainer.appendChild(select);
                 } else {
@@ -671,20 +680,14 @@
                 }
             }
 
-            function renderVoiceSettings(provider) {
-                // Show/hide instruction box based on provider
-                if (provider === 'elevenlabs') {
-                    instructionContainer.style.display = 'none';
-                } else {
-                    instructionContainer.style.display = 'block';
-                }
-                updateFormattedScriptPreview(); // Update preview when provider changes
-
+            function renderVoiceSettings(providerToRender) { // Accepts provider to render voices for
+                // This function now ONLY renders the voice selection dropdowns within the modal.
+                // It does NOT touch instructionContainer.style.display.
                 voiceSettingsContainer.innerHTML = '';
-                const speakerVoices = (provider === 'elevenlabs') ? currentSettings.speaker_voices_elevenlabs : currentSettings.speaker_voices;
-                const voices = (provider === 'elevenlabs') ? allVoices.elevenlabs : allVoices.gemini;
+                const speakerVoices = (providerToRender === 'elevenlabs') ? currentSettings.speaker_voices_elevenlabs : currentSettings.speaker_voices;
+                const voices = (providerToRender === 'elevenlabs') ? allVoices.elevenlabs : allVoices.gemini;
 
-                if (!voices || (provider === 'elevenlabs' && voices.length === 0)) {
+                if (!voices || (providerToRender === 'elevenlabs' && voices.length === 0)) {
                     voiceSettingsContainer.innerHTML = '<p>No voices available for this provider. Please check your API key and try again.</p>';
                     return;
                 }
@@ -717,7 +720,7 @@
                     row.appendChild(playBtn);
                     voiceSettingsContainer.appendChild(row);
 
-                    if (provider === 'elevenlabs') {
+                    if (providerToRender === 'elevenlabs') {
                         voices.forEach(voice => {
                             const option = new Option(`${voice.name} (${voice.labels.gender || 'N/A'})`, voice.voice_id);
                             select.add(option);
@@ -731,7 +734,7 @@
                         }
                         select.value = speakerVoices[speaker] ? speakerVoices[speaker].split(' - ')[0] : '';
                     }
-                    playBtn.onclick = () => playSample(playBtn, select.value, provider);
+                    playBtn.onclick = () => playSample(playBtn, select.value, providerToRender);
                 });
             }
 
@@ -769,9 +772,18 @@
                 }
             }
 
+            // New function to update the main UI's instruction box visibility
+            function updateMainUIProviderVisibility() {
+                if (currentSettings.tts_provider === 'elevenlabs') {
+                    instructionContainer.style.display = 'none';
+                } else {
+                    instructionContainer.style.display = 'block';
+                }
+                updateFormattedScriptPreview(); // Re-run preview and validation after visibility change
+            }
+
             saveSettingsBtn.onclick = async function() {
-                const providerSelect = document.getElementById('tts-provider');
-                const newProvider = providerSelect ? providerSelect.value : currentSettings.tts_provider;
+                const newProvider = modalProvider; // Use the provider selected in the modal
                 const newSpeakerVoices = {};
                 const newSpeakerVoicesElevenlabs = {};
                 const selects = voiceSettingsContainer.querySelectorAll('select');
@@ -803,6 +815,8 @@
                         setTimeout(() => { statusDiv.style.display = 'none'; }, 3000);
                         closeModal(settingsModal);
                         updateTtsStatusBar(); // Refresh status bar after saving settings
+                        currentSettings.tts_provider = newProvider; // Update main settings object
+                        updateMainUIProviderVisibility(); // Update main UI based on new saved provider
                     } else {
                         const errorData = await response.json();
                         statusDiv.textContent = `Failed to save settings: ${errorData.error || 'Unknown error'}`;
@@ -1037,14 +1051,9 @@
             // This will ensure the instruction box visibility is correct from the start
             // and also trigger the first speaker validation.
             loadSettings().then(() => {
+                modalProvider = currentSettings.tts_provider; // Initialize modalProvider on page load
                 // After settings are loaded, ensure UI reflects the correct state
-                const initialProvider = currentSettings.tts_provider || 'elevenlabs';
-                if (initialProvider === 'elevenlabs') {
-                    instructionContainer.style.display = 'none';
-                } else {
-                    instructionContainer.style.display = 'block';
-                }
-                updateFormattedScriptPreview(); // Re-run preview update to ensure validation is correct
+                updateMainUIProviderVisibility(); // Call the new function here
             });
 
             // --- PWA Service Worker Registration ---
