@@ -1,3 +1,5 @@
+import os
+
 SERVICE_CONFIG = {
     "elevenlabs": {
         "title": "ElevenLabs API Key",
@@ -55,3 +57,6 @@ DEFAULT_APP_SETTINGS = {
     },
     "elevenlabs_quota_cache": None
 }
+
+# Environment variable to control the demo button visibility
+DEMO_AVAILABLE = os.getenv("DEMO_AVAILABLE") == "1"

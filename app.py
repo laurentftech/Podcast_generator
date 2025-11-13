@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from generate_podcast import generate, PODCAST_SCRIPT, setup_logging, validate_speakers, update_elevenlabs_quota
 from utils import sanitize_text, get_asset_path, get_app_data_dir
-from config import AVAILABLE_VOICES, DEFAULT_APP_SETTINGS
+from config import AVAILABLE_VOICES, DEFAULT_APP_SETTINGS, DEMO_AVAILABLE
 from create_demo import create_html_demo_whisperx
 import os
 import tempfile
@@ -55,7 +55,7 @@ def save_settings(settings):
 # --- Routes ---
 @app.route('/')
 def index():
-    return render_template('index.html', default_script=PODCAST_SCRIPT)
+    return render_template('index.html', default_script=PODCAST_SCRIPT, demo_available=DEMO_AVAILABLE)
 
 @app.route('/assets/<path:filename>')
 def get_asset(filename):
@@ -189,6 +189,10 @@ def handle_generate():
 
 @app.route('/api/generate_demo', methods=['POST'])
 def handle_generate_demo():
+    # If DEMO_AVAILABLE is not set to "1", return an error
+    if not DEMO_AVAILABLE:
+        return jsonify({'error': 'Demo generation is not available.'}), 403
+
     data = request.json
     script_text, audio_filename = data.get('script'), data.get('audio_filename')
     title, subtitle = data.get('title', 'Podcast Demo'), data.get('subtitle', '')

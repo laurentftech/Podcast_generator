@@ -1,7 +1,13 @@
+# Core dependencies for the Podcast Generator
+
+# Web server
 Flask
 gunicorn
+python-dotenv
+
+# Google and ElevenLabs APIs
 google-genai
 elevenlabs
+
+# Utility
 requests
-python-dotenv
-keyring
