@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory
-from generate_podcast import generate, PODCAST_SCRIPT, setup_logging, validate_speakers, update_elevenlabs_quota
+from generate_podcast import generate, DEFAULT_INSTRUCTION, DEFAULT_SCRIPT, setup_logging, validate_speakers, update_elevenlabs_quota
 from utils import sanitize_text, get_asset_path, get_app_data_dir
 from config import AVAILABLE_VOICES, DEFAULT_APP_SETTINGS, DEMO_AVAILABLE
 from create_demo import create_html_demo_whisperx
@@ -11,10 +11,15 @@ import zipfile
 import shutil
 from elevenlabs.core import ApiError
 import re
+import uuid
+import threading
 
 # --- App Initialization ---
 app = Flask(__name__)
 logger = setup_logging()
+
+# --- In-Memory Task Manager ---
+tasks = {}
 
 # --- Version & License ---
 try:
@@ -55,7 +60,10 @@ def save_settings(settings):
 # --- Routes ---
 @app.route('/')
 def index():
-    return render_template('index.html', default_script=PODCAST_SCRIPT, demo_available=DEMO_AVAILABLE)
+    return render_template('index.html', 
+                           default_instruction=DEFAULT_INSTRUCTION, 
+                           default_script=DEFAULT_SCRIPT, 
+                           demo_available=DEMO_AVAILABLE)
 
 @app.route('/assets/<path:filename>')
 def get_asset(filename):
@@ -130,6 +138,38 @@ def get_gemini_sample(voice_name):
         return "Sample directory not found", 404
     return send_from_directory(sample_path, f"{voice_name}.mp3")
 
+def run_generation_task(task_id, script_text, app_settings, output_filepath, api_key):
+    """The target function for the generation thread."""
+    stop_event = tasks[task_id]['stop_event']
+    try:
+        generated_file = generate(
+            script_text=script_text,
+            app_settings=app_settings,
+            output_filepath=output_filepath,
+            api_key=api_key,
+            status_callback=logger.info,
+            stop_event=stop_event
+        )
+        if generated_file:
+            tasks[task_id]['status'] = 'completed'
+            tasks[task_id]['result'] = {'download_url': f'/temp/{os.path.basename(generated_file)}', 'filename': os.path.basename(generated_file)}
+    except Exception as e:
+        # If the exception is due to the stop event, set a specific status
+        if "stopped by user" in str(e):
+            tasks[task_id]['status'] = 'cancelled'
+            tasks[task_id]['error'] = 'Generation cancelled by user.'
+            # Clean up the partially created file
+            if os.path.exists(output_filepath):
+                try:
+                    os.remove(output_filepath)
+                    logger.info(f"Removed partial file for stopped task: {output_filepath}")
+                except OSError as err:
+                    logger.error(f"Error removing partial file for stopped task: {err}")
+        else:
+            logger.error(f"Error during generation for task {task_id}: {e}", exc_info=True)
+            tasks[task_id]['status'] = 'failed'
+            tasks[task_id]['error'] = str(e)
+
 @app.route('/generate', methods=['POST'])
 def handle_generate():
     script_text = request.form.get('script', '')
@@ -146,46 +186,53 @@ def handle_generate():
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
 
-    first_words = re.sub(r'<[^>]+>', '', sanitized_script).strip().split()[:2]
-    base_name = "_".join(first_words).lower()
-    safe_base_name = re.sub(r'[^a-z0-9_]+', '', base_name)
-    if not safe_base_name:
-        safe_base_name = "podcast"
-    random_suffix = os.urandom(4).hex()
-    output_filename = f"{safe_base_name}_{random_suffix}.mp3"
-    
-    output_filepath = os.path.join(app.config['TEMP_DIR'], output_filename)
-
     provider = app_settings.get("tts_provider", "elevenlabs")
     api_key_env_var = "ELEVENLABS_API_KEY" if provider == "elevenlabs" else "GEMINI_API_KEY"
     api_key = os.environ.get(api_key_env_var)
-
     if not api_key:
         return jsonify({'error': f'API key ({api_key_env_var}) not found in environment variables.'}), 500
 
     from utils import sanitize_app_settings_for_backend
     app_settings_clean = sanitize_app_settings_for_backend(app_settings)
 
-    try:
-        generated_file = generate(
-            script_text=sanitized_script,
-            app_settings=app_settings_clean,
-            output_filepath=output_filepath,
-            api_key=api_key,
-            status_callback=logger.info
-        )
-        if generated_file:
-            return jsonify({'download_url': f'/temp/{output_filename}', 'filename': output_filename})
-        else:
-            return jsonify({'error': 'Generation failed for an unknown reason. Check server logs.'}), 500
-    except ApiError as e:
-        error_detail = e.body.get('detail', {})
-        message = error_detail.get('message', 'An unknown ElevenLabs API error occurred.')
-        logger.error(f"ElevenLabs API Error: {message}")
-        return jsonify({'error': f"ElevenLabs Error: {message}"}), 500
-    except Exception as e:
-        logger.error(f"Error during generation: {e}", exc_info=True)
-        return jsonify({'error': f'An unexpected error occurred: {str(e)}'}), 500
+    task_id = str(uuid.uuid4())
+    output_filename = f"{task_id}.mp3"
+    output_filepath = os.path.join(app.config['TEMP_DIR'], output_filename)
+    
+    stop_event = threading.Event()
+    thread = threading.Thread(target=run_generation_task, args=(task_id, sanitized_script, app_settings_clean, output_filepath, api_key))
+    
+    tasks[task_id] = {'thread': thread, 'stop_event': stop_event, 'status': 'running'}
+    thread.start()
+    
+    return jsonify({'task_id': task_id})
+
+@app.route('/api/generation_status/<task_id>', methods=['GET'])
+def get_generation_status(task_id):
+    task = tasks.get(task_id)
+    if not task:
+        return jsonify({'error': 'Task not found'}), 404
+    
+    response = {'status': task['status']}
+    if task['status'] == 'completed':
+        response['result'] = task['result']
+    elif task['status'] in ['failed', 'cancelled']:
+        response['error'] = task.get('error', 'An unknown error occurred.')
+        
+    return jsonify(response)
+
+@app.route('/api/stop_generation/<task_id>', methods=['POST'])
+def stop_generation(task_id):
+    task = tasks.get(task_id)
+    if not task:
+        return jsonify({'error': 'Task not found'}), 404
+    
+    if task['status'] == 'running':
+        task['stop_event'].set()
+        task['status'] = 'stopping'
+        return jsonify({'status': 'Stop signal sent.'})
+    
+    return jsonify({'status': 'Task was not running.'})
 
 @app.route('/api/generate_demo', methods=['POST'])
 def handle_generate_demo():

@@ -12,6 +12,7 @@ import logging
 import getpass
 from typing import Optional, Any, Dict, List, Tuple
 import tempfile
+import threading
 
 import json
 import keyring  # For secure credential storage
@@ -23,11 +24,12 @@ from utils import get_app_data_dir, find_ffmpeg_path, sanitize_app_settings_for_
 # Global logger instance - initialized once when module is imported
 logger = logging.getLogger(__name__)
 
-# The podcast script is now a constant to be used by the console mode.
-PODCAST_SCRIPT = """Read aloud in a warm, welcoming tone
-John: [playful] Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs, my dogs' names are corgis! Who am I??
+# The podcast script is now split into instruction and main script
+DEFAULT_INSTRUCTION = "Read aloud in a warm, welcoming tone"
+DEFAULT_SCRIPT = """John: [playful] Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs, my dogs' names are corgis! Who am I??
 Samantha: [laughing] You're queen Elizabeth II!!
 """
+PODCAST_SCRIPT = f"{DEFAULT_INSTRUCTION}\n{DEFAULT_SCRIPT}"
 
 
 def setup_logging() -> logging.Logger:
@@ -127,7 +129,7 @@ def get_api_key(status_callback, logger: logging.Logger, parent_window=None, ser
 
 
 class TTSProvider:
-    def synthesize(self, script_text: str, speaker_mapping: dict, output_filepath: str, status_callback=print) -> str:
+    def synthesize(self, script_text: str, speaker_mapping: dict, output_filepath: str, status_callback=print, stop_event: Optional[threading.Event] = None) -> str:
         raise NotImplementedError
 
 
@@ -135,7 +137,7 @@ class GeminiTTS(TTSProvider):
     def __init__(self, api_key: str):
         self.api_key = api_key
 
-    def synthesize(self, script_text: str, speaker_mapping: dict, output_filepath: str, status_callback=print) -> str:
+    def synthesize(self, script_text: str, speaker_mapping: dict, output_filepath: str, status_callback=print, stop_event: Optional[threading.Event] = None) -> str:
         logger = logging.getLogger("PodcastGenerator")
         client = genai.Client(api_key=self.api_key)
 
@@ -161,11 +163,15 @@ class GeminiTTS(TTSProvider):
         generate_content_config = types.GenerateContentConfig(temperature=1, response_modalities=["audio"], speech_config=speech_config)
 
         for i, model_name in enumerate(models_to_try):
+            if stop_event and stop_event.is_set():
+                raise Exception("Generation stopped by user.")
             status_callback(f"\nAttempting generation with model: {model_name}...")
             try:
                 audio_chunks = []
                 final_mime_type = ""
                 for chunk in client.models.generate_content_stream(model=model_name, contents=contents, config=generate_content_config):
+                    if stop_event and stop_event.is_set():
+                        raise Exception("Generation stopped by user during streaming.")
                     if not (chunk.candidates and chunk.candidates[0].content and chunk.candidates[0].content.parts):
                         continue
                     part = chunk.candidates[0].content.parts[0]
@@ -194,7 +200,7 @@ class ElevenLabsTTS(TTSProvider):
         self.client = ElevenLabs(api_key=api_key)
         self.logger = logging.getLogger("PodcastGenerator")
 
-    def synthesize(self, script_text: str, speaker_mapping: Dict[str, str], output_filepath: str, status_callback=print) -> str:
+    def synthesize(self, script_text: str, speaker_mapping: Dict[str, str], output_filepath: str, status_callback=print, stop_event: Optional[threading.Event] = None) -> str:
         segments = self._parse_script_segments(script_text)
         if not segments:
             raise ValueError("No valid dialogue segments found in the script. Ensure lines are in 'Speaker: Text' format.")
@@ -220,6 +226,8 @@ class ElevenLabsTTS(TTSProvider):
             
             with open(output_filepath, "wb") as f:
                 for chunk in audio_generator:
+                    if stop_event and stop_event.is_set():
+                        raise Exception("Generation stopped by user during streaming.")
                     f.write(chunk)
             
             status_callback(f"File saved successfully: {output_filepath}")
@@ -228,8 +236,12 @@ class ElevenLabsTTS(TTSProvider):
             self.logger.error(f"ElevenLabs API error: {e}")
             raise e
         except Exception as e:
-            self.logger.error(f"ElevenLabs critical error: {e}", exc_info=True)
-            raise Exception(f"An unexpected critical error occurred in ElevenLabs TTS: {e}")
+            # Don't re-raise the "stopped by user" exception, just let it be handled in the main generate function
+            if "stopped by user" not in str(e):
+                self.logger.error(f"ElevenLabs critical error: {e}", exc_info=True)
+                raise Exception(f"An unexpected critical error occurred in ElevenLabs TTS: {e}")
+            # Re-raise the stop exception to be caught by the task runner
+            raise e
 
     def _parse_script_segments(self, script_text: str) -> List[Tuple[str, str]]:
         segments = []
@@ -306,10 +318,13 @@ def validate_speakers(script_text: str, app_settings: Dict[str, Any]) -> Tuple[L
     return missing_speakers, configured_speakers
 
 
-def generate(script_text: str, app_settings: dict, output_filepath: str, status_callback=print, api_key: Optional[str] = None, parent_window=None) -> str:
+def generate(script_text: str, app_settings: dict, output_filepath: str, status_callback=print, api_key: Optional[str] = None, parent_window=None, stop_event: Optional[threading.Event] = None) -> str:
     logger = logging.getLogger("PodcastGenerator")
     logger.info("Starting generation function.")
     status_callback("Starting podcast generation...")
+
+    if stop_event and stop_event.is_set():
+        raise Exception("Generation stopped by user before starting.")
 
     sanitized_script_text = sanitize_text(script_text)
     if not find_ffmpeg_path():
@@ -331,7 +346,7 @@ def generate(script_text: str, app_settings: dict, output_filepath: str, status_
     ProviderClass = ElevenLabsTTS if provider_name == "elevenlabs" else GeminiTTS
     provider = ProviderClass(api_key=api_key)
     
-    return provider.synthesize(script_text=sanitized_script_text, speaker_mapping=speaker_mapping, output_filepath=output_filepath, status_callback=status_callback)
+    return provider.synthesize(script_text=sanitized_script_text, speaker_mapping=speaker_mapping, output_filepath=output_filepath, status_callback=status_callback, stop_event=stop_event)
 
 
 def parse_audio_mime_type(mime_type: str) -> Dict[str, int]:
