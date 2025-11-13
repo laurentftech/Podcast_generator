@@ -201,7 +201,7 @@ jobs:
   publish-docker:
     name: Publish Docker Image
     runs-on: ubuntu-latest
-    needs: [build-arm64, build-intel, build-windows, build-linux] # Ensure all desktop builds are done
+    needs: [release] # Depend on 'release' job to ensure artifacts are uploaded and version is stable
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -212,18 +212,43 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: gandulf78/podcast_generator
-          tags: |
-            type=ref,event=tag # Use the Git tag (e.g., v1.0.0) as the Docker tag
+      - name: Get version from Git tag
+        id: get_version
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}" # Remove leading 'v'
+          MAJOR_VERSION=$(echo "$VERSION" | cut -d. -f1)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "MAJOR_VERSION=$MAJOR_VERSION" >> $GITHUB_ENV
+          echo "Extracted VERSION: $VERSION"
+          echo "Extracted MAJOR_VERSION: $MAJOR_VERSION"
 
-      - name: Build and push Docker image
+      # --- Build and push FULL image (with WhisperX) ---
+      - name: Build and push FULL Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          target: with_whisperx # Assuming this is the target for the full version
+          tags: |
+            gandulf78/podcast_generator:${{ env.VERSION }}
+            gandulf78/podcast_generator:${{ env.MAJOR_VERSION }}
+            gandulf78/podcast_generator:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.version=${{ env.VERSION }}
+
+      # --- Build and push LIGHT image (without WhisperX) ---
+      - name: Build and push LIGHT Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          target: without_whisperx # Assuming this is the target for the light version
+          tags: |
+            gandulf78/podcast_generator:${{ env.VERSION }}-light
+            gandulf78/podcast_generator:${{ env.MAJOR_VERSION }}-light
+            gandulf78/podcast_generator:light
+          labels: |
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.version=${{ env.VERSION }}-light
