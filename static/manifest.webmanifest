@@ -4,8 +4,6 @@
     "description": "Generate podcasts from text scripts using AI.",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#121212",
-    "theme_color": "#1e1e1e",
     "icons": [
         {
             "src": "/assets/podcast.png",

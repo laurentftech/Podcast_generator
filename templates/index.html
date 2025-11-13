@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Podcast Generator</title>
-    <link rel="icon" href="/assets/podcast.png" type="image/png">
+    <link rel="icon" href="/assets/podcast_dynamic.svg" type="image/svg+xml">
     <link rel="manifest" href="/static/manifest.webmanifest">
     <meta name="theme-color" content="#1e1e1e">
     <!-- iOS support -->
@@ -377,10 +377,10 @@
             <button type="button" class="accordion active">Script</button>
             <div class="panel" style="max-height: 500px;"> <!-- Open by default -->
                 <div id="instruction-container">
-                    <label for="instruction">Instructions (e.g., "Read aloud in a warm tone"):</label>
+                    <label for="instruction">Instructions:</label>
                     <textarea id="instruction" name="instruction">{{ default_instruction }}</textarea>
                 </div>
-                <label for="script">Script (e.g., "John: Hello. Samantha: Hi."):</label>
+                <label for="script">Script:</label>
                 <textarea id="script" name="script">{{ default_script }}</textarea>
             </div>
 
@@ -685,7 +685,7 @@
                 const voices = (provider === 'elevenlabs') ? allVoices.elevenlabs : allVoices.gemini;
 
                 if (!voices || (provider === 'elevenlabs' && voices.length === 0)) {
-                    voiceSettingsContainer.innerHTML = `<p style="color: orange;">Could not fetch voices for ${provider}. Is the API key set in the server environment?</p>`;
+                    voiceSettingsContainer.innerHTML = '<p>No voices available for this provider. Please check your API key and try again.</p>';
                     return;
                 }
 
@@ -797,14 +797,26 @@
                         body: JSON.stringify(settingsToSave)
                     });
                     if (response.ok) {
-                        alert('Settings saved!');
+                        statusDiv.textContent = 'Settings saved!';
+                        statusDiv.classList.remove('status-error');
+                        statusDiv.classList.add('status-success');
+                        setTimeout(() => { statusDiv.style.display = 'none'; }, 3000);
                         closeModal(settingsModal);
                         updateTtsStatusBar(); // Refresh status bar after saving settings
                     } else {
-                        alert('Failed to save settings.');
+                        const errorData = await response.json();
+                        statusDiv.textContent = `Failed to save settings: ${errorData.error || 'Unknown error'}`;
+                        statusDiv.classList.remove('status-success');
+                        statusDiv.classList.add('status-error');
+                        setTimeout(() => { statusDiv.style.display = 'none'; }, 5000);
                     }
                 } catch (error) {
-                    alert('Error saving settings.');
+                    statusDiv.textContent = `Error saving settings: ${error}`;
+                    statusDiv.classList.remove('status-success');
+                    statusDiv.classList.add('status-error');
+                    setTimeout(() => { statusDiv.style.display = 'none'; }, 5000);
+                } finally {
+                    statusDiv.style.display = 'block';
                 }
             }
 
@@ -1022,7 +1034,18 @@
             scriptTextarea.addEventListener('input', updateFormattedScriptPreview);
 
             // Initial check for provider on page load
-            loadSettings();
+            // This will ensure the instruction box visibility is correct from the start
+            // and also trigger the first speaker validation.
+            loadSettings().then(() => {
+                // After settings are loaded, ensure UI reflects the correct state
+                const initialProvider = currentSettings.tts_provider || 'elevenlabs';
+                if (initialProvider === 'elevenlabs') {
+                    instructionContainer.style.display = 'none';
+                } else {
+                    instructionContainer.style.display = 'block';
+                }
+                updateFormattedScriptPreview(); // Re-run preview update to ensure validation is correct
+            });
 
             // --- PWA Service Worker Registration ---
             if ('serviceWorker' in navigator) {
