@@ -217,7 +217,17 @@ jobs:
         run: pip install setuptools-scm
 
       - name: Generate _version.py
-        run: python -m setuptools_scm write_version_to_file _version.py
+        run: |
+          python -c "import setuptools_scm; \
+                     import os; \
+                     # Get the version from setuptools_scm, using the current directory as root \
+                     # fallback_version is used if setuptools_scm cannot determine the version (e.g., no .git) \
+                     version = setuptools_scm.get_version(root='.', fallback_version='0.0.0+unknown'); \
+                     # Ensure the version string is clean for Python (remove leading 'v' if present) \
+                     if version.startswith('v'): version = version[1:]; \
+                     # Write the version to _version.py \
+                     with open('_version.py', 'w') as f: f.write(f\"__version__ = '{version}'\\n\"); \
+                     print(f\"Generated _version.py with __version__ = '{version}'\")"
 
       - name: Get version from _version.py
         id: get_version
