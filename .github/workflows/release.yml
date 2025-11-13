@@ -233,7 +233,8 @@ jobs:
         id: get_version
         run: |
           # Read the __version__ variable from the generated _version.py
-          VERSION=$(python -c "import _version; print(_version.__version__)")
+          # Add current directory to PYTHONPATH to allow importing _version.py
+          VERSION=$(PYTHONPATH=. python -c "import _version; print(_version.__version__)")
           # Remove leading 'v' if present (e.g., v1.0.0 -> 1.0.0)
           VERSION="${VERSION#v}"
           # Extract major version (e.g., 1.0.0 -> 1)
