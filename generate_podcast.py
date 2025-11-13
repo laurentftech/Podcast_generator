@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # The podcast script is now split into instruction and main script
 DEFAULT_INSTRUCTION = "Read aloud in a warm, welcoming tone"
 DEFAULT_SCRIPT = """John: [playful] Who am I? I am a little old lady. My hair is white. I have got a small crown and a black handbag. My dress is blue. My country's flag is red, white and blue. I am on many coins and stamps. I love dogs, my dogs' names are corgis! Who am I??
-Samantha: [laughing] You's queen Elizabeth II!!
+Samantha: [laughing] You're queen Elizabeth II!!
 """
 PODCAST_SCRIPT = f"{DEFAULT_INSTRUCTION}\n{DEFAULT_SCRIPT}"
 
