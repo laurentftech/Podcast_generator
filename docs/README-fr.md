@@ -31,6 +31,7 @@ Commencez à créer vos podcasts en quelques minutes.
 - **Lecture intégrée** : Écoutez et arrêtez vos créations directement depuis l’application (**FFmpeg requis**).
 - **Stockage sécurisé de la clé API** : Votre clé API Google Gemini est demandée une seule fois et enregistrée de manière sécurisée dans le trousseau du système (`keyring`).
 - **Support des accents et langues** : Créez des podcasts en plusieurs langues avec des voix et des accents distincts pour chaque langue (depuis les réglages des locuteurs avec l'API ElevenLabs ou depuis le prompt avec Gemini).
+- **Support Docker** : Exécutez l'application en tant que service web à l'aide de Docker. Cela simplifie le déploiement, ne nécessite aucune installation supplémentaire et peut fonctionner sur un petit serveur ou localement.
 
 ---
 

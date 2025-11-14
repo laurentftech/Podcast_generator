@@ -35,6 +35,7 @@ See also the [French README](docs/README-fr.md) for a version in French.
 - **Integrated Playback**: Listen to and stop audio playback directly from the application (requires FFmpeg).
 - **Secure API Key Storage**: Your Google Gemini API key is requested once and securely stored in your system's keychain (`keyring`).
 - **Accent and Language Support**: Create podcasts in multiple languages with distinct voices and accents for each language (from the speaker settings with the ElevenLabs API or from the prompt with Gemini).
+- **Docker Support**: Run the application as a web service using Docker. This simplifies deployment, requires no additional installation, and can run on a small headless server or locally.
 
 ---
 
