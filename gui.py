@@ -880,24 +880,9 @@ class PodcastGeneratorApp:
         else:
             self.menubar.entryconfig("Settings", state="disabled")
 
-        # If the ElevenLabs voice cache is not yet populated, wait for it.
-        # This prevents a race condition in the settings window where a late
-        # arrival of the voice list could trigger a buggy UI refresh.
-        if self.provider_var.get() == "elevenlabs" and not self.elevenlabs_voices_cache:
-            self.log_status("Loading available voices from ElevenLabs...")
-
-            def _wait_for_cache():
-                if self.elevenlabs_voices_cache:
-                    self.log_status("Voices loaded. Opening settings...")
-                    self._show_settings_window()
-                else:
-                    # Check again in 200ms
-                    self.root.after(200, _wait_for_cache)
-
-            _wait_for_cache()
-        else:
-            # If not using ElevenLabs or cache is ready, open immediately.
-            self._show_settings_window()
+        # Always open the window immediately. VoiceSettingsWindow handles
+        # asynchronous loading of ElevenLabs voices internally (see settings_window.py:110-111).
+        self._show_settings_window()
 
     def _show_settings_window(self):
         """Creates and displays the actual settings window."""

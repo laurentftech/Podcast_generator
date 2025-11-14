@@ -334,6 +334,10 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
                             command=self._load_more_elevenlabs_voices
                         )
                         self.load_more_btn.pack(pady=10)
+                    
+                    # Enable the newly added buttons
+                    self.after(100, self._enable_play_buttons)
+
             elif not self.elevenlabs_voices_loaded:
                 # Afficher un message de chargement seulement si rien n'est affiché
                 if not self._elevenlabs_voices_displayed:
