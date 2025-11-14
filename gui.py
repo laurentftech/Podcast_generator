@@ -57,6 +57,15 @@ def get_app_version() -> str:
 
 
 class PodcastGeneratorApp:
+    DEFAULT_APP_SETTINGS = {
+        "tts_provider": "elevenlabs",
+        "speaker_voices": {"John": "Schedar - Even", "Samantha": "Zephyr - Bright"},
+        "speaker_voices_elevenlabs": {
+            "John": {"id": "TX3LPaxmHKxFdv7VOQHJ", "display_name": "Liam - Male, Young, american"},
+            "Samantha": {"id": "cgSgspJ2msm6clMCkdW9", "display_name": "Jessica - Female, Young, american"}
+        },
+        "elevenlabs_quota_cache": None
+    }
 
     def __init__(self, root: tk.Tk, generate_func, logger, api_key: str, default_script: str = ""):
         self.root = root
@@ -889,6 +898,20 @@ class PodcastGeneratorApp:
         else:
             # If not using ElevenLabs or cache is ready, open immediately.
             self._show_settings_window()
+
+    def _show_settings_window(self):
+        """Creates and displays the actual settings window."""
+        from settings_window import VoiceSettingsWindow
+        VoiceSettingsWindow(
+            self.root,
+            current_settings=self.app_settings,
+            save_callback=self.save_settings,
+            close_callback=self.on_settings_window_close,
+            default_settings=self.DEFAULT_APP_SETTINGS,
+            preloaded_elevenlabs_voices=self.elevenlabs_voices_cache,
+            play_gemini_sample_callback=self.play_gemini_voice_sample,
+            play_elevenlabs_sample_callback=self.play_elevenlabs_voice_sample
+        )
 
     def show_about_window(self):
         """Displays the 'About' window."""
