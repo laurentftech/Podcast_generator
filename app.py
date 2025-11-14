@@ -13,6 +13,8 @@ from elevenlabs.core import ApiError
 import re
 import uuid
 import threading
+import json
+from flask import jsonify
 
 # --- App Initialization ---
 app = Flask(__name__)
@@ -74,7 +76,15 @@ def get_asset(filename):
 
 @app.route('/api/about', methods=['GET'])
 def get_about_info():
-    return jsonify({'version': __version__, 'license': LICENSE_TEXT})
+    return jsonify({'version': version(), 'license': LICENSE_TEXT})
+
+def version():
+    try:
+        with open("version.json") as f:
+            data = json.load(f)
+            return data.get("version", "unknown")
+    except Exception:
+        return "unknown"
 
 @app.route('/api/status', methods=['GET'])
 def get_status():

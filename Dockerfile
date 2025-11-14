@@ -1,53 +1,68 @@
-# --- Stage 1: Base dependencies ---
+# ================================
+# Stage 1: Base dependencies
+# ================================
 FROM python:3.11-slim-bookworm AS base
 
-# Set the working directory in the container
+# Workdir
 WORKDIR /app
 
-# Install FFmpeg (required for audio processing)
-# Also install git for whisperx dependencies
+# Avoid writing .pyc files and enable immediate flush
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Install system deps (ffmpeg required)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     git \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get purge -y git
 
-# Copy the core requirements file
+# Copy requirements
 COPY requirements.txt .
 
-# Install core dependencies
+# Install Python dependencies (core only — no WhisperX)
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code
+# Copy entire app
 COPY . .
 
-# --- Stage 2: Build with WhisperX support ---
+# Inject version (default "dev"; overwritten at build time)
+ARG VERSION="dev"
+RUN echo "{\"version\": \"${VERSION}\"}" > version.json
+
+
+# ================================
+# Stage 2: Image WITH WhisperX
+# ================================
 FROM base AS with_whisperx
 
-# Install PyTorch (CPU-only for broader compatibility in Docker) and torchaudio
-# Then install whisperx
+# Install CPU PyTorch + WhisperX
 RUN pip install --no-cache-dir \
     torch==2.2.2+cpu \
     torchaudio==2.2.2+cpu \
     -f https://download.pytorch.org/whl/torch_stable.html \
     && pip install --no-cache-dir whisperx==3.1.1
 
-# Set environment variable to enable demo features
+# Indicate WhisperX is available
 ENV DEMO_AVAILABLE=1
 
-# Expose the port that Gunicorn will listen on
+# Expose API port
 EXPOSE 8000
 
-# Run gunicorn to serve the Flask application
+# Start backend
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "app:app"]
 
-# --- Stage 3: Build without WhisperX support ---
+
+# ================================
+# Stage 3: Image WITHOUT WhisperX
+# ================================
 FROM base AS without_whisperx
 
-# Set environment variable to disable demo features
+# WhisperX disabled
 ENV DEMO_AVAILABLE=0
 
-# Expose the port that Gunicorn will listen on
+# Expose API port
 EXPOSE 8000
 
-# Run gunicorn to serve the Flask application
+# Start backend
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "app:app"]

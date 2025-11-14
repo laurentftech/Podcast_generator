@@ -201,48 +201,24 @@ jobs:
   publish-docker:
     name: Publish Docker Image
     runs-on: ubuntu-latest
-    needs: [release] # Depend on 'release' job to ensure artifacts are uploaded and version is stable
+    needs: [release]
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Required for setuptools-scm to determine the version
+          fetch-depth: 0
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x' # Use a recent Python version
-
-      - name: Install setuptools-scm
-        run: pip install setuptools-scm
-
-      - name: Generate _version.py
+      - name: Extract version from tag
+        id: version
         run: |
-          python -c "import setuptools_scm; \
-                     import os; \
-                     # Get the version from setuptools_scm, using the current directory as root \
-                     # fallback_version is used if setuptools_scm cannot determine the version (e.g., no .git) \
-                     version = setuptools_scm.get_version(root='.', fallback_version='0.0.0+unknown'); \
-                     # Ensure the version string is clean for Python (remove leading 'v' if present) \
-                     if version.startswith('v'): version = version[1:]; \
-                     # Write the version to _version.py \
-                     with open('_version.py', 'w') as f: f.write(f\"__version__ = '{version}'\\n\"); \
-                     print(f\"Generated _version.py with __version__ = '{version}'\")"
-
-      - name: Get version from _version.py
-        id: get_version
-        run: |
-          # Read the __version__ variable from the generated _version.py
-          # Add current directory to PYTHONPATH to allow importing _version.py
-          VERSION=$(PYTHONPATH=. python -c "import _version; print(_version.__version__)")
-          # Remove leading 'v' if present (e.g., v1.0.0 -> 1.0.0)
-          VERSION="${VERSION#v}"
-          # Extract major version (e.g., 1.0.0 -> 1)
-          MAJOR_VERSION=$(echo "$VERSION" | cut -d. -f1)
+          RAW="${GITHUB_REF_NAME}"
+          VERSION="${RAW#v}"
+          MAJOR="${VERSION%%.*}"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "MAJOR_VERSION=$MAJOR_VERSION" >> $GITHUB_ENV
-          echo "Extracted VERSION: $VERSION"
-          echo "Extracted MAJOR_VERSION: $MAJOR_VERSION"
+          echo "MAJOR_VERSION=$MAJOR" >> $GITHUB_ENV
+          echo "Version = $VERSION"
+          echo "Major   = $MAJOR"
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -250,13 +226,14 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # --- Build and push FULL image (with WhisperX) ---
       - name: Build and push FULL Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          target: with_whisperx # Assuming this is the target for the full version
+          target: with_whisperx
+          build-args: |
+            VERSION=${{ env.VERSION }}
           tags: |
             gandulf78/podcast_generator:${{ env.VERSION }}
             gandulf78/podcast_generator:${{ env.MAJOR_VERSION }}
@@ -265,13 +242,14 @@ jobs:
             org.opencontainers.image.source=${{ github.event.repository.html_url }}
             org.opencontainers.image.version=${{ env.VERSION }}
 
-      # --- Build and push LIGHT image (without WhisperX) ---
       - name: Build and push LIGHT Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          target: without_whisperx # Assuming this is the target for the light version
+          target: without_whisperx
+          build-args: |
+            VERSION=${{ env.VERSION }}
           tags: |
             gandulf78/podcast_generator:${{ env.VERSION }}-light
             gandulf78/podcast_generator:${{ env.MAJOR_VERSION }}-light
