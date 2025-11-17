@@ -442,8 +442,7 @@
             <h2>About Podcast Generator</h2>
             <p>Version: <span id="app-version"></span></p>
             <p>This application is an open-source project designed to simplify the creation of audio podcasts from text scripts.</p>
-            <p>If this application is useful to you, you can support its development:</p>
-            <p><a href="https://buymeacoffee.com/laurentftech" target="_blank">❤️ Buy Me a Coffee</a></p>
+            <p>If this application is useful to you, you can support its development: <a href="https://buymeacoffee.com/laurentftech" target="_blank">❤️ Buy Me a Coffee</a></p>
             <hr>
             <h3>Core Technologies</h3>
             <ul style="text-align: left;">
@@ -493,6 +492,7 @@
             const demoAvailable = {{ demo_available|tojson }};
             let currentTaskId = null;
             let pollingInterval = null;
+            let audioCtx = null; // Global AudioContext
 
             // New elements for formatted script preview
             const instructionContainer = document.getElementById('instruction-container');
@@ -500,6 +500,56 @@
             const scriptTextarea = document.getElementById('script');
             const formattedScriptPreview = document.getElementById('formatted-script-preview');
             const speakerValidationErrorDiv = document.getElementById('speaker-validation-error');
+
+            function playDing() {
+                if (!audioCtx) {
+                    console.warn("AudioContext not initialized. Cannot play ding sound.");
+                    return;
+                }
+                try {
+                    const oscillator = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+
+                    gainNode.gain.setValueAtTime(1.0, audioCtx.currentTime); // Max volume
+                    gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + 0.5);
+                } catch (e) {
+                    console.error("Could not play ding sound:", e);
+                }
+            }
+
+            function playGong() {
+                if (!audioCtx) {
+                    console.warn("AudioContext not initialized. Cannot play gong sound.");
+                    return;
+                }
+                try {
+                    const oscillator = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(150, audioCtx.currentTime); // Low frequency for a "gong"
+
+                    gainNode.gain.setValueAtTime(1.0, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.5); // Longer decay
+
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + 1.5);
+                } catch (e) {
+                    console.error("Could not play gong sound:", e);
+                }
+            }
 
             function cleanScript(text) {
                 return text.split('\n').filter(line => /^\s*\w+:\s*.+/.test(line)).join('\n');
@@ -865,6 +915,7 @@
                     const data = await response.json();
 
                     if (data.status === 'completed') {
+                        playDing();
                         statusDiv.textContent = 'Generation successful!';
                         statusDiv.classList.remove('status-error');
                         statusDiv.classList.add('status-success');
@@ -887,6 +938,7 @@
                         updateTtsStatusBar();
                         resetGenerationUI();
                     } else if (data.status === 'failed') {
+                        playGong();
                         statusDiv.textContent = `Error: ${data.error || 'Unknown error'}`;
                         statusDiv.classList.remove('status-success');
                         statusDiv.classList.add('status-error');
@@ -907,6 +959,15 @@
 
             document.getElementById('podcast-form').addEventListener('submit', async function(event) {
                 event.preventDefault();
+
+                // Initialize AudioContext on user action
+                if (!audioCtx) {
+                    try {
+                        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    } catch (e) {
+                        console.error("Web Audio API is not supported in this browser.", e);
+                    }
+                }
                 
                 const instructionText = instructionContainer.style.display !== 'none' ? instructionTextarea.value : '';
                 const scriptText = scriptTextarea.value;
