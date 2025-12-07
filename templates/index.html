@@ -552,7 +552,7 @@
             }
 
             function cleanScript(text) {
-                return text.split('\n').filter(line => /^\s*\w+:\s*.+/.test(line)).join('\n');
+                return text.split('\n').filter(line => /^\s*\w+\s*:\s*.+/.test(line)).join('\n');
             }
 
             function validateSpeakersInUI() {
@@ -568,7 +568,7 @@
                 const scriptText = scriptTextarea.value;
                 const combinedText = (instructionText.trim() ? instructionText + '\n' : '') + scriptText;
 
-                const speakersInScript = (combinedText.match(/^\s*(\w+):/gm) || []).map(s => s.match(/^\s*(\w+):/)[1]);
+                const speakersInScript = (combinedText.match(/^\s*(\w+)\s*:/gm) || []).map(s => s.match(/^\s*(\w+)\s*:/)[1]);
                 const uniqueSpeakers = [...new Set(speakersInScript)];
 
                 if (uniqueSpeakers.length > 2) {
@@ -596,7 +596,7 @@
                     let processedLine = line;
                     
                     // Check if this line contains a speaker (marks the end of the instruction block)
-                    const isSpeakerLine = /^\s*\w+:/.test(line);
+                    const isSpeakerLine = /^\s*\w+\s*:/.test(line);
                     if (isSpeakerLine) {
                         instructionBlockEnded = true;
                     }
@@ -606,7 +606,7 @@
 
                     if (isSpeakerLine) {
                         // Bold speaker names
-                        processedLine = processedLine.replace(/^(\s*)(\w+):/m, '$1<strong>$2:</strong>');
+                        processedLine = processedLine.replace(/^(\s*)(\w+\s*):/m, '$1<strong>$2:</strong>');
                     } else if (!instructionBlockEnded && line.trim() !== '') {
                         // If it's an instruction line (before any speaker) and not empty, wrap the whole line in italics.
                         processedLine = `<em>${processedLine}</em>`;
@@ -747,7 +747,7 @@
                 const scriptText = scriptTextarea.value; // Use the actual textarea value
                 const lines = scriptText.split('\n');
                 const speakersInScript = lines.map(line => {
-                    const match = line.match(/^\s*(\w+):/);
+                    const match = line.match(/^\s*(\w+)\s*:/);
                     return match ? match[1] : null;
                 }).filter(Boolean);
                 const uniqueSpeakers = [...new Set(speakersInScript)];

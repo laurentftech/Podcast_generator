@@ -265,19 +265,40 @@ class ElevenLabsTTS(TTSProvider):
 
     def _parse_script_segments(self, script_text: str) -> List[Tuple[str, str]]:
         segments = []
+        current_speaker = None
+        current_text_lines = []
+
         for raw_line in script_text.splitlines():
             line = raw_line.strip()
             if not line:
                 continue
-            m = re.match(r"^(\w+):\s*(.+)$", line)
-            if not m:
-                self.logger.info(f"Skipping non-dialogue line for ElevenLabs: '{line}'")
-                continue
-            speaker, text = m.group(1).strip(), m.group(2).strip()
-            # Apply sanitize_text here, after speaker and text are separated
-            text = sanitize_text(text)
-            if text:
-                segments.append((speaker, text))
+
+            match = re.match(r"^(\w+)\s*:\s*(.+)$", line)
+            
+            if match:
+                # This is a new speaker line.
+                # First, save the previous speaker's collected text if it exists.
+                if current_speaker and current_text_lines:
+                    full_text = " ".join(current_text_lines)
+                    # Sanitize the joined text, then remove any newlines for ElevenLabs.
+                    sanitized_text = sanitize_text(full_text).replace('\n', ' ').replace('\r', '')
+                    if sanitized_text:
+                        segments.append((current_speaker, sanitized_text))
+
+                # Start the new speaker's block.
+                current_speaker = match.group(1).strip()
+                current_text_lines = [match.group(2).strip()]
+            elif current_speaker:
+                # This is a continuation of the current speaker's dialogue.
+                current_text_lines.append(line)
+
+        # After the loop, add the last speaker's segment if it exists.
+        if current_speaker and current_text_lines:
+            full_text = " ".join(current_text_lines)
+            sanitized_text = sanitize_text(full_text).replace('\n', ' ').replace('\r', '')
+            if sanitized_text:
+                segments.append((current_speaker, sanitized_text))
+        
         return segments
 
 
@@ -396,10 +417,10 @@ def sanitize_app_settings_for_backend(app_settings: Dict[str, Any]) -> Dict[str,
     clean_elevenlabs = {}
     for speaker, data in elevenlabs_voices.items():
         if isinstance(data, dict):
-            elevenlabs_mapping_clean[speaker] = data.get('id', '')
+            clean_elevenlabs[speaker] = data.get('id', '')
         else:
             # Legacy format: use the string as-is
-            elevenlabs_mapping_clean[speaker] = data
+            clean_elevenlabs[speaker] = data
     clean_settings["speaker_voices_elevenlabs"] = clean_elevenlabs
     
     return clean_settings
