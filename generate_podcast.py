@@ -273,7 +273,7 @@ class ElevenLabsTTS(TTSProvider):
             if not line:
                 continue
 
-            match = re.match(r"^(\w+)\s*:\s*(.+)$", line)
+            match = re.match(r"^\s*([^:]+?)\s*:\s*(.+)$", line)
             
             if match:
                 # This is a new speaker line.
@@ -345,7 +345,15 @@ def _ffmpeg_convert_inline_audio_chunks(audio_chunks: List[bytes], mime_type: st
 
 
 def validate_speakers(script_text: str, app_settings: Dict[str, Any]) -> Tuple[List[str], List[str]]:
-    script_speakers = set(re.findall(r"^\s*(\w+)\s*:", script_text, re.MULTILINE))
+    # Only extract speakers from lines that are actual speaker declarations
+    # (not continuation lines within a dialogue block)
+    raw_speakers = []
+    for line in script_text.splitlines():
+        match = re.match(r"^\s*([^:]+?)\s*:\s*(.+)$", line)
+        if match:
+            raw_speakers.append(match.group(1).strip())
+    script_speakers = set(raw_speakers)
+
     if not script_speakers:
         return [], []
     provider_name = app_settings.get("tts_provider", "gemini").lower()

@@ -112,6 +112,7 @@
         .script-preview { /* New style for the formatted script display */
             width: 100%;
             min-height: 100px; /* Give it a minimum height */
+            max-height: 300px; /* Add a max-height to enable scrolling */
             padding: 10px;
             border-radius: 4px;
             border: 1px solid var(--input-border-color);
@@ -124,6 +125,10 @@
         }
         .script-preview strong { /* Style for speaker names */
             color: var(--success-text);
+        }
+        .script-preview .invalid-speaker {
+            color: var(--error-text);
+            font-weight: bold;
         }
         button, .button {
             display: inline-block;
@@ -442,7 +447,8 @@
             <h2>About Podcast Generator</h2>
             <p>Version: <span id="app-version"></span></p>
             <p>This application is an open-source project designed to simplify the creation of audio podcasts from text scripts.</p>
-            <p>If this application is useful to you, you can support its development: <a href="https://buymeacoffee.com/laurentftech" target="_blank">❤️ Buy Me a Coffee</a></p>
+            <p>If this application is useful to you, you can support its development:</p>
+            <p>❤️ <a href="https://buymeacoffee.com/laurentftech" target="_blank">Buy Me a Coffee</a></p>
             <hr>
             <h3>Core Technologies</h3>
             <ul style="text-align: left;">
@@ -552,71 +558,99 @@
             }
 
             function cleanScript(text) {
-                return text.split('\n').filter(line => /^\s*\w+\s*:\s*.+/.test(line)).join('\n');
+                return text.split('\n').filter(line => /^\s*([^:]+?)\s*:\s*.+/.test(line)).join('\n');
             }
 
             function validateSpeakersInUI() {
-                const provider = currentSettings.tts_provider || 'elevenlabs'; // Always use saved settings for main UI validation
+                const provider = currentSettings.tts_provider || 'elevenlabs';
+                const scriptText = scriptTextarea.value;
 
-                if (provider !== 'gemini') {
-                    speakerValidationErrorDiv.style.display = 'none';
-                    generateBtn.disabled = false;
+                // Split into lines and only process lines that start with "Speaker:"
+                const lines = scriptText.split('\n');
+                const speakersInScript = [];
+                for (const line of lines) {
+                    const match = line.match(/^\s*([^:]+?)\s*:/);
+                    if (match) {
+                        speakersInScript.push(match[1].trim());
+                    }
+                }
+                const uniqueSpeakers = [...new Set(speakersInScript)];
+
+                if (uniqueSpeakers.length === 0 && scriptText.trim().length > 0) {
+                    speakerValidationErrorDiv.textContent = "No valid speakers found. Use the 'Speaker: Dialogue' format.";
+                    speakerValidationErrorDiv.style.display = 'block';
+                    generateBtn.disabled = true;
                     return;
                 }
 
-                const instructionText = instructionContainer.style.display !== 'none' ? instructionTextarea.value : '';
-                const scriptText = scriptTextarea.value;
-                const combinedText = (instructionText.trim() ? instructionText + '\n' : '') + scriptText;
+                const speakerVoices = (provider === 'elevenlabs') ? currentSettings.speaker_voices_elevenlabs : currentSettings.speaker_voices;
+                const validSpeakers = new Set(Object.keys(speakerVoices || {}));
+                const invalidSpeakers = uniqueSpeakers.filter(s => !validSpeakers.has(s));
 
-                const speakersInScript = (combinedText.match(/^\s*(\w+)\s*:/gm) || []).map(s => s.match(/^\s*(\w+)\s*:/)[1]);
-                const uniqueSpeakers = [...new Set(speakersInScript)];
+                if (invalidSpeakers.length > 0) {
+                    speakerValidationErrorDiv.textContent = `The following speakers are not configured: ${invalidSpeakers.join(', ')}. Please configure them in Settings.`;
+                    speakerValidationErrorDiv.style.display = 'block';
+                    generateBtn.disabled = true;
+                    return;
+                }
 
-                if (uniqueSpeakers.length > 2) {
+                if (provider === 'gemini' && uniqueSpeakers.length > 2) {
                     speakerValidationErrorDiv.textContent = `Gemini TTS supports a maximum of 2 speakers. Found ${uniqueSpeakers.length}: ${uniqueSpeakers.join(', ')}.`;
                     speakerValidationErrorDiv.style.display = 'block';
                     generateBtn.disabled = true;
-                } else {
-                    speakerValidationErrorDiv.style.display = 'none';
-                    generateBtn.disabled = false;
+                    return;
                 }
+
+                speakerValidationErrorDiv.style.display = 'none';
+                generateBtn.disabled = false;
             }
 
-            // Function to update the formatted script preview
             function updateFormattedScriptPreview() {
                 const instructionText = instructionContainer.style.display !== 'none' ? instructionTextarea.value : '';
                 const scriptText = scriptTextarea.value;
                 
-                // Combine instruction and script for preview
-                const combinedText = (instructionText.trim() ? instructionText + '\n' : '') + scriptText;
-                const lines = combinedText.split('\n');
+                const provider = currentSettings.tts_provider || 'elevenlabs';
+                const speakerVoices = (provider === 'elevenlabs') ? currentSettings.speaker_voices_elevenlabs : currentSettings.speaker_voices;
+                const validSpeakers = new Set(Object.keys(speakerVoices || {}));
+
                 let htmlLines = [];
-                let instructionBlockEnded = false;
 
-                for (const line of lines) {
+                // Process instruction lines: just italicize them
+                if (instructionText.trim()) {
+                    instructionText.split('\n').forEach(line => {
+                        htmlLines.push(`<em>${line.replace(/\[(.*?)\]/g, '<em>[$1]</em>')}</em>`);
+                    });
+                }
+
+                // Process script lines: apply speaker validation
+                scriptText.split('\n').forEach(line => {
+                    const speakerMatch = line.match(/^\s*([^:]+?)\s*:(.*)$/);
                     let processedLine = line;
-                    
-                    // Check if this line contains a speaker (marks the end of the instruction block)
-                    const isSpeakerLine = /^\s*\w+\s*:/.test(line);
-                    if (isSpeakerLine) {
-                        instructionBlockEnded = true;
-                    }
 
-                    // Italicize bracketed text first, everywhere.
-                    processedLine = processedLine.replace(/\[(.*?)\]/g, '<em>[$1]</em>');
+                    if (speakerMatch) {
+                        const speakerName = speakerMatch[1].trim();
+                        const speakerTag = speakerMatch[0].substring(0, speakerMatch[0].indexOf(':') + 1);
+                        const dialoguePart = speakerMatch[2];
 
-                    if (isSpeakerLine) {
-                        // Bold speaker names
-                        processedLine = processedLine.replace(/^(\s*)(\w+\s*):/m, '$1<strong>$2:</strong>');
-                    } else if (!instructionBlockEnded && line.trim() !== '') {
-                        // If it's an instruction line (before any speaker) and not empty, wrap the whole line in italics.
-                        processedLine = `<em>${processedLine}</em>`;
+                        let styledSpeakerTag;
+                        if (validSpeakers.has(speakerName)) {
+                            styledSpeakerTag = `<strong>${speakerTag}</strong>`;
+                        } else {
+                            styledSpeakerTag = `<span class="invalid-speaker">${speakerTag}</span>`;
+                        }
+
+                        processedLine = line.replace(/^\s*([^:]+?)\s*:/, styledSpeakerTag);
+                        processedLine = processedLine.replace(/\[(.*?)\]/g, '<em>[$1]</em>');
+
+                    } else {
+                        processedLine = line.replace(/\[(.*?)\]/g, '<em>[$1]</em>');
                     }
                     
                     htmlLines.push(processedLine);
-                }
+                });
 
                 formattedScriptPreview.innerHTML = htmlLines.join('<br>');
-                validateSpeakersInUI(); // Also validate speakers on every update
+                validateSpeakersInUI();
             }
 
             // --- Accordion Logic ---
@@ -747,8 +781,8 @@
                 const scriptText = scriptTextarea.value; // Use the actual textarea value
                 const lines = scriptText.split('\n');
                 const speakersInScript = lines.map(line => {
-                    const match = line.match(/^\s*(\w+)\s*:/);
-                    return match ? match[1] : null;
+                    const match = line.match(/^\s*([^:]+?)\s*:/);
+                    return match ? match[1].trim() : null;
                 }).filter(Boolean);
                 const uniqueSpeakers = [...new Set(speakersInScript)];
 
