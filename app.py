@@ -346,7 +346,12 @@ def handle_generate_demo():
 @app.route('/demos/<demo_id>/<path:filename>')
 def serve_demo_file(demo_id, filename):
     demo_dir = os.path.join(app.config['DEMOS_DIR'], demo_id)
-    return send_from_directory(demo_dir, filename)
+    # Validate demo_dir is inside DEMOS_DIR
+    normalized_demo_dir = os.path.normpath(os.path.abspath(demo_dir))
+    demos_base = os.path.abspath(app.config['DEMOS_DIR'])
+    if not normalized_demo_dir.startswith(demos_base + os.sep):
+        return "Invalid demo ID", 400
+    return send_from_directory(normalized_demo_dir, filename)
 
 @app.route('/api/download_demo/<demo_id>')
 def download_demo_zip(demo_id):
