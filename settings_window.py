@@ -4,9 +4,11 @@ import threading
 import json
 import keyring
 import sys
+import os
 import customtkinter
 
 from gui import AVAILABLE_VOICES
+from utils import get_asset_path
 
 try:
     import requests
@@ -15,8 +17,6 @@ except ImportError:
 
 
 class VoiceSettingsWindow(customtkinter.CTkToplevel):
-    VOICE_DISPLAY_LIST = [f"{name} - {desc}" for name, desc in AVAILABLE_VOICES.items()]
-
     def __init__(self, parent, current_settings, save_callback, close_callback, default_settings,
                  preloaded_elevenlabs_voices=None,
                  play_gemini_sample_callback=None,
@@ -27,6 +27,10 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         self.title("Voice settings")
         self.transient(parent)
         self.grab_set()
+
+        # Load Gemini voice classifications and build enriched display list
+        self.gemini_voice_classifications = self._load_gemini_classifications()
+        self.VOICE_DISPLAY_LIST = self._build_gemini_display_list()
 
         # Fix pour le bandeau de titre sombre sur Windows
         if sys.platform == "win32":
@@ -125,6 +129,50 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         # Activate play buttons after the window is shown to avoid race conditions
         # A longer delay is more robust on slower systems or different architectures like Mac ARM.
         self.after(1000, self._enable_play_buttons)
+
+    def _load_gemini_classifications(self):
+        """Load Gemini voice classifications from JSON file."""
+        classifications_path = get_asset_path(os.path.join("samples", "gemini_voices", "voice_classifications.json"))
+        if not classifications_path:
+            return {}
+
+        try:
+            with open(classifications_path, 'r', encoding='utf-8') as f:
+                classifications_list = json.load(f)
+            # Convert list to dict indexed by filename
+            classifications_dict = {}
+            for entry in classifications_list:
+                if 'error' not in entry and 'filename' in entry:
+                    classifications_dict[entry['filename']] = {
+                        'gender': entry.get('gender', 'unknown'),
+                        'age_group': entry.get('age_group', 'unknown'),
+                        'accent': entry.get('accent', 'unknown'),
+                        'speaking_style': entry.get('speaking_style', 'unknown')
+                    }
+            return classifications_dict
+        except Exception as e:
+            logging.error(f"Error loading Gemini voice classifications: {e}")
+            return {}
+
+    def _build_gemini_display_list(self):
+        """Build enriched display list for Gemini voices using classifications."""
+        display_list = []
+        for name, desc in AVAILABLE_VOICES.items():
+            classification = self.gemini_voice_classifications.get(name, {})
+            if classification:
+                # Format: "Name (gender, age_group, Accent, speaking_style)"
+                gender = classification.get('gender', '')
+                age_group = classification.get('age_group', '')
+                accent = classification.get('accent', '').title()  # Capitalize accent
+                speaking_style = classification.get('speaking_style', '')
+
+                desc_parts = [p for p in [gender, age_group, accent, speaking_style] if p]
+                enriched_desc = ', '.join(desc_parts) if desc_parts else desc
+                display_list.append(f"{name} ({enriched_desc})")
+            else:
+                # Fallback to original format if no classification
+                display_list.append(f"{name} - {desc}")
+        return display_list
 
     def _enable_play_buttons(self):
         """Active tous les boutons de lecture dans les guides vocaux."""
@@ -233,7 +281,25 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
 
         voices = list(AVAILABLE_VOICES.items())
         for i, (name, desc) in enumerate(voices):
-            self._create_guide_row(scrollable_frame, provider, name, f"{name} - {desc}", name)
+            # Build enriched display for Gemini voices using classifications
+            classification = self.gemini_voice_classifications.get(name, {})
+            if classification:
+                # Format: "Name (gender, age_group, Accent, speaking_style)"
+                gender = classification.get('gender', '')
+                age_group = classification.get('age_group', '')
+                accent = classification.get('accent', '').title()  # Capitalize accent
+                speaking_style = classification.get('speaking_style', '')
+
+                desc_parts = [p for p in [gender, age_group, accent, speaking_style] if p]
+                enriched_desc = ', '.join(desc_parts) if desc_parts else desc
+                display_name = f"{name} ({enriched_desc})"
+            else:
+                # Fallback to original format if no classification
+                display_name = f"{name} - {desc}"
+
+            # Pass enriched description or original desc as full_description
+            full_description = enriched_desc if classification else desc
+            self._create_guide_row(scrollable_frame, provider, name, display_name, name, full_description)
             if i < len(voices) - 1:
                 separator = customtkinter.CTkFrame(scrollable_frame, height=1, fg_color=("gray80", "gray25"))
                 separator.pack(fill='x', pady=5, padx=5)
@@ -242,7 +308,7 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         if provider == "gemini":
             self._gemini_voices_displayed = True
 
-    def _create_guide_row(self, parent, provider, voice_id, display_name, play_identifier):
+    def _create_guide_row(self, parent, provider, voice_id, display_name, play_identifier, full_description=None):
         # Set a fixed height for each row and prevent it from resizing.
         # This makes layout calculations much faster and scrolling smoother.
         row_frame = customtkinter.CTkFrame(parent, fg_color="transparent", height=55)
@@ -257,12 +323,26 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         # Use sticky="w" to align left, the rowconfigure will handle vertical centering
         text_frame.grid(row=0, column=0, sticky="w", padx=(5, 10))
 
-        name, _, description = display_name.partition(" - ")
+        # For display: use name with tags in parentheses (e.g., "Roger (Male, Middle Aged, American)")
+        # For full description: show ElevenLabs description or Gemini description
+        if " - " in display_name:
+            name, _, description = display_name.partition(" - ")
+        elif " (" in display_name:
+            name, _, description = display_name.partition(" (")
+            description = description.rstrip(")")
+        else:
+            name = display_name
+            description = ""
+
         customtkinter.CTkLabel(text_frame, text=name, font=customtkinter.CTkFont(weight="bold"),
                                anchor="w").pack(anchor="w", fill="x")
-        if description:
+
+        # Show full_description if provided (ElevenLabs), otherwise use short description
+        desc_to_show = full_description if full_description else description
+        if desc_to_show:
             # We still wrap, but the container's fixed height prevents layout jumps.
-            customtkinter.CTkLabel(text_frame, text=description, anchor="w", wraplength=400,
+            # Use justify="left" for proper text alignment in wrapped text
+            customtkinter.CTkLabel(text_frame, text=desc_to_show, anchor="w", justify="left", wraplength=400,
                                    font=customtkinter.CTkFont(size=11)).pack(anchor="w", fill="x")
 
         buttons_inner = customtkinter.CTkFrame(row_frame, fg_color="transparent")
@@ -318,7 +398,7 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
                 if voices_to_display:  # Seulement si on a des voix à afficher
                     for voice in voices_to_display:
                         self._create_guide_row(self.elevenlabs_scroll_frame, "elevenlabs", voice['id'],
-                                             voice['display_name'], voice['preview_url'])
+                                             voice['display_name'], voice['preview_url'], voice.get('description', ''))
                         separator = customtkinter.CTkFrame(self.elevenlabs_scroll_frame, height=1,
                                                           fg_color=("gray80", "gray25"))
                         separator.pack(fill='x', pady=5, padx=5)
@@ -377,14 +457,24 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
                     voices = []
                     for voice in voices_data:
                         labels = voice.get('labels', {}) or {}
-                        desc_parts = [p.title() for p in [labels.get('gender'), labels.get('age'), labels.get('accent')]
-                                      if p]
-                        description = ', '.join(desc_parts) or str(voice.get('category', '')).title()
-                        display_name = f"{voice.get('name', 'Unknown')} - {description}" if description else voice.get(
-                            'name', 'Unknown')
+                        # Build short description from labels (like Gemini format)
+                        # Format: gender, age, accent, use_case (lowercase except accent)
+                        gender = labels.get('gender', '')
+                        age = labels.get('age', '').replace('_', ' ')
+                        accent = labels.get('accent', '').title()  # Capitalize accent
+                        use_case = labels.get('use_case', '').replace('_', ' ')
+
+                        desc_parts = [p for p in [gender, age, accent, use_case] if p]
+                        short_description = ', '.join(desc_parts) if desc_parts else str(voice.get('category', '')).title()
+
+                        # Store the full API description separately
+                        full_description = voice.get('description', '').strip()
+
+                        display_name = f"{voice.get('name', 'Unknown')} ({short_description})" if short_description else voice.get('name', 'Unknown')
                         voices.append({'id': voice.get('voice_id', ''), 'name': voice.get('name', 'Unknown'),
                                        'display_name': display_name, 'category': voice.get('category', ''),
-                                       'labels': labels, 'preview_url': voice.get('preview_url', '')})
+                                       'labels': labels, 'preview_url': voice.get('preview_url', ''),
+                                       'description': full_description, 'short_description': short_description})
                     voices.sort(key=lambda x: x.get('name', ''))
                     self.elevenlabs_voices = voices
                     self.elevenlabs_voices_loaded = True
@@ -396,7 +486,9 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
                 self.elevenlabs_voices, self.elevenlabs_voices_loaded = [], False
             finally:
                 if not self.winfo_exists(): return
-                self.after(100, self.populate_fields_delayed)
+                # No need to call populate_fields_delayed here anymore
+                # The check_voices_update() loop will handle updating the comboboxes
+                self._loading_voices = False
 
         threading.Thread(target=fetch_voices, daemon=True).start()
 
@@ -422,18 +514,27 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
         try:
             if not self.elevenlabs_voices_loaded or not self.elevenlabs_voices or not self.winfo_exists():
                 return
+            logging.info(f"Updating ElevenLabs comboboxes with {len(self.elevenlabs_voices)} voices")
             elevenlabs_values = [voice['display_name'] for voice in self.elevenlabs_voices]
+            updated_count = 0
             for row in self.entries:
                 if 'elevenlabs_voice' in row and row['elevenlabs_voice']:
                     try:
                         current_value = row['elevenlabs_voice'].get()
-                        row['elevenlabs_voice']['values'] = elevenlabs_values
-                        if current_value in elevenlabs_values:
+                        row['elevenlabs_voice'].configure(values=elevenlabs_values)
+                        # If the current value is "Loading..." or not in the list, set to first voice
+                        if current_value == "Loading..." or current_value not in elevenlabs_values:
+                            if elevenlabs_values:
+                                row['elevenlabs_voice'].set(elevenlabs_values[0])
+                        elif current_value in elevenlabs_values:
                             row['elevenlabs_voice'].set(current_value)
-                    except tk.TclError:
+                        updated_count += 1
+                    except tk.TclError as e:
+                        logging.warning(f"TclError updating combobox: {e}")
                         continue
+            logging.info(f"Successfully updated {updated_count} ElevenLabs comboboxes")
         except Exception as e:
-            logging.warning(f"Error updating comboboxes: {e}")
+            logging.error(f"Error updating comboboxes: {e}", exc_info=True)
 
     def cancel_and_close(self):
         if self.close_callback: self.close_callback()
@@ -506,11 +607,14 @@ class VoiceSettingsWindow(customtkinter.CTkToplevel):
             row_data['gemini_voice'] = gemini_combo
         if self.elevenlabs_api_configured:
             elevenlabs_values = [v['display_name'] for v in
-                                 self.elevenlabs_voices] if self.elevenlabs_voices_loaded else []
+                                 self.elevenlabs_voices] if self.elevenlabs_voices_loaded else ["Loading..."]
             elevenlabs_combo = customtkinter.CTkComboBox(row_frame, values=elevenlabs_values, width=220,
                                                          state="readonly")
             elevenlabs_combo.pack(side=tk.LEFT, padx=(0, 10), fill='x')
-            if elevenlabs_voice: elevenlabs_combo.set(elevenlabs_voice)
+            if elevenlabs_voice:
+                elevenlabs_combo.set(elevenlabs_voice)
+            elif not self.elevenlabs_voices_loaded:
+                elevenlabs_combo.set("Loading...")
             row_data['elevenlabs_voice'] = elevenlabs_combo
         remove_btn = customtkinter.CTkButton(row_frame, text="-", width=30,
                                              command=lambda r=row_frame: self.remove_row(r))

@@ -148,6 +148,54 @@ def get_gemini_sample(voice_name):
         return "Sample directory not found", 404
     return send_from_directory(sample_path, f"{voice_name}.mp3")
 
+@app.route('/api/voice_classifications', methods=['GET'])
+def get_voice_classifications():
+    """Returns voice classifications for Gemini voices."""
+    classifications_path = get_asset_path(os.path.join("samples", "gemini_voices", "voice_classifications.json"))
+    if not classifications_path:
+        return jsonify({'error': 'Classifications file not found'}), 404
+    try:
+        with open(classifications_path, 'r', encoding='utf-8') as f:
+            classifications = json.load(f)
+        # Filter out entries with errors and create a lookup dictionary
+        classifications_dict = {}
+        for entry in classifications:
+            if 'error' not in entry and 'filename' in entry:
+                classifications_dict[entry['filename']] = {
+                    'gender': entry.get('gender', 'unknown'),
+                    'age_group': entry.get('age_group', 'unknown'),
+                    'accent': entry.get('accent', 'unknown'),
+                    'speaking_style': entry.get('speaking_style', 'unknown')
+                }
+        return jsonify(classifications_dict)
+    except Exception as e:
+        logger.error(f"Error loading voice classifications: {e}")
+        return jsonify({'error': 'Could not load classifications'}), 500
+
+@app.route('/api/elevenlabs_voice_classifications', methods=['GET'])
+def get_elevenlabs_voice_classifications():
+    """Returns voice classifications for ElevenLabs voices."""
+    classifications_path = get_asset_path(os.path.join("samples", "elevenlabs_voices", "voice_classifications.json"))
+    if not classifications_path:
+        return jsonify({'error': 'Classifications file not found'}), 404
+    try:
+        with open(classifications_path, 'r', encoding='utf-8') as f:
+            classifications = json.load(f)
+        # Filter out entries with errors and create a lookup dictionary by voice_name
+        classifications_dict = {}
+        for entry in classifications:
+            if 'error' not in entry and 'voice_name' in entry:
+                # Exclude gender since it's already provided by ElevenLabs API
+                classifications_dict[entry['voice_name']] = {
+                    'age_group': entry.get('age_group', 'unknown'),
+                    'accent': entry.get('accent', 'unknown'),
+                    'speaking_style': entry.get('speaking_style', 'unknown')
+                }
+        return jsonify(classifications_dict)
+    except Exception as e:
+        logger.error(f"Error loading ElevenLabs voice classifications: {e}")
+        return jsonify({'error': 'Could not load classifications'}), 500
+
 def run_generation_task(task_id, script_text, app_settings, output_filepath, api_key):
     """The target function for the generation thread."""
     stop_event = tasks[task_id]['stop_event']

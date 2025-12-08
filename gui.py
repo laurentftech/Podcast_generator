@@ -1518,14 +1518,24 @@ class PodcastGeneratorApp:
                 voices = []
                 for voice in data.get('voices', []):
                     labels = voice.get('labels', {}) if voice.get('labels') else {}
-                    desc_parts = [p.title() for p in [labels.get('gender'), labels.get('age'), labels.get('accent')] if
-                                  p]
-                    description = ', '.join(desc_parts) or str(voice.get('category', '')).title()
-                    display_name = f"{voice.get('name', 'Unknown')} - {description}" if description else voice.get(
-                        'name', 'Unknown')
+                    # Build short description from labels (like Gemini format)
+                    # Format: gender, age, accent, use_case (lowercase except accent)
+                    gender = labels.get('gender', '')
+                    age = labels.get('age', '').replace('_', ' ')
+                    accent = labels.get('accent', '').title()  # Capitalize accent
+                    use_case = labels.get('use_case', '').replace('_', ' ')
+
+                    desc_parts = [p for p in [gender, age, accent, use_case] if p]
+                    short_description = ', '.join(desc_parts) if desc_parts else str(voice.get('category', '')).title()
+
+                    # Store the full API description separately
+                    full_description = voice.get('description', '').strip()
+
+                    display_name = f"{voice.get('name', 'Unknown')} ({short_description})" if short_description else voice.get('name', 'Unknown')
                     voices.append({'id': voice.get('voice_id', ''), 'name': voice.get('name', 'Unknown'),
                                    'display_name': display_name, 'category': voice.get('category', ''),
-                                   'labels': labels, 'preview_url': voice.get('preview_url', '')})
+                                   'labels': labels, 'preview_url': voice.get('preview_url', ''),
+                                   'description': full_description, 'short_description': short_description})
                 voices.sort(key=lambda x: x.get('name', ''))
                 self.elevenlabs_voices_cache = voices
                 self.logger.info(f"Successfully pre-fetched {len(voices)} ElevenLabs voices.")

@@ -499,6 +499,8 @@
             let currentTaskId = null;
             let pollingInterval = null;
             let audioCtx = null; // Global AudioContext
+            let voiceClassifications = {}; // Store voice metadata for Gemini voices
+            let elevenlabsVoiceClassifications = {}; // Store voice metadata for ElevenLabs voices
 
             // New elements for formatted script preview
             const instructionContainer = document.getElementById('instruction-container');
@@ -726,12 +728,20 @@
             // --- Settings Logic ---
             async function loadSettings() {
                 try {
-                    const [settingsRes, voicesRes] = await Promise.all([
+                    const [settingsRes, voicesRes, classificationsRes, elevenlabsClassificationsRes] = await Promise.all([
                         fetch('/api/settings'),
-                        fetch('/api/voices')
+                        fetch('/api/voices'),
+                        fetch('/api/voice_classifications'),
+                        fetch('/api/elevenlabs_voice_classifications')
                     ]);
                     currentSettings = await settingsRes.json();
                     allVoices = await voicesRes.json();
+                    if (classificationsRes.ok) {
+                        voiceClassifications = await classificationsRes.json();
+                    }
+                    if (elevenlabsClassificationsRes.ok) {
+                        elevenlabsVoiceClassifications = await elevenlabsClassificationsRes.json();
+                    }
                     renderProviderSelection(); // This will use modalProvider, which is now correctly set
                     renderVoiceSettings(modalProvider); // This will use modalProvider, which is now correctly set
                     // validateSpeakersInUI(); // No need to call here, renderVoiceSettings calls updateFormattedScriptPreview which calls this.
@@ -808,15 +818,51 @@
 
                     if (providerToRender === 'elevenlabs') {
                         voices.forEach(voice => {
-                            const option = new Option(`${voice.name} (${voice.labels.gender || 'N/A'})`, voice.voice_id);
+                            // Build short description from labels (like Gemini format)
+                            // Format: gender, age, accent, use_case (lowercase except accent)
+                            const gender = voice.labels?.gender || '';
+                            const age = (voice.labels?.age || '').replace('_', ' ');
+                            const accent = voice.labels?.accent || '';
+                            const useCase = (voice.labels?.use_case || '').replace('_', ' ');
+
+                            // Only capitalize accent
+                            const accentCapitalized = accent ? accent.charAt(0).toUpperCase() + accent.slice(1) : '';
+
+                            const descParts = [gender, age, accentCapitalized, useCase].filter(Boolean);
+                            const shortDescription = descParts.join(', ');
+
+                            // Format: "VoiceName (gender, age, accent, use_case)"
+                            const displayText = shortDescription ?
+                                `${voice.name} (${shortDescription})` :
+                                voice.name;
+
+                            // Use full ElevenLabs description as tooltip/title
+                            const fullDescription = voice.description && voice.description.trim() ?
+                                voice.description :
+                                shortDescription;
+
+                            const option = new Option(displayText, voice.voice_id);
+                            if (fullDescription) {
+                                option.title = fullDescription;
+                            }
                             select.add(option);
                         });
                         const currentVoiceId = speakerVoices[speaker] ? (speakerVoices[speaker].id || speakerVoices[speaker]) : '';
                         select.value = currentVoiceId;
                     } else {
+                        // Gemini voices with enriched metadata
                         for (const [name, desc] of Object.entries(voices)) {
-                             const option = new Option(`${name} - ${desc}`, name);
-                             select.add(option);
+                            let displayText = `${name} - ${desc}`;
+                            const classification = voiceClassifications[name];
+                            if (classification) {
+                                const gender = classification.gender || 'unknown';
+                                const ageGroup = classification.age_group || 'unknown';
+                                const accent = classification.accent || 'unknown';
+                                const speakingStyle = classification.speaking_style || 'unknown';
+                                displayText = `${name} - ${desc} (${gender}, ${ageGroup}, ${accent}, ${speakingStyle})`;
+                            }
+                            const option = new Option(displayText, name);
+                            select.add(option);
                         }
                         select.value = speakerVoices[speaker] ? speakerVoices[speaker].split(' - ')[0] : '';
                     }
@@ -1138,8 +1184,6 @@
                 }
             }
 
-            // Initial update of the formatted script preview
-            updateFormattedScriptPreview();
             // Update the formatted script preview whenever the textarea content changes
             instructionTextarea.addEventListener('input', updateFormattedScriptPreview);
             scriptTextarea.addEventListener('input', updateFormattedScriptPreview);
@@ -1150,7 +1194,7 @@
             loadSettings().then(() => {
                 modalProvider = currentSettings.tts_provider; // Initialize modalProvider on page load
                 // After settings are loaded, ensure UI reflects the correct state
-                updateMainUIProviderVisibility(); // Call the new function here
+                updateMainUIProviderVisibility(); // Call the new function here (this will call updateFormattedScriptPreview)
             });
 
             // --- PWA Service Worker Registration ---
