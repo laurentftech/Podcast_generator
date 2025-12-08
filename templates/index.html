@@ -607,6 +607,15 @@
                 generateBtn.disabled = false;
             }
 
+            // Escape HTML meta-characters in a string
+            function escapeHTML(str) {
+                return str.replace(/&/g, "&amp;")
+                          .replace(/</g, "&lt;")
+                          .replace(/>/g, "&gt;")
+                          .replace(/"/g, "&quot;")
+                          .replace(/'/g, "&#39;");
+            }
+
             function updateFormattedScriptPreview() {
                 const instructionText = instructionContainer.style.display !== 'none' ? instructionTextarea.value : '';
                 const scriptText = scriptTextarea.value;
@@ -620,32 +629,48 @@
                 // Process instruction lines: just italicize them
                 if (instructionText.trim()) {
                     instructionText.split('\n').forEach(line => {
-                        htmlLines.push(`<em>${line.replace(/\[(.*?)\]/g, '<em>[$1]</em>')}</em>`);
+                        // Escape user text before injecting markup
+                        // For [something], apply <em> to the brackets but escape inner content
+                        let escapedLine = escapeHTML(line);
+                        // Replace [text] with <em> text </em>, where "text" is properly escaped
+                        escapedLine = escapedLine.replace(/\[([^\]]*?)\]/g, function(match, p1) {
+                            return '<em>[' + escapeHTML(p1) + ']</em>';
+                        });
+                        htmlLines.push(`<em>${escapedLine}</em>`);
                     });
                 }
 
                 // Process script lines: apply speaker validation
                 scriptText.split('\n').forEach(line => {
                     const speakerMatch = line.match(/^\s*([^:]+?)\s*:(.*)$/);
-                    let processedLine = line;
+
+                    let processedLine;
 
                     if (speakerMatch) {
                         const speakerName = speakerMatch[1].trim();
-                        const speakerTag = speakerMatch[0].substring(0, speakerMatch[0].indexOf(':') + 1);
-                        const dialoguePart = speakerMatch[2];
+                        const speakerTagText = line.substring(0, line.indexOf(':') + 1);
+                        const dialoguePart = line.substring(line.indexOf(':') + 1);
 
                         let styledSpeakerTag;
+                        // Escape speakerTagText to avoid XSS (for untrusted names)
+                        const escapedSpeakerTag = escapeHTML(speakerTagText);
                         if (validSpeakers.has(speakerName)) {
-                            styledSpeakerTag = `<strong>${speakerTag}</strong>`;
+                            styledSpeakerTag = `<strong>${escapedSpeakerTag}</strong>`;
                         } else {
-                            styledSpeakerTag = `<span class="invalid-speaker">${speakerTag}</span>`;
+                            styledSpeakerTag = `<span class="invalid-speaker">${escapedSpeakerTag}</span>`;
                         }
-
-                        processedLine = line.replace(/^\s*([^:]+?)\s*:/, styledSpeakerTag);
-                        processedLine = processedLine.replace(/\[(.*?)\]/g, '<em>[$1]</em>');
-
+                        let escapedDialogue = escapeHTML(dialoguePart);
+                        // Replace [text] with <em> text </em> in dialogue only
+                        escapedDialogue = escapedDialogue.replace(/\[([^\]]*?)\]/g, function(match, p1) {
+                            return '<em>[' + escapeHTML(p1) + ']</em>';
+                        });
+                        processedLine = styledSpeakerTag + escapedDialogue;
                     } else {
-                        processedLine = line.replace(/\[(.*?)\]/g, '<em>[$1]</em>');
+                        let escapedLine = escapeHTML(line);
+                        escapedLine = escapedLine.replace(/\[([^\]]*?)\]/g, function(match, p1) {
+                            return '<em>[' + escapeHTML(p1) + ']</em>';
+                        });
+                        processedLine = escapedLine;
                     }
                     
                     htmlLines.push(processedLine);
