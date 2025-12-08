@@ -1,0 +1,301 @@
+[
+  {
+    "gender": "female",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 9,
+    "notes": "Clear, articulate, and friendly tone.",
+    "filename": "Achernar"
+  },
+  {
+    "gender": "male",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 9,
+    "notes": "Clear, steady voice.",
+    "filename": "Achird"
+  },
+  {
+    "gender": "male",
+    "age_group": "middle aged",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "narrative",
+    "confidence": 9,
+    "notes": "Clear enunciation and steady pace.",
+    "filename": "Algenib"
+  },
+  {
+    "gender": "male",
+    "age_group": "middle aged",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 9,
+    "notes": "Clear, articulate voice with a steady pace.",
+    "filename": "Algieba"
+  },
+  {
+    "gender": "male",
+    "age_group": "middle aged",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 8,
+    "notes": "Speaker is presenting their voice as a sample for a podcast.",
+    "filename": "Alnilam"
+  },
+  {
+    "gender": "female",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 9,
+    "notes": "Clear, articulate, and friendly tone.",
+    "filename": "Aoede"
+  },
+  {
+    "gender": "female",
+    "age_group": "middle aged",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "narrative",
+    "confidence": 9,
+    "notes": "Clear, articulate speech, suitable for professional narration or podcast hosting.",
+    "filename": "Autonoe"
+  },
+  {
+    "gender": "female",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 9,
+    "notes": "Clear, articulate, and friendly tone.",
+    "filename": "Callirrhoe"
+  },
+  {
+    "gender": "male",
+    "age_group": "middle aged",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 8,
+    "filename": "Charon"
+  },
+  {
+    "gender": "female",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "narrative",
+    "confidence": 9,
+    "notes": "Clear enunciation and pleasant tone.",
+    "filename": "Despina"
+  },
+  {
+    "gender": "male",
+    "age_group": "middle aged",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "narrative",
+    "confidence": 9,
+    "notes": "Clear, deliberate pronunciation suitable for narration or podcast hosting. The speaker explicitly mentions 'podcast'.",
+    "filename": "Enceladus"
+  },
+  {
+    "gender": "female",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 9,
+    "notes": "Clear and pleasant voice, good enunciation.",
+    "filename": "Erinome"
+  },
+  {
+    "gender": "male",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 9,
+    "notes": "Clear enunciation and steady pacing.",
+    "filename": "Fenrir"
+  },
+  {
+    "gender": "female",
+    "age_group": "middle aged",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 8,
+    "notes": "Clear and articulate delivery with a steady pace.",
+    "filename": "Gacrux"
+  },
+  {
+    "gender": "male",
+    "age_group": "middle aged",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "narrative",
+    "confidence": 9,
+    "notes": "Clear enunciation and steady speaking pace.",
+    "filename": "Iapetus"
+  },
+  {
+    "gender": "female",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 8,
+    "notes": "Clear, pleasant tone with good enunciation.",
+    "filename": "Kore"
+  },
+  {
+    "gender": "female",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 8,
+    "notes": "Clear pronunciation, steady pace.",
+    "filename": "Laomedeia"
+  },
+  {
+    "gender": "female",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "narrative",
+    "confidence": 9,
+    "notes": "Clear and articulate enunciation.",
+    "filename": "Leda"
+  },
+  {
+    "gender": "male",
+    "age_group": "middle aged",
+    "accent": "American",
+    "voice_quality": "deep",
+    "speaking_style": "conversational",
+    "confidence": 9,
+    "notes": "Clear and articulate voice.",
+    "filename": "Orus"
+  },
+  {
+    "gender": "male",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 9,
+    "notes": "Clear, articulate voice, likely intended for professional use like podcasts.",
+    "filename": "Puck"
+  },
+  {
+    "gender": "female",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "narrative",
+    "confidence": 9,
+    "notes": "Clear, pleasant voice suitable for various media.",
+    "filename": "Pulcherrima"
+  },
+  {
+    "gender": "male",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 9,
+    "notes": "Clear and articulate pronunciation.",
+    "filename": "Rasalgethi"
+  },
+  {
+    "gender": "male",
+    "age_group": "middle aged",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 7,
+    "notes": "Classification based on typical characteristics of a clear, demonstrative English speaking voice, as no audio was provided for direct analysis.",
+    "filename": "Sadachbia"
+  },
+  {
+    "gender": "male",
+    "age_group": "middle aged",
+    "accent": "Indian English",
+    "voice_quality": "medium",
+    "speaking_style": "narrative",
+    "confidence": 8,
+    "notes": "Clear pronunciation, appears to be reading a script.",
+    "filename": "Sadaltager"
+  },
+  {
+    "gender": "male",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 9,
+    "notes": "Clear, articulate speech with a steady pace.",
+    "filename": "Schedar"
+  },
+  {
+    "gender": "female",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 9,
+    "notes": "Clear, articulate pronunciation with a steady tone.",
+    "filename": "Sulafat"
+  },
+  {
+    "gender": "male",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "narrative",
+    "confidence": 9,
+    "notes": "Clear, synthesized voice with professional delivery.",
+    "filename": "Umbriel"
+  },
+  {
+    "gender": "female",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "narrative",
+    "confidence": 9,
+    "notes": "The speaker's voice is very clear and articulate, suitable for professional narration or podcasting.",
+    "filename": "Vindemiatrix"
+  },
+  {
+    "gender": "female",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 9,
+    "notes": "Clear and articulate enunciation.",
+    "filename": "Zephyr"
+  },
+  {
+    "gender": "male",
+    "age_group": "young adult",
+    "accent": "American",
+    "voice_quality": "medium",
+    "speaking_style": "conversational",
+    "confidence": 8,
+    "notes": "Clear and articulate delivery, suitable for podcast narration.",
+    "filename": "Zubenelgenubi"
+  }
+]
