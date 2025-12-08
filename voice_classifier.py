@@ -387,7 +387,7 @@ def classify_elevenlabs_voices():
             print(
                 f"{r['voice_name']:<25} {r.get('gender', 'N/A'):<10} {r['age_group']:<15} {r['accent']:<20} {r['voice_quality']:<12} {r['speaking_style']:<15} {r['confidence']:<5}")
         else:
-            print(f"{r['voice_name']:<25} ERROR: {r['error'][:80]}")
+            print(f"{r['voice_name']:<25} ERROR: Classification error")
 
     print("=" * 120)
 
