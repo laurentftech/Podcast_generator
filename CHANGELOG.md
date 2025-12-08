@@ -4,7 +4,68 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [2.0.0b26]
+
+### Changed
+- **Voice Display Format**: Improved ElevenLabs voice display to match Gemini's tag-based format
+  - Changed from `Name - Long Description` to `Name (gender, age, Accent, use_case)` format
+  - Only accent is capitalized, other tags are lowercase for consistency with Gemini voices
+  - Full descriptions remain available as tooltips in the web interface
+- **Voice Classifications**: Enhanced Gemini voice catalog with enriched metadata
+  - Voice guide now displays complete classification data (gender, age_group, accent, speaking_style)
+  - Loads data from `voice_classifications.json` for detailed voice information
+  - Improved voice selection experience with more informative descriptions
+
+### Fixed
+- **Desktop App - Voice Selection**: Fixed frozen ElevenLabs voice dropdown menus in settings window
+  - Added "Loading..." placeholder to indicate when voices are being fetched
+  - Improved `update_elevenlabs_comboboxes()` to properly refresh dropdown values
+  - Dropdowns now respond immediately without requiring "Restore Defaults" workaround
+  - Added comprehensive logging to track voice loading process
+- **Web Interface**: Eliminated transient validation error message on initial page load
+  - Deferred script preview validation until after settings are fully loaded
+- **UI Alignment**: Left-aligned voice descriptions in voice guide for both providers
+
+## [2.0.0b1-b25]
+
+### Added
+- **Web Interface**: Complete Flask-based web interface for podcast generation
+  - Access the app from any browser (desktop and web share the same settings)
+  - Stop generation in progress from the UI
+  - Real-time generation status tracking
+- **Docker Support**: Run as a containerized web service
+  - Pre-built images available on Docker Hub (gandulf78/podcast_generator)
+  - Simple deployment with Docker Compose
+  - No installation required - runs on any platform with Docker
+- **WhisperX Demo Generation**: Create interactive HTML demos with word-level highlighting
+  - Karaoke-style synchronized transcript highlighting
+  - Dark mode support
+  - Mobile-responsive design
+  - Optional feature: `pip install .[demo]`
+- **Stop Generation**: Ability to cancel podcast generation in progress
+  - Works in both desktop and web interface
+  - Clean cancellation with file cleanup
+- **Audio Feedback**: Sound notifications for generation results
+  - Success "ding" when generation completes
+  - Failure "gong" on errors
+- **Voice Preview System**: Listen to voices before selecting them
+  - Voice guide with play/pause controls for all voices
+  - 30 Gemini voice samples included
+  - Voice classifications showing gender, age, accent, and style
+- **Voice Metadata**: Detailed voice information for better selection
+  - Age group, accent, speaking style for all voices
+  - Searchable and filterable voice catalog
+
+### Changed
+- **Modern UI**: Upgraded to CustomTkinter with dark mode support
+- **Improved Demo Generation**: Switched from Montreal Forced Aligner to WhisperX for better accuracy
+- **Better Voice Display**: More informative voice descriptions with metadata tags
+
+### Fixed
+- **Security**: Prevented sensitive API key information from appearing in logs
+- **Windows**: Dark mode detection and better subprocess handling
+- **macOS**: Improved menu bar integration
+- **Voice Loading**: Fixed race conditions and improved error handling
 
 ## [1.4.8] - 2024-08-14
 
