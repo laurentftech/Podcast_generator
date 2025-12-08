@@ -351,17 +351,22 @@ def serve_demo_file(demo_id, filename):
 @app.route('/api/download_demo/<demo_id>')
 def download_demo_zip(demo_id):
     demo_dir = os.path.join(app.config['DEMOS_DIR'], demo_id)
-    if not os.path.isdir(demo_dir):
+    # Normalize and validate that demo_dir is within DEMOS_DIR
+    normalized_demo_dir = os.path.normpath(os.path.abspath(demo_dir))
+    demos_base = os.path.abspath(app.config['DEMOS_DIR'])
+    if not normalized_demo_dir.startswith(demos_base + os.sep):
+        return "Invalid demo ID", 400
+    if not os.path.isdir(normalized_demo_dir):
         return "Demo not found", 404
     
     zip_filename = f"demo_{demo_id}.zip"
     zip_filepath = os.path.join(app.config['TEMP_DIR'], zip_filename)
     
     with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for root, _, files in os.walk(demo_dir):
+        for root, _, files in os.walk(normalized_demo_dir):
             for file in files:
                 full_path = os.path.join(root, file)
-                arcname = os.path.relpath(full_path, demo_dir)
+                arcname = os.path.relpath(full_path, normalized_demo_dir)
                 zipf.write(full_path, arcname)
     
     return send_from_directory(app.config['TEMP_DIR'], zip_filename, as_attachment=True)
