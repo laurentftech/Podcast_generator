@@ -5,6 +5,7 @@ import json
 import webbrowser
 import logging
 import re
+from werkzeug.utils import secure_filename
 import tempfile
 import shutil
 import types
@@ -555,8 +556,8 @@ def create_html_demo_whisperx(script_filepath: str, audio_filepath: str, title: 
         final_html_body = reconstruct_html_with_timing(segments)
 
         # --- 7. Sauvegarder ---
-        safe_filename = re.sub(r'[^\w\s-]', '', title).strip().lower()
-        safe_filename = re.sub(r'[-\s]+', '_', safe_filename)
+        safe_filename = secure_filename(title)
+        safe_filename = os.path.splitext(safe_filename)[0]  # Remove extension if present
         if not safe_filename:
             safe_filename = "podcast_demo"
 
