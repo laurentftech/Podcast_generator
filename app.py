@@ -307,7 +307,11 @@ def handle_generate_demo():
         return jsonify({'error': 'Script and audio filename are required.'}), 400
 
     audio_filepath = os.path.join(app.config['TEMP_DIR'], audio_filename)
-    if not os.path.exists(audio_filepath):
+    # Validate: ensure audio_filepath is inside TEMP_DIR
+    normalized_audio_filepath = os.path.normpath(audio_filepath)
+    if not normalized_audio_filepath.startswith(os.path.abspath(app.config['TEMP_DIR'])):
+        return jsonify({'error': 'Invalid audio filename.'}), 400
+    if not os.path.exists(normalized_audio_filepath):
         return jsonify({'error': 'Audio file not found on server.'}), 404
 
     demo_id = os.urandom(8).hex()
@@ -320,7 +324,7 @@ def handle_generate_demo():
 
         create_html_demo_whisperx(
             script_filepath=temp_script_file,
-            audio_filepath=audio_filepath,
+            audio_filepath=normalized_audio_filepath,
             title=title,
             subtitle=subtitle,
             output_dir=demo_output_dir,
