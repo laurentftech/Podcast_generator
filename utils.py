@@ -64,7 +64,8 @@ def sanitize_text(text: str) -> str:
         return ""
 
     # 1️⃣ Enlève le HTML ou XML résiduel (ex : <p>, <o:p> de Word)
-    text = re.sub(r"<[^>]+>", " ", text)
+    # Exclude < from the character class to prevent ReDoS on malicious input like "<<<<<<"
+    text = re.sub(r"<[^<>]+>", " ", text)
 
     # 2️⃣ Décode les entités HTML (ex: &nbsp;, &amp;)
     text = unescape(text)
