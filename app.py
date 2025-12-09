@@ -3,6 +3,7 @@ from generate_podcast import generate, DEFAULT_INSTRUCTION, DEFAULT_SCRIPT, setu
 from utils import sanitize_text, get_asset_path, get_app_data_dir
 from config import AVAILABLE_VOICES, DEFAULT_APP_SETTINGS, DEMO_AVAILABLE
 from create_demo import create_html_demo_whisperx
+from transcript_analyzer import generate_analysis_docx, get_analysis_prompt_path
 import os
 import tempfile
 import json
@@ -59,6 +60,69 @@ def save_settings(settings):
     with open(get_settings_path(), 'w') as f:
         json.dump(settings, f, indent=4)
 
+def extract_filename_from_script(script_text, extension, max_length=50):
+    """
+    Extracts a safe filename from the beginning of the first sentence in the script.
+
+    Args:
+        script_text: The script content
+        extension: File extension (e.g., 'mp3', 'docx')
+        max_length: Maximum length for the filename (default 50)
+
+    Returns:
+        A sanitized filename with the given extension
+    """
+    # Remove speaker labels and get the first sentence
+    lines = script_text.strip().split('\n')
+    first_dialogue = ""
+
+    for line in lines:
+        # Skip empty lines
+        if not line.strip():
+            continue
+        # Check if line has speaker format (Speaker: text)
+        match = re.match(r'^\s*([^:]+?)\s*:\s*(.+)$', line)
+        if match:
+            first_dialogue = match.group(2).strip()
+            break
+        else:
+            # If no speaker format, use the line as-is
+            first_dialogue = line.strip()
+            break
+
+    if not first_dialogue:
+        # Fallback to UUID if no content found
+        return f"podcast_{os.urandom(4).hex()}.{extension}"
+
+    # Remove any bracketed annotations like [playful], [laughing], etc.
+    first_dialogue = re.sub(r'\[.*?\]', '', first_dialogue).strip()
+
+    # Extract the beginning (up to first sentence or max_length)
+    # Split by sentence-ending punctuation
+    sentence_match = re.match(r'^([^.!?]+)', first_dialogue)
+    if sentence_match:
+        first_sentence = sentence_match.group(1).strip()
+    else:
+        first_sentence = first_dialogue
+
+    # Limit length
+    if len(first_sentence) > max_length:
+        first_sentence = first_sentence[:max_length].strip()
+
+    # Remove or replace characters that are unsafe for filenames
+    # Keep alphanumeric, spaces, hyphens, and underscores
+    safe_name = re.sub(r'[^\w\s\-]', '', first_sentence)
+    # Replace multiple spaces/hyphens with single underscore
+    safe_name = re.sub(r'[\s\-]+', '_', safe_name)
+    # Remove leading/trailing underscores
+    safe_name = safe_name.strip('_')
+
+    # If we ended up with an empty name, use fallback
+    if not safe_name:
+        return f"podcast_{os.urandom(4).hex()}.{extension}"
+
+    return f"{safe_name}.{extension}"
+
 # --- Routes ---
 @app.route('/')
 def index():
@@ -112,6 +176,7 @@ def get_settings():
     settings = load_settings()
     settings['has_elevenlabs_key'] = bool(os.environ.get("ELEVENLABS_API_KEY"))
     settings['has_gemini_key'] = bool(os.environ.get("GEMINI_API_KEY"))
+    settings['has_analysis_prompt'] = bool(get_analysis_prompt_path())
     return jsonify(settings)
 
 @app.route('/api/settings', methods=['POST'])
@@ -254,7 +319,7 @@ def handle_generate():
     app_settings_clean = sanitize_app_settings_for_backend(app_settings)
 
     task_id = str(uuid.uuid4())
-    output_filename = f"{task_id}.mp3"
+    output_filename = extract_filename_from_script(sanitized_script, 'mp3')
     output_filepath = os.path.join(app.config['TEMP_DIR'], output_filename)
     
     stop_event = threading.Event()
@@ -379,6 +444,43 @@ def download_demo_zip(demo_id):
 @app.route('/temp/<filename>')
 def get_temp_file(filename):
     return send_from_directory(app.config['TEMP_DIR'], filename)
+
+@app.route('/api/generate_analysis', methods=['POST'])
+def handle_generate_analysis():
+    """Generates a DOCX analysis document from a transcript using Gemini API."""
+    data = request.json
+    transcript = data.get('transcript', '')
+
+    if not transcript:
+        return jsonify({'error': 'Transcript is required.'}), 400
+
+    # Check if Gemini API key is available
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        return jsonify({'error': 'Gemini API key not configured.'}), 403
+
+    try:
+        # Generate the analysis DOCX
+        docx_filename = extract_filename_from_script(transcript, 'docx')
+        docx_path = os.path.join(app.config['TEMP_DIR'], docx_filename)
+
+        generate_analysis_docx(
+            transcript=transcript,
+            output_path=docx_path,
+            api_key=api_key
+        )
+
+        return jsonify({
+            'download_url': f'/temp/{docx_filename}',
+            'filename': docx_filename
+        })
+
+    except ValueError as e:
+        logger.error(f"Validation error during analysis generation: {e}")
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error during analysis generation: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred during analysis generation.'}), 500
 
 if __name__ == '__main__':
     from dotenv import load_dotenv

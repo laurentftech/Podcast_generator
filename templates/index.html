@@ -304,6 +304,11 @@
         #generate-btn {
             flex-grow: 3; /* Make generate button larger */
         }
+        #generate-analysis-btn {
+            flex-grow: 1.5; /* Medium sized button */
+            background-color: #6c63ff; /* Purple color for analysis button */
+            display: none; /* Hidden by default, shown when Gemini is configured */
+        }
         #stop-btn {
             flex-grow: 1; /* Make stop button smaller */
             background-color: #dc3545; /* Red color for stop button */
@@ -399,7 +404,8 @@
                 <div id="formatted-script-preview" class="script-preview"></div>
                 <div class="generation-buttons" style="margin-top: 1em;">
                     <button id="generate-btn" type="submit">Generate Podcast</button>
-                    <button id="stop-btn" type="button">Stop Generation</button>
+                    <button id="stop-btn" type="button">Stop Podcast Generation</button>
+                    <button id="generate-analysis-btn" type="button">Generate DOCX Analysis</button>
                 </div>
             </div>
         </form>
@@ -439,6 +445,7 @@
     </div>
     {% endif %}
 
+
     <!-- About Modal -->
     <div id="about-modal" class="modal">
         <div class="modal-content">
@@ -471,16 +478,17 @@
             const generateBtn = document.getElementById('generate-btn');
             const stopBtn = document.getElementById('stop-btn'); // New stop button
             const demoBtn = document.getElementById('demo-btn');
+            const generateAnalysisBtn = document.getElementById('generate-analysis-btn');
             const settingsBtn = document.getElementById('settings-btn');
             const aboutBtn = document.getElementById('about-btn');
             const statusDiv = document.getElementById('status');
             const resultDiv = document.getElementById('result');
             const ttsStatusBar = document.getElementById('tts-status-bar');
-            
+
             const settingsModal = document.getElementById('settings-modal');
             const demoModal = document.getElementById('demo-modal');
             const aboutModal = document.getElementById('about-modal');
-            
+
             const settingsClose = document.getElementById('settings-close');
             const demoClose = document.getElementById('demo-close');
             const aboutClose = document.getElementById('about-close');
@@ -695,17 +703,17 @@
             }
 
             // --- Modal Logic ---
-            settingsBtn.onclick = () => { 
+            settingsBtn.onclick = () => {
                 loadSettings().then(() => {
                     modalProvider = currentSettings.tts_provider; // Initialize modalProvider AFTER currentSettings is loaded
-                    settingsModal.style.display = 'block'; 
+                    settingsModal.style.display = 'block';
                 });
             }
             if (demoAvailable && demoBtn) { // Check if demoBtn exists before assigning onclick
                 demoBtn.onclick = () => { demoModal.style.display = 'block'; }
             }
             aboutBtn.onclick = () => { loadAboutInfo(); aboutModal.style.display = 'block'; }
-            
+
             settingsClose.onclick = () => closeModal(settingsModal);
             if (demoAvailable && demoClose) { // Check if demoClose exists
                 demoClose.onclick = () => closeModal(demoModal);
@@ -749,6 +757,22 @@
                 }
             }
             updateTtsStatusBar(); // Initial load
+
+            // --- Analysis Button Visibility ---
+            async function updateAnalysisButtonVisibility() {
+                try {
+                    const response = await fetch('/api/settings');
+                    const settings = await response.json();
+                    if (generateAnalysisBtn && settings.has_gemini_key && settings.has_analysis_prompt) {
+                        generateAnalysisBtn.style.display = 'inline-block';
+                    } else if (generateAnalysisBtn) {
+                        generateAnalysisBtn.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error("Error checking analysis prerequisites:", error);
+                }
+            }
+            updateAnalysisButtonVisibility(); // Initial check
 
             // --- Settings Logic ---
             async function loadSettings() {
@@ -1172,7 +1196,7 @@
                             statusDiv.textContent = 'Demo generated!';
                             statusDiv.classList.remove('status-error');
                             statusDiv.classList.add('status-success');
-                            
+
                             const demoResultContainer = document.createElement('div');
                             demoResultContainer.id = 'demo-result-container';
 
@@ -1205,6 +1229,66 @@
                         generateDemoConfirmBtn.disabled = false;
                         generateDemoConfirmBtn.classList.remove('generating');
                         generateDemoConfirmBtn.textContent = 'Generate';
+                    }
+                }
+            }
+
+            // --- Analysis Generation Logic ---
+            if (generateAnalysisBtn) {
+                generateAnalysisBtn.onclick = async function() {
+                    const instructionText = instructionContainer.style.display !== 'none' ? instructionTextarea.value : '';
+                    const scriptText = scriptTextarea.value;
+                    const combinedTranscript = (instructionText.trim() ? instructionText + '\n' : '') + scriptText;
+
+                    if (!combinedTranscript.trim()) {
+                        alert("Please enter a script before generating analysis.");
+                        return;
+                    }
+
+                    generateAnalysisBtn.disabled = true;
+                    generateAnalysisBtn.classList.add('generating');
+                    const originalText = generateAnalysisBtn.textContent;
+                    generateAnalysisBtn.textContent = 'Analyzing...';
+
+                    statusDiv.textContent = 'Generating analysis...';
+                    statusDiv.classList.remove('status-error', 'status-success');
+                    statusDiv.style.display = 'block';
+
+                    try {
+                        const response = await fetch('/api/generate_analysis', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                transcript: combinedTranscript
+                            })
+                        });
+                        const data = await response.json();
+                        if (response.ok) {
+                            statusDiv.textContent = 'Analysis generated! Download started...';
+                            statusDiv.classList.remove('status-error');
+                            statusDiv.classList.add('status-success');
+
+                            // Automatically trigger download
+                            const downloadLink = document.createElement('a');
+                            downloadLink.href = data.download_url;
+                            downloadLink.download = data.filename;
+                            downloadLink.style.display = 'none';
+                            document.body.appendChild(downloadLink);
+                            downloadLink.click();
+                            document.body.removeChild(downloadLink);
+                        } else {
+                            statusDiv.textContent = `Error: ${data.error || 'Unknown error'}`;
+                            statusDiv.classList.remove('status-success');
+                            statusDiv.classList.add('status-error');
+                        }
+                    } catch (error) {
+                        statusDiv.textContent = 'A network error occurred while generating the analysis.';
+                        statusDiv.classList.remove('status-success');
+                        statusDiv.classList.add('status-error');
+                    } finally {
+                        generateAnalysisBtn.disabled = false;
+                        generateAnalysisBtn.classList.remove('generating');
+                        generateAnalysisBtn.textContent = originalText;
                     }
                 }
             }

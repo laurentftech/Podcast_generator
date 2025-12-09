@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.0.0b27]
+
+### Added
+- **AI-Powered Script Analysis**: New web interface feature for generating DOCX documents with AI analysis
+  - Generates comprehensive analysis including summaries, character lists, locations, and themes
+  - Creates comprehension questions for multiple language levels (A1, A1+/A2, A2+/B1)
+  - Perfect for language teachers and educational content creators
+  - Configurable via `config/analysis_prompt.txt` file
+  - Button appears automatically when both Gemini API key and prompt file are configured
+  - Files are named based on script content instead of random UUIDs
+- **Configuration Directory**: New `config/` directory for user-customizable settings
+  - Analysis prompt templates stored in `config/analysis_prompt.txt`
+  - Example file provided: `config/analysis_prompt.txt.example`
+  - Priority order: config dir → app data dir → bundled assets
+  - Fully compatible with Docker volume mounts
+- **Dependencies**: Added `python-docx` for DOCX document generation
+
+### Changed
+- **Filename Generation**: Both podcast MP3 and analysis DOCX files now use the beginning of the first sentence as filename instead of random UUIDs
+- **Environment Variables**: Added `GEMINI_ANALYSIS_MODEL` for configuring the Gemini model used for analysis (defaults to `gemini-2.5-flash`)
+
 ## [2.0.0b26]
 
 ### Changed

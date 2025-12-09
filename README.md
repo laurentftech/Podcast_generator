@@ -28,6 +28,7 @@ See also the [French README](docs/README-fr.md) for a version in French.
 
  - **Modern UI**: A clean, modern, and responsive interface built with `customtkinter` that adapts to your system's light or dark mode.
  - **Dual TTS Provider**: Choose between the high-quality voices of **Google Gemini** or **ElevenLabs**.
+ - **AI-Powered Script Analysis**: Generate DOCX documents with AI-powered analysis of your podcast scripts, including summaries, comprehension questions for different language levels (A1, A2, B1), and key educational insights. Perfect for language teachers and content creators.
  - **Synchronized HTML Demo**: Automatically generate a shareable HTML page with your podcast audio and a synchronized, highlighted transcript.
  - **Flexible Formats**: Export your creations in **MP3** (default) or **WAV** formats.
  - **Customization**: Configure and save voices for each speaker in your scripts, with options for language and accent.
@@ -97,6 +98,61 @@ D’écritoire, monsieur, ou de boîte à ciseaux ? »
 ```
 
 💡 Note on Annotations: The app uses square brackets [emotion] for ElevenLabs' emotional cues. If you use Gemini, the app will automatically convert them to parentheses (emotion) for you.
+
+---
+
+## 📝 AI-Powered Script Analysis (Web Interface)
+
+The web interface includes an optional AI-powered analysis feature that generates professional DOCX documents analyzing your podcast scripts. This feature is particularly useful for **language teachers**, **content creators**, and **educational material developers**.
+
+### What's Included in the Analysis
+
+The generated DOCX document contains:
+- **Summary**: A concise overview of the podcast content
+- **Main Characters**: Key speakers and personalities mentioned
+- **Key Locations**: Important places referenced in the script
+- **Central Theme**: The main message or topic
+- **Comprehension Questions**: Tailored questions for different language proficiency levels:
+  - A1 (Beginner)
+  - A1+/A2 (Elementary)
+  - A2+/B1 (Intermediate)
+
+### Setup Instructions
+
+To enable this feature in the web interface:
+
+1. **Configure Gemini API Key**
+   Add your Gemini API key to the `.env` file:
+   ```bash
+   GEMINI_API_KEY=your_actual_key_here
+   ```
+
+2. **Create Analysis Prompt File**
+   Copy the example prompt configuration:
+   ```bash
+   cp config/analysis_prompt.txt.example config/analysis_prompt.txt
+   ```
+
+3. **Customize the Prompt (Optional)**
+   Edit `config/analysis_prompt.txt` to modify how the AI analyzes your scripts. You can adjust:
+   - The types of questions generated
+   - Language levels targeted
+   - Analysis depth and focus areas
+   - Output formatting preferences
+
+4. **Access the Feature**
+   Once configured, a purple "Generate DOCX Analysis" button will appear next to the "Generate Podcast" button in the web interface.
+
+### File Locations
+
+- **Docker**: `./config/analysis_prompt.txt`
+- **macOS**: `~/Library/Application Support/PodcastGenerator/analysis_prompt.txt`
+- **Windows**: `%APPDATA%/PodcastGenerator/analysis_prompt.txt`
+- **Linux**: `~/.config/PodcastGenerator/analysis_prompt.txt`
+
+For more details, see the `config/README.md` file.
+
+---
 
 ## 📦 Installation
 

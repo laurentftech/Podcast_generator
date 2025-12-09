@@ -158,7 +158,12 @@ class GeminiTTS(TTSProvider):
         gemini_script = script_text.replace('[', '(').replace(']', ')')
         logger.info("Converted script annotations from [] to () for Gemini.")
 
-        models_to_try = ["gemini-2.5-pro-preview-tts", "gemini-2.5-flash-preview-tts"]
+        # Get model from environment variable or use defaults
+        primary_model = os.environ.get("GEMINI_TTS_MODEL", "gemini-2.5-flash-preview-tts")
+        models_to_try = [primary_model, "gemini-2.5-pro-preview-tts", "gemini-2.5-flash-preview-tts"]
+        # Remove duplicates while preserving order
+        models_to_try = list(dict.fromkeys(models_to_try))
+
         contents = [types.Content(role="user", parts=[types.Part.from_text(text=gemini_script)])]
 
         num_speakers = len(speaker_mapping)

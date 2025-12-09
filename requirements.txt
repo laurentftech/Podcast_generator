@@ -12,3 +12,4 @@ elevenlabs
 # Utility
 requests
 keyring
+python-docx

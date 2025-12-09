@@ -24,11 +24,12 @@ Commencez à créer vos podcasts en quelques minutes.
 
 - **Interface Moderne** : Une interface claire, moderne et réactive construite avec `customtkinter` qui s'adapte au mode clair ou sombre de votre système.
 - **Double Fournisseur TTS** : Choisissez entre les voix de haute qualité de **Google Gemini** ou **ElevenLabs**.
+- **Analyse IA des Scripts** : Générez des documents DOCX avec une analyse IA de vos scripts de podcast, incluant des résumés, des questions de compréhension pour différents niveaux de langue (A1, A2, B1), et des informations pédagogiques clés. Parfait pour les enseignants de langues et les créateurs de contenu.
 - **Démo HTML Synchronisée** : Générez automatiquement une page HTML partageable avec l'audio de votre podcast et une transcription synchronisée et surlignée.
 - **Formats flexibles** : Export en **MP3** (par défaut) ou **WAV**.
 - **Personnalisation** : Sauvegarde des voix et paramètres pour chaque locuteur.
 - **Guides vocaux** : Explorez et écoutez toutes les voix disponibles de Gemini et ElevenLabs directement depuis les réglages. Ajoutez vos voix préférées à votre liste de locuteurs en un seul clic.
-- **Lecture intégrée** : Écoutez et arrêtez vos créations directement depuis l’application (**FFmpeg requis**).
+- **Lecture intégrée** : Écoutez et arrêtez vos créations directement depuis l'application (**FFmpeg requis**).
 - **Stockage sécurisé de la clé API** : Votre clé API Google Gemini est demandée une seule fois et enregistrée de manière sécurisée dans le trousseau du système (`keyring`).
 - **Support des accents et langues** : Créez des podcasts en plusieurs langues avec des voix et des accents distincts pour chaque langue (depuis les réglages des locuteurs avec l'API ElevenLabs ou depuis le prompt avec Gemini).
 - **Support Docker** : Exécutez l'application en tant que service web à l'aide de Docker. Cela simplifie le déploiement, ne nécessite aucune installation supplémentaire et peut fonctionner sur un petit serveur ou localement.
@@ -81,6 +82,59 @@ John (fr): Bonjour à tous, bienvenue dans ce nouvel épisode.
 Samantha (en): Hello everyone, welcome to this new episode.
 John (es): Hola a todos, bienvenidos a este nuevo episodio.
 ```
+
+---
+
+## 📝 Analyse IA des Scripts (Interface Web)
+
+L'interface web inclut une fonctionnalité d'analyse IA optionnelle qui génère des documents DOCX professionnels analysant vos scripts de podcast. Cette fonctionnalité est particulièrement utile pour les **enseignants de langues**, les **créateurs de contenu** et les **développeurs de matériel pédagogique**.
+
+### Contenu de l'Analyse
+
+Le document DOCX généré contient :
+- **Résumé** : Un aperçu concis du contenu du podcast
+- **Personnages Principaux** : Les intervenants et personnalités clés mentionnés
+- **Lieux Importants** : Les endroits importants référencés dans le script
+- **Thème Central** : Le message ou sujet principal
+- **Questions de Compréhension** : Questions adaptées à différents niveaux de compétence linguistique :
+  - A1 (Débutant)
+  - A1+/A2 (Élémentaire)
+  - A2+/B1 (Intermédiaire)
+
+### Instructions de Configuration
+
+Pour activer cette fonctionnalité dans l'interface web :
+
+1. **Configurer la Clé API Gemini**
+   Ajoutez votre clé API Gemini au fichier `.env` :
+   ```bash
+   GEMINI_API_KEY=votre_clé_ici
+   ```
+
+2. **Créer le Fichier de Prompt d'Analyse**
+   Copiez l'exemple de configuration du prompt :
+   ```bash
+   cp config/analysis_prompt.txt.example config/analysis_prompt.txt
+   ```
+
+3. **Personnaliser le Prompt (Optionnel)**
+   Éditez `config/analysis_prompt.txt` pour modifier la façon dont l'IA analyse vos scripts. Vous pouvez ajuster :
+   - Les types de questions générées
+   - Les niveaux de langue ciblés
+   - La profondeur et les domaines d'analyse
+   - Les préférences de formatage de sortie
+
+4. **Accéder à la Fonctionnalité**
+   Une fois configuré, un bouton violet "Generate DOCX Analysis" apparaîtra à côté du bouton "Generate Podcast" dans l'interface web.
+
+### Emplacements des Fichiers
+
+- **Docker** : `./config/analysis_prompt.txt`
+- **macOS** : `~/Library/Application Support/PodcastGenerator/analysis_prompt.txt`
+- **Windows** : `%APPDATA%/PodcastGenerator/analysis_prompt.txt`
+- **Linux** : `~/.config/PodcastGenerator/analysis_prompt.txt`
+
+Pour plus de détails, consultez le fichier `config/README.md`.
 
 ---
 

@@ -25,3 +25,9 @@ instance/*
 
 # Environment variables (contains API keys)
 .env
+
+# Config directory (user customization)
+config/*
+!config/.gitkeep
+!config/*.example
+!config/README.md
