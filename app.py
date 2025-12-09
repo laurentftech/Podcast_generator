@@ -63,6 +63,7 @@ def save_settings(settings):
 def extract_filename_from_script(script_text, extension, max_length=50):
     """
     Extracts a safe filename from the beginning of the first sentence in the script.
+    Skips instruction lines (lines without speaker format) and only uses actual dialogue.
 
     Args:
         script_text: The script content
@@ -72,7 +73,7 @@ def extract_filename_from_script(script_text, extension, max_length=50):
     Returns:
         A sanitized filename with the given extension
     """
-    # Remove speaker labels and get the first sentence
+    # Find the first line with speaker format (skip instructions)
     lines = script_text.strip().split('\n')
     first_dialogue = ""
 
@@ -81,23 +82,29 @@ def extract_filename_from_script(script_text, extension, max_length=50):
         if not line.strip():
             continue
         # Check if line has speaker format (Speaker: text)
-        # Use possessive quantifiers and atomic grouping concept to prevent ReDoS
-        match = re.match(r'^\s*([^:\s]+(?:\s+[^:\s]+)*)\s*:\s*(.+)$', line)
-        if match:
-            first_dialogue = match.group(2).strip()
-            break
-        else:
-            # If no speaker format, use the line as-is
-            first_dialogue = line.strip()
-            break
+        # Simple check for colon to avoid regex complexity
+        if ':' in line:
+            parts = line.split(':', 1)
+            if len(parts) == 2 and parts[0].strip() and parts[1].strip():
+                # Found a speaker line - use the dialogue part
+                first_dialogue = parts[1].strip()
+                break
+        # If no speaker format, skip this line (it's likely an instruction)
 
     if not first_dialogue:
         # Fallback to UUID if no content found
         return f"podcast_{os.urandom(4).hex()}.{extension}"
 
     # Remove any bracketed annotations like [playful], [laughing], etc.
-    # Use a character class that excludes brackets to prevent ReDoS
-    first_dialogue = re.sub(r'\[[^\]]*\]', '', first_dialogue).strip()
+    # Use simple string operations instead of regex to avoid ReDoS concerns
+    while '[' in first_dialogue and ']' in first_dialogue:
+        start = first_dialogue.find('[')
+        end = first_dialogue.find(']', start)
+        if end > start:
+            first_dialogue = first_dialogue[:start] + first_dialogue[end+1:]
+        else:
+            break  # Malformed brackets, stop processing
+    first_dialogue = first_dialogue.strip()
 
     # Extract the beginning (up to first sentence or max_length)
     # Split by sentence-ending punctuation
