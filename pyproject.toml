@@ -20,6 +20,8 @@ dependencies = [
     "customtkinter",
     "CTkMenuBarPlus",
     "python-dotenv", # Added to resolve ModuleNotFoundError
+    "python-docx", # Required for transcript analysis DOCX generation
+    "Flask",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
