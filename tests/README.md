@@ -4,14 +4,16 @@ This directory contains automated tests for the Podcast Generator application.
 
 ## Test Statistics
 
-**Total Tests: 71** ✅ **All Passing**
+**Total Tests: 85** ✅ **All Passing**
 
 - API Endpoints: 11 tests
 - API Status: 5 tests
 - Filename Extraction: 20 tests
 - Gemini Model Selection: 4 tests
-- Utility Functions: 18 tests
+- Utility Functions: 25 tests (18 core + 7 extra)
 - Validation: 13 tests
+- Integration: 2 tests (requires API keys)
+- Demo Creation: 7 tests
 
 ## Running Tests
 
@@ -45,12 +47,19 @@ pytest tests/test_gemini_model.py -v
 
 # Test utility functions
 pytest tests/test_utils.py -v
+pytest tests/test_utils_extra.py -v
 
 # Test validation
 pytest tests/test_validation.py -v
 
 # Test filename extraction
 pytest tests/test_filename_extraction.py -v
+
+# Test demo creation logic
+pytest tests/test_create_demo.py -v
+
+# Test integration with real APIs (requires keys)
+pytest tests/test_integration.py -v
 ```
 
 ### Run Specific Test Cases
@@ -71,11 +80,47 @@ pytest --cov=. --cov-report=html tests/
 ```
 
 **Coverage Statistics:**
-- **Core Modules**: 36% coverage (focused on testable backend logic)
-- **Excluded**: GUI modules, demo creation (optional heavy dependency), voice classifier
+- **Core Modules**: ~45% coverage (focused on testable backend logic)
+- **Excluded**: GUI modules, voice classifier
 - **Test Files**: 100% coverage on all test utilities
 
+## Integration Tests & GitHub Secrets
+
+The `tests/test_integration.py` file contains tests that hit the real Gemini and ElevenLabs APIs. These tests are skipped by default if API keys are not present.
+
+To run these tests in GitHub Actions, you must configure the following **Repository Secrets**:
+
+- `GEMINI_API_KEY`: Your Google Gemini API key
+- `ELEVENLABS_API_KEY`: Your ElevenLabs API key
+
+To run them locally, ensure you have a `.env` file in the project root with these keys defined.
+
 ## Test Coverage
+
+### test_integration.py (2 tests)
+
+Tests actual API calls (skipped if keys missing):
+- **test_gemini_integration**: Generates a short audio using Gemini
+- **test_elevenlabs_integration**: Generates a short audio using ElevenLabs
+
+### test_create_demo.py (7 tests)
+
+Tests logic for HTML demo generation:
+- **test_normalize_word**: Verifies word normalization
+- **test_similar**: Verifies fuzzy string matching
+- **test_find_adjacent_timed_words**: Verifies finding neighbors for interpolation
+- **test_interpolate_missing_words**: Verifies timing interpolation logic
+- **test_fix_word_timings_inverted**: Verifies fix for start > end
+- **test_fix_word_timings_overlap**: Verifies fix for overlapping words
+- **test_reconstruct_html_with_timing**: Verifies HTML output structure
+- **test_create_word_mapping_whisperx_simple**: Verifies basic mapping
+- **test_create_word_mapping_whisperx_with_speaker**: Verifies speaker label handling
+
+### test_utils_extra.py (7 tests)
+
+Additional tests for `utils.py`:
+- **test_sanitize_text_***: Various tests for text sanitization (HTML entities, smart quotes, control chars)
+- **test_sanitize_app_settings_***: Tests for settings sanitization before backend use
 
 ### test_api_endpoints.py (11 tests)
 
