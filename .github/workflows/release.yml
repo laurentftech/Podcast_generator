@@ -9,9 +9,43 @@ on:
       - 'v*.*.*'
 
 jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10.x']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: pip install -e .[dev]
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+
   build-arm64:
     name: Build macOS ARM64
     runs-on: macos-latest
+    needs: test
     strategy:
       matrix:
         python-version: ['3.10.x'] # Use 'x' to explicitly request the latest patch version of 3.10
@@ -60,6 +94,7 @@ jobs:
   build-intel:
     name: Build macOS Intel
     runs-on: [self-hosted, macos, x64] # This job runs on your local machine
+    needs: test
     steps:
       - name: Install and set up Python 3.10 via Homebrew for self-hosted runner
         run: |
@@ -99,6 +134,7 @@ jobs:
   build-windows:
     name: Build Windows
     runs-on: windows-latest
+    needs: test
     strategy:
       matrix:
         python-version: ['3.10.x'] # Use 'x' to explicitly request the latest patch version of 3.10
@@ -147,6 +183,7 @@ jobs:
   build-linux:
     name: Build Linux
     runs-on: ubuntu-latest
+    needs: test
     strategy:
       matrix:
         python-version: ['3.10.x'] # Use 'x' to explicitly request the latest patch version of 3.10

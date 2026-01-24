@@ -33,7 +33,11 @@ classifiers = [
 
 [project.optional-dependencies]
 dev = [
-    "pyinstaller"
+    "pyinstaller",
+    "pytest",
+    "pytest-flask",
+    "pytest-mock",
+    "pytest-cov"
 ]
 demo = [
     "whisperx"

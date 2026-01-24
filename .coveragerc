@@ -1,0 +1,28 @@
+[run]
+source = .
+omit =
+    */tests/*
+    */__pycache__/*
+    */site-packages/*
+    */.venv/*
+    */venv/*
+    _version.py
+    setup.py
+    # Exclude GUI modules (hard to test without UI)
+    gui.py
+    about_window.py
+    api_keys_window.py
+    demo_window.py
+    settings_window.py
+    # Exclude demo creation (optional heavy dependency)
+    create_demo.py
+    # Exclude voice classifier (optional feature)
+    voice_classifier.py
+
+[report]
+precision = 2
+show_missing = True
+skip_covered = False
+
+[html]
+directory = htmlcov

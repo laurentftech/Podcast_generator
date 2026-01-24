@@ -165,6 +165,7 @@ def get_status():
     settings = load_settings()
     provider = settings.get("tts_provider", "elevenlabs")
     quota_text = None
+    model_name = None
 
     if provider == "elevenlabs":
         api_key = os.environ.get("ELEVENLABS_API_KEY")
@@ -172,12 +173,18 @@ def get_status():
             quota_text = update_elevenlabs_quota(api_key)
         else:
             quota_text = "ElevenLabs API Key not set."
-    
+        # ElevenLabs uses Eleven v3 for text-to-dialogue
+        model_name = "Eleven v3"
+    elif provider == "gemini":
+        # Get the Gemini model name from environment or use default
+        model_name = os.environ.get("GEMINI_TTS_MODEL", "gemini-2.5-pro-preview-tts")
+
     provider_display = "ElevenLabs" if provider == "elevenlabs" else "Gemini"
 
     return jsonify({
         'provider_name': provider_display,
-        'quota_text': quota_text
+        'quota_text': quota_text,
+        'model_name': model_name
     })
 
 @app.route('/api/settings', methods=['GET'])

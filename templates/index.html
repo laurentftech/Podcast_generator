@@ -747,6 +747,9 @@
                     const response = await fetch('/api/status');
                     const data = await response.json();
                     let text = `TTS Provider: ${data.provider_name}`;
+                    if (data.model_name) {
+                        text += ` (${data.model_name})`;
+                    }
                     if (data.quota_text) {
                         text += ` - ${data.quota_text}`;
                     }

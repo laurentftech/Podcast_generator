@@ -31,3 +31,9 @@ config/*
 !config/.gitkeep
 !config/*.example
 !config/README.md
+
+# Testing and coverage
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
