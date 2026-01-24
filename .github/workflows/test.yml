@@ -83,9 +83,8 @@ jobs:
         run: |
           echo "## Coverage Report :bar_chart:" >> $GITHUB_STEP_SUMMARY
           echo '```text' >> $GITHUB_STEP_SUMMARY
-          # Capture the coverage table part of the output
-          # We look for the header "Name", the separator lines, the data lines (ending in %), and the TOTAL line
-          grep -E "^Name|^---|%$|^TOTAL" pytest-coverage.txt >> $GITHUB_STEP_SUMMARY || echo "Could not parse coverage report." >> $GITHUB_STEP_SUMMARY
+          # Extract the block from "Name" to "TOTAL"
+          sed -n '/^Name/,/^TOTAL/p' pytest-coverage.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Test summary
