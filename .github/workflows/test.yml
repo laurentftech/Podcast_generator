@@ -48,7 +48,10 @@ jobs:
 
       - name: Install ffmpeg (Windows)
         if: runner.os == 'Windows'
-        run: choco install ffmpeg
+        run: |
+          choco install ffmpeg
+          echo "C:\ProgramData\chocolatey\bin" >> $GITHUB_PATH
+          echo "C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg\bin" >> $GITHUB_PATH
 
       - name: Install ffmpeg (macOS)
         if: runner.os == 'macOS'
@@ -65,7 +68,8 @@ jobs:
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
         run: |
           set -o pipefail
-          pytest tests/ -v --tb=short --cov=. --cov-report=term-missing --cov-report=html | tee pytest-coverage.txt
+          # --color=no ensures no ANSI codes in the output file
+          pytest tests/ -v --tb=short --color=no --cov=. --cov-report=term-missing --cov-report=html | tee pytest-coverage.txt
 
       - name: Upload coverage report
         if: always() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.10.x'
@@ -79,9 +83,9 @@ jobs:
         run: |
           echo "## Coverage Report :bar_chart:" >> $GITHUB_STEP_SUMMARY
           echo '```text' >> $GITHUB_STEP_SUMMARY
-          # Extract the coverage table (lines starting with Name, TOTAL, or file paths)
-          # This is a simple grep to filter the output for the summary table
-          grep -E "^Name|^TOTAL|%$" pytest-coverage.txt || cat pytest-coverage.txt >> $GITHUB_STEP_SUMMARY
+          # Capture the coverage table part of the output
+          # We look for the header "Name", the separator lines, the data lines (ending in %), and the TOTAL line
+          grep -E "^Name|^---|%$|^TOTAL" pytest-coverage.txt >> $GITHUB_STEP_SUMMARY || echo "Could not parse coverage report." >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Test summary
