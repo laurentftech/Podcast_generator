@@ -206,10 +206,23 @@ class GeminiTTS(TTSProvider):
                 return _ffmpeg_convert_inline_audio_chunks(audio_chunks, final_mime_type, output_filepath, status_callback)
             except errors.APIError as e:
                 logger.warning(f"API error with model '{model_name}': {e}")
+                
+                # Check for Resource Exhausted (429)
+                if e.code == 429 or "RESOURCE_EXHAUSTED" in str(e):
+                    raise Exception("Gemini API Quota Exceeded (Resource Exhausted). Please try again later.")
+                
                 if i < len(models_to_try) - 1:
                     status_callback("Trying next model...")
                 else:
-                    raise Exception(f"Gemini API Error: {e}")
+                    # Try to extract a cleaner error message
+                    error_msg = str(e)
+                    try:
+                        # Attempt to parse JSON error if present in the string representation
+                        if hasattr(e, 'message'):
+                             error_msg = e.message
+                    except:
+                        pass
+                    raise Exception(f"Gemini API Error: {error_msg}")
         raise Exception("Audio generation failed after trying all available models.")
 
 
