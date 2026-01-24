@@ -58,11 +58,31 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Run tests with pytest
+      - name: Run tests with coverage
+        shell: bash
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
-        run: pytest tests/ -v --tb=short
+        run: |
+          set -o pipefail
+          pytest tests/ -v --tb=short --cov=. --cov-report=term-missing --cov-report=html | tee pytest-coverage.txt
+
+      - name: Upload coverage report
+        if: always() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.10.x'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/
+
+      - name: Publish Coverage to Job Summary
+        if: always() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.10.x'
+        run: |
+          echo "## Coverage Report :bar_chart:" >> $GITHUB_STEP_SUMMARY
+          echo '```text' >> $GITHUB_STEP_SUMMARY
+          # Extract the coverage table (lines starting with Name, TOTAL, or file paths)
+          # This is a simple grep to filter the output for the summary table
+          grep -E "^Name|^TOTAL|%$" pytest-coverage.txt || cat pytest-coverage.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Test summary
         if: always()

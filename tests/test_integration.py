@@ -40,13 +40,20 @@ def test_gemini_integration():
         }
         
         # Run generation
-        result_path = generate(
-            script_text=TEST_SCRIPT,
-            app_settings=app_settings,
-            output_filepath=output_path,
-            api_key=api_key,
-            status_callback=lambda msg: None # Silence output
-        )
+        try:
+            result_path = generate(
+                script_text=TEST_SCRIPT,
+                app_settings=app_settings,
+                output_filepath=output_path,
+                api_key=api_key,
+                status_callback=lambda msg: None # Silence output
+            )
+        except Exception as e:
+            # Check for quota errors (429 / Resource Exhausted)
+            error_msg = str(e)
+            if "Quota Exceeded" in error_msg or "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+                pytest.skip(f"Skipping test due to API Quota limit: {error_msg}")
+            raise e
         
         assert os.path.exists(result_path)
         assert os.path.getsize(result_path) > 0
@@ -65,9 +72,6 @@ def test_elevenlabs_integration():
         
     try:
         # Minimal settings for ElevenLabs
-        # Note: You need valid voice IDs here. Using some common defaults or placeholders.
-        # If these IDs are invalid, the test will fail (which is good for integration testing).
-        # These are example IDs, ideally they should be valid public voices.
         app_settings = {
             "tts_provider": "elevenlabs",
             "speaker_voices_elevenlabs": {
@@ -76,13 +80,20 @@ def test_elevenlabs_integration():
             }
         }
         
-        result_path = generate(
-            script_text=TEST_SCRIPT,
-            app_settings=app_settings,
-            output_filepath=output_path,
-            api_key=api_key,
-            status_callback=lambda msg: None
-        )
+        try:
+            result_path = generate(
+                script_text=TEST_SCRIPT,
+                app_settings=app_settings,
+                output_filepath=output_path,
+                api_key=api_key,
+                status_callback=lambda msg: None
+            )
+        except Exception as e:
+            # Check for quota errors (429)
+            error_msg = str(e)
+            if "429" in error_msg or "Too Many Requests" in error_msg:
+                pytest.skip(f"Skipping test due to API Quota limit: {error_msg}")
+            raise e
         
         assert os.path.exists(result_path)
         assert os.path.getsize(result_path) > 0
