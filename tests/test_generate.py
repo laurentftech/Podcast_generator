@@ -353,7 +353,8 @@ class TestGetApiKey:
         
         logger = logging.getLogger("test")
         
-        result = get_api_key(status_callback=lambda x: None, logger=logger, service="gemini")
+        # Pass parent_window to avoid prompting
+        result = get_api_key(status_callback=lambda x: None, logger=logger, service="gemini", parent_window=True)
         assert result == "test_env_var_key"
 
     def test_get_api_key_elevenlabs_service(self, monkeypatch):
@@ -363,7 +364,8 @@ class TestGetApiKey:
         
         logger = logging.getLogger("test")
         
-        result = get_api_key(status_callback=lambda x: None, logger=logger, service="elevenlabs")
+        # Pass parent_window to avoid prompting
+        result = get_api_key(status_callback=lambda x: None, logger=logger, service="elevenlabs", parent_window=True)
         assert result == "test_elevenlabs_key"
 
     def test_get_api_key_prioritizes_env_over_keychain(self, monkeypatch):
@@ -373,6 +375,7 @@ class TestGetApiKey:
         
         logger = logging.getLogger("test")
         
-        result = get_api_key(status_callback=lambda x: None, logger=logger, service="gemini")
+        # Pass parent_window to avoid prompting
+        result = get_api_key(status_callback=lambda x: None, logger=logger, service="gemini", parent_window=True)
         # Env var should take priority
         assert result == "env_priority_key"

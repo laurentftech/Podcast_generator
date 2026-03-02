@@ -21,6 +21,7 @@ Guest: Indeed it is.
 """
 
 @pytest.mark.skipif(not os.environ.get("GEMINI_API_KEY"), reason="GEMINI_API_KEY not set")
+@pytest.mark.skipif(not os.environ.get("GEMINI_API_KEY"), reason="GEMINI_API_KEY not set")
 def test_gemini_integration():
     """Test actual generation with Gemini API."""
     api_key = os.environ["GEMINI_API_KEY"]
@@ -62,6 +63,7 @@ def test_gemini_integration():
         if os.path.exists(output_path):
             os.remove(output_path)
 
+@pytest.mark.skipif(not os.environ.get("ELEVENLABS_API_KEY"), reason="ELEVENLABS_API_KEY not set")
 @pytest.mark.skipif(not os.environ.get("ELEVENLABS_API_KEY"), reason="ELEVENLABS_API_KEY not set")
 def test_elevenlabs_integration():
     """Test actual generation with ElevenLabs API."""
