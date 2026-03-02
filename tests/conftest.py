@@ -4,9 +4,27 @@ import sys
 import tempfile
 import pytest
 from pathlib import Path
+from unittest.mock import MagicMock
 
 # Add parent directory to path to import app modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+
+# Mock keyring BEFORE any test runs to avoid NoKeyringError in CI
+# This must be done at module import time, before generate_podcast is imported
+mock_keyring = MagicMock()
+mock_keyring.get_password = MagicMock(return_value=None)
+mock_keyring.set_password = MagicMock()
+sys.modules['keyring'] = mock_keyring
+
+
+@pytest.fixture(autouse=True)
+def mock_keyring_fixture(monkeypatch):
+    """Ensure keyring is mocked for all tests."""
+    import keyring
+    if not isinstance(keyring, MagicMock):
+        monkeypatch.setattr(keyring, 'get_password', MagicMock(return_value=None))
+        monkeypatch.setattr(keyring, 'set_password', MagicMock())
 
 
 @pytest.fixture

@@ -29,14 +29,8 @@ sys.modules['elevenlabs'] = mock_elevenlabs
 sys.modules['elevenlabs.client'] = mock_elevenlabs
 sys.modules['elevenlabs.core'] = MagicMock()
 
-# Mock keyring - use a mock that doesn't require a backend
-mock_keyring = MagicMock()
-mock_keyring.get_password = MagicMock(return_value=None)
-mock_keyring.set_password = MagicMock()
-sys.modules['keyring'] = mock_keyring
-
-# IMPORTANT: Do NOT mock requests globally - it breaks other tests
-# requests needs to remain as the real module for app.py tests
+# Mock keyring - use a mock that doesn't require a backend (handled in conftest.py)
+# keyring is now mocked in conftest.py autouse fixture
 
 from generate_podcast import (
     generate,
