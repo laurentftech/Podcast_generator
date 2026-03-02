@@ -29,8 +29,11 @@ sys.modules['elevenlabs'] = mock_elevenlabs
 sys.modules['elevenlabs.client'] = mock_elevenlabs
 sys.modules['elevenlabs.core'] = MagicMock()
 
-# Mock keyring
-sys.modules['keyring'] = MagicMock()
+# Mock keyring - use a mock that doesn't require a backend
+mock_keyring = MagicMock()
+mock_keyring.get_password = MagicMock(return_value=None)
+mock_keyring.set_password = MagicMock()
+sys.modules['keyring'] = mock_keyring
 
 # IMPORTANT: Do NOT mock requests globally - it breaks other tests
 # requests needs to remain as the real module for app.py tests
@@ -365,10 +368,8 @@ class TestGetApiKey:
 
     def test_get_api_key_prioritizes_env_over_keychain(self, monkeypatch):
         """Test that env var takes priority over keychain."""
-        import keyring
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
         monkeypatch.setenv("GEMINI_API_KEY", "env_priority_key")
-        monkeypatch.setattr(keyring, 'get_password', lambda *args: "keychain_key")
         
         logger = logging.getLogger("test")
         
