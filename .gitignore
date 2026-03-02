@@ -37,3 +37,4 @@ config/*
 htmlcov/
 .coverage
 .coverage.*
+/CLAUDE.md
